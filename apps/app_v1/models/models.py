@@ -25,18 +25,18 @@ class Address(db.Model):
     state = db.Column(db.String(512), nullable=False)
     email = db.Column(db.String(512))
     landmark = db.Column(db.String(512))
-
+    order = db.relationship('Order', backref='Order')
 
 class Cart(Base):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    cart_reference_uuid = db.Column(db.String(255), nullable=False)
+    cart_reference_uuid = db.Column(db.String(255), nullable=False, unique=True)
     geo_id = db.Column(db.BigInteger, nullable=False)
     user_id = db.Column(db.String(255), nullable=False)
     promo_codes = db.Column(db.String(255))
     total_offer_price = db.Column(db.Numeric, default=0.0)
     total_discount = db.Column(db.Numeric, default=0.0)
     total_display_price = db.Column(db.Numeric, default=0.0)
-
+    cartItem = db.relationship('Cart_Item', backref='Cart')
 
 class Cart_Item(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -47,7 +47,7 @@ class Cart_Item(db.Model):
     display_price = db.Column(db.Numeric, default=0.0)
     item_discount = db.Column(db.Numeric, default=0.0)
     order_partial_discount = db.Column(db.Numeric, default=0.0)
-
+    cart_id = db.Column(db.Integer, db.ForeignKey('cart.id'))
 
 class Order(Base):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -62,13 +62,14 @@ class Order(Base):
     delivery_slot = db.Column(Enum('09:12', '12:15', '15:18', '18:21', name='delivery_time_slots'))
     freebie = db.Column(db.String(255))
     payment_id = db.Column(db.Integer, db.ForeignKey('payment.id'), nullable=False)
-
+    orderItem = db.relationship('Order_Item', backref='Order')
 
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     amount = db.Column(db.Numeric, default=0.0)
     payment_mode = db.Column(Enum('COD', 'SODEXO', 'PREPAID', 'TICKET', name='payment_mode_type'))
     payment_transaction_id = db.Column(db.String(255))
+    order = db.relationship('Order', backref='Payment')
 
 
 class Order_Item(db.Model):
@@ -80,3 +81,4 @@ class Order_Item(db.Model):
     shipping_charge = db.Column(db.Numeric, default=0.0)
     item_discount = db.Column(db.Numeric, default=0.0)
     order_partial_discount = db.Column(db.Numeric, default=0.0)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))

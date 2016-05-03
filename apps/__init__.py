@@ -13,7 +13,7 @@ def create_app(config_name):
     initialize_db(app)
 
     from app_v1.routes import app_v1 as v1_router
-    app.register_blueprint(v1_router, url_prefix='/v1')
+    app.register_blueprint(v1_router, url_prefix='/orderapi/v1')
 
     @app.errorhandler(Exception)
 

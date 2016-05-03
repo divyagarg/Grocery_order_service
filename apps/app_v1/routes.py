@@ -1,6 +1,6 @@
-from flask import request
-from flask import Blueprint
-import logging
+from apps.app_v1.api.cart_service import CartService
+from flask import request, g, Blueprint
+import logging, uuid
 
 from lib.decorators import jsonify, logrequest
 logger = logging.getLogger()
@@ -17,3 +17,11 @@ def test():
 
 
 
+@app_v1.route('/cart', methods =['POST'])
+@jsonify
+def createOrUpdateCart():
+  logger.info(
+        '%s : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
+  g.UUID = uuid.uuid4()
+  cartservice = CartService()
+  return cartservice.createOrUpdateCart()

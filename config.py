@@ -6,8 +6,8 @@ LOG_DIR = 'newapp'
 LOG_FILE = 'newapp.log'
 DEBUG_LOG_FILE = 'newapp_debug.log'
 ERROR_LOG_FILE = 'newapp_error.log'
-
 PORT = 9000
+APP_NAME = 'order_service'
 
 class Config:
     DEBUG = False
@@ -35,6 +35,9 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_TRACK_MODIFICATIONS=False
     SQLALCHEMY_POOL_SIZE = 10
     SQLALCHEMY_POOL_TIMEOUT= 20
+    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
+    COUPON_CHECK_URL ="http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
+    COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
 
 config = {
     'development': DevelopmentConfig,
@@ -45,3 +48,15 @@ config = {
 }
 
 
+RESPONSE_JSON = {
+    'RESPONSE_JSON': {
+        'status': ''
+    },
+    'ERROR_RESPONSE': {
+        'code': '',
+        'message': ''
+    },
+}
+
+VALID_ORDER_TYPES = ["Pharma", "NDD", "Grocery"]
+ORDER_SOURCE_REFERENCES = ["ANDROID_APP", "IOS_APP","WEB"]
