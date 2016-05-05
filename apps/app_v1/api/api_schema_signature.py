@@ -46,7 +46,7 @@ CREATE_CART_SCHEMA = {
         SCHEMA: {
             "geo_id": {
                 FUNCTIONS: [
-                    {Integer: {}}
+                    {String: {}}
                 ]
             },
             "user_id": {
@@ -55,16 +55,15 @@ CREATE_CART_SCHEMA = {
                 ]
             },
             "order_type":{
+                REQUIRED:False,
                 FUNCTIONS:[
                             {Contained : {"contained_in":VALID_ORDER_TYPES}}
                         ]
             },
             "order_source_reference": {
                 REQUIRED:False,
-                FUNCTIONS:[
-                    {
-                        Contained: { "contanined_in": ORDER_SOURCE_REFERENCES}
-                    }
+                FUNCTIONS: [
+                    {Contained : {"contained_in":ORDER_SOURCE_REFERENCES}}
                 ]
             },
             "promo_codes": {

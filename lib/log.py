@@ -1,7 +1,7 @@
 import os
 import logging
 import logging.config
-from config import LOG_DIR, LOG_FILE, ERROR_LOG_FILE
+from config import LOG_DIR, LOG_FILE, ERROR_LOG_FILE, APP_NAME
 
 
 def setup_logging(config):
@@ -15,7 +15,7 @@ def setup_logging(config):
     formatter = logging.Formatter(
         "[ %(asctime)s - %(levelname)s - %(pathname)s - %(module)s - %(funcName)s - %(lineno)d ] - %(message)s")
 
-    logger = logging.getLogger('grocery_order_service')
+    logger = logging.getLogger(APP_NAME)
     logger.setLevel(logging.INFO)
 
     handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, LOG_FILE), 'midnight')

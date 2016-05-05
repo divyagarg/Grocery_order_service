@@ -25,7 +25,7 @@ class Address(db.Model):
     state = db.Column(db.String(512), nullable=False)
     email = db.Column(db.String(512))
     landmark = db.Column(db.String(512))
-    order = db.relationship('Order', backref='Order')
+    order = db.relationship('Order', backref='Address')
 
 class Cart(Base):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -40,6 +40,7 @@ class Cart(Base):
 
 class Cart_Item(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable = False)
     cart_item_id = db.Column(db.String(255), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     promo_codes = db.Column(db.String(255))
@@ -47,16 +48,18 @@ class Cart_Item(db.Model):
     display_price = db.Column(db.Numeric, default=0.0)
     item_discount = db.Column(db.Numeric, default=0.0)
     order_partial_discount = db.Column(db.Numeric, default=0.0)
-    cart_id = db.Column(db.Integer, db.ForeignKey('cart.id'))
+
 
 class Order(Base):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    order_reference_id = db.Column(db.String(255), nullable=False)
+    order_reference_id = db.Column(db.String(255), nullable=False, unique=True)
     geo_id = db.Column(db.BigInteger, nullable=False)
     user_id = db.Column(db.String(255), nullable=False)
+    order_type = db.Column(db.String(255))
+    order_source_reference = db.Column(db.String(255))
     promo_codes = db.Column(db.String(255))
     shipping_address = db.Column(db.Integer, db.ForeignKey('address.id'), nullable=False)
-    billing_address = db.Column(db.Integer, db.ForeignKey('address.id'))
+    billing_address = db.Column(db.Integer)
     delivery_type = db.Column(Enum('Normal', 'Slotted', name='delivery_types'), nullable=False)
     delivery_due_date = db.Column(db.Date)
     delivery_slot = db.Column(Enum('09:12', '12:15', '15:18', '18:21', name='delivery_time_slots'))
@@ -81,4 +84,4 @@ class Order_Item(db.Model):
     shipping_charge = db.Column(db.Numeric, default=0.0)
     item_discount = db.Column(db.Numeric, default=0.0)
     order_partial_discount = db.Column(db.Numeric, default=0.0)
-    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
+    order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable = False)

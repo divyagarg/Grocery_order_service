@@ -1,9 +1,11 @@
 from apps.app_v1.api.cart_service import CartService
 from flask import request, g, Blueprint
+from config import APP_NAME
+from utils.jsonutils.output_formatter import create_error_response
 import logging, uuid
 
 from lib.decorators import jsonify, logrequest
-logger = logging.getLogger()
+logger = logging.getLogger(APP_NAME)
 
 app_v1 = Blueprint('app_v1', __name__)
 
@@ -18,10 +20,13 @@ def test():
 
 
 @app_v1.route('/cart', methods =['POST'])
-@jsonify
 def createOrUpdateCart():
   logger.info(
         '%s : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
   g.UUID = uuid.uuid4()
-  cartservice = CartService()
-  return cartservice.createOrUpdateCart()
+  try:
+    cartservice = CartService()
+    return cartservice.createOrUpdateCart(request.data)
+  except Exception as e:
+    logger.error("Exception occured in cart service {%s}" %g.UUID, exe_info = True)
+    return create_error_response(message=str(e))

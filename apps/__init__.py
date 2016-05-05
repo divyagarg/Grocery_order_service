@@ -1,9 +1,10 @@
 import lib.log as log
 from apps.app_v1.models import initialize_db
-from config import config
-import json
+from config import config, APP_NAME
+import json, logging
 from flask import Flask, Response
 
+Logger = logging.getLogger(APP_NAME)
 
 def create_app(config_name):
     app = Flask(__name__)
