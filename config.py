@@ -42,11 +42,68 @@ class DevelopmentConfig(Config):
     COUPON_CHECK_URL ="http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
     COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
 
+class TestingConfig(Config):
+    HOME='/tmp'
+    ENV = 'testing'
+    TESTING = True
+    DEBUG = True
+    DATABASE_NAME = 'grocery_order_service'
+    DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
+    SECRET_KEY = 'hard to guess string'
+    # KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
+    # KAFKA_TOPIC = 'fulfillment_staging'
+    # KAKFA_GROUP = 'fulfillmentservice_group'
+    SQLALCHEMY_DATABASE_URI = DATABASE_URI+DATABASE_NAME
+    SQLALCHEMY_TRACK_MODIFICATIONS=False
+    SQLALCHEMY_POOL_SIZE = 10
+    SQLALCHEMY_POOL_TIMEOUT= 20
+    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
+    COUPON_CHECK_URL ="http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
+    COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+    # SERVER_NAME="http://127.0.0.1:9000/"
+
+class StagingConfig(Config):
+    HOME='/tmp'
+    ENV = 'development'
+    DEBUG = True
+    DATABASE_NAME = 'grocery_order_service'
+    DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
+    SECRET_KEY = 'hard to guess string'
+    # KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
+    # KAFKA_TOPIC = 'fulfillment_staging'
+    # KAKFA_GROUP = 'fulfillmentservice_group'
+    SQLALCHEMY_DATABASE_URI = DATABASE_URI+DATABASE_NAME
+    SQLALCHEMY_TRACK_MODIFICATIONS=False
+    SQLALCHEMY_POOL_SIZE = 10
+    SQLALCHEMY_POOL_TIMEOUT= 20
+    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
+    COUPON_CHECK_URL ="http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
+    COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+
+class ProductionConfig(Config):
+    HOME='/tmp'
+    ENV = 'development'
+    DEBUG = True
+    DATABASE_NAME = 'grocery_order_service'
+    DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
+    SECRET_KEY = 'hard to guess string'
+    # KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
+    # KAFKA_TOPIC = 'fulfillment_staging'
+    # KAKFA_GROUP = 'fulfillmentservice_group'
+    SQLALCHEMY_DATABASE_URI = DATABASE_URI+DATABASE_NAME
+    SQLALCHEMY_TRACK_MODIFICATIONS=False
+    SQLALCHEMY_POOL_SIZE = 10
+    SQLALCHEMY_POOL_TIMEOUT= 20
+    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
+    COUPON_CHECK_URL ="http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
+    COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+
+
 config = {
     'development': DevelopmentConfig,
-    # 'testing': TestingConfig,
-    # 'staging': StagingConfig,
-    # 'production': ProductionConfig,
+    'testing': TestingConfig,
+    'staging': StagingConfig,
+     'production': ProductionConfig,
     'default': DevelopmentConfig
 }
 

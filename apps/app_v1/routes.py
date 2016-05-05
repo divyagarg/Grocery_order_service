@@ -3,11 +3,12 @@ from flask import request, g, Blueprint
 from config import APP_NAME
 from utils.jsonutils.output_formatter import create_error_response
 import logging, uuid
+from . import app_v1
 
 from lib.decorators import jsonify, logrequest
 logger = logging.getLogger(APP_NAME)
 
-app_v1 = Blueprint('app_v1', __name__)
+
 
 @app_v1.route('/test', methods=['GET'])
 @jsonify
