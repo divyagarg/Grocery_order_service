@@ -3,7 +3,7 @@ from config import RESPONSE_JSON
 from flask import Response
 import json
 
-def create_error_response(code=401, message='Internal Error occured'):
+def create_error_response(code, message):
     settings = RESPONSE_JSON
     response_json = settings['RESPONSE_JSON'].copy()
     error_response = settings['ERROR_RESPONSE'].copy()
@@ -22,4 +22,4 @@ def create_data_response(data):
     response_json = settings['RESPONSE_JSON'].copy()
     response_json['status'] = 'success'
     response_json['data'] = data
-    return Response(json.dumps(response_json),  mimetype='application/json')
+    return response_json

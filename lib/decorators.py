@@ -22,7 +22,9 @@ def jsonify(f):
       rv = f(*args, **kwargs)
       status_code = 200
       if isinstance(rv, dict) and rv.has_key('status'):
-        status_code = rv['status']
+        if rv['status'] != 'success' and rv.has_key('error'):
+          if isinstance(rv['error'], dict) and rv['error'].has_key('code'):
+            status_code = rv['error']['code']
       resp = Response(
           response=json.dumps(rv), status=status_code,
           mimetype="application/json")

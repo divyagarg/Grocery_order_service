@@ -1,14 +1,16 @@
+from apps.app_v1.api import parse_request_data
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models.models import Cart, Cart_Item
 from utils.api_utils.api_utils import Requests
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from utils.jsonutils.json_schema_validator import validate
-from config import APP_NAME
+from config import APP_NAME, error_code
 import datetime, logging, json, uuid, requests
-from flask import g
+from flask import g, current_app
 from apps.app_v1.models.models import db
 import config
 from decimal import Decimal
+
 
 __author__ = 'divyagarg'
 
@@ -48,7 +50,7 @@ class CartService:
 
     def createOrUpdateCart(self, body):
         try:
-            request_data = self.parse_request_data(body)
+            request_data = parse_request_data(body)
             validate(request_data, CREATE_CART_SCHEMA)
             self.initialize_cart_with_request(request_data)
 
@@ -68,13 +70,9 @@ class CartService:
 
         except Exception as e:
             Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
-            return create_error_response(message=str(e))
+            return create_error_response(code= error_code["cart_error"], message=str(e))
 
-    def parse_request_data(self, body):
-        Logger.info('{%s} Received request to create cart for request {%s}' % (g.UUID, body))
-        json_data = json.loads(body)
-        Logger.info('{%s} Json encoded content {%s}' % (g.UUID, json_data))
-        return json_data
+
 
     def remove_cart_item_from_cart(self, cart_item_db):
         self.total_display_price -= Decimal(cart_item_db.display_price)
@@ -221,13 +219,13 @@ class CartService:
                 {"item_id": item.cart_item_id, "quantity": item.quantity, "coupon_code": item.promo_codes}
                 for item in cart_items]
         }
-        req = Requests(url=config.DevelopmentConfig.COUPON_CHECK_URL, method='POST', data=json.dumps(data),
+        req = Requests(url=config.COUPON_CHECK_URL, method='POST', data=json.dumps(data),
                        headers={'Content-type': 'application/json'})
         req.execute_in_background()
         response = req.get_response()
         Logger.info(
             '{%s} Resonse text from url {%s} with data {%s} is {%s}' % (
-                g.UUID, config.DevelopmentConfig.COUPON_CHECK_URL, data, response.text))
+                g.UUID, config.COUPON_CHECK_URL, data, response.text))
         response_data = json.loads(response.text)
 
         item_discount_dict = {}
@@ -261,7 +259,7 @@ class CartService:
         }
         request_data = json.dumps(data)
         Logger.info("{%s} Request data for calculate price API is {%s}" % (g.UUID, request_data))
-        response = requests.post(url=config.DevelopmentConfig.PRODUCT_CATALOGUE_URL, data=request_data,
+        response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data,
                                  headers={'Content-type': 'application/json'})
         json_data = json.loads(response.text)
         Logger.info("{%s} Response got from calculate Price API is {%s}" % (g.UUID, json.dumps(json_data)))

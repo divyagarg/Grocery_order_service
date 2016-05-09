@@ -1,4 +1,5 @@
-from config import VALID_ORDER_TYPES, ORDER_SOURCE_REFERENCES
+from apps.app_v1.models import DELIVERY_TYPE, PAYMENT_MODE, ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES
+
 from utils.jsonutils.json_schema_validator import *
 
 __author__ = 'divyagarg'
@@ -54,16 +55,16 @@ CREATE_CART_SCHEMA = {
                     {String: {}}
                 ]
             },
-            "order_type":{
-                REQUIRED:False,
-                FUNCTIONS:[
-                            {Contained : {"contained_in":VALID_ORDER_TYPES}}
-                        ]
+            "order_type": {
+                REQUIRED: False,
+                FUNCTIONS: [
+                    {Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
+                ]
             },
             "order_source_reference": {
-                REQUIRED:False,
+                REQUIRED: False,
                 FUNCTIONS: [
-                    {Contained : {"contained_in":ORDER_SOURCE_REFERENCES}}
+                    {Contained: {"contained_in": [d.value for d in ORDER_SOURCE_REFERENCE]}}
                 ]
             },
             "promo_codes": {
@@ -96,6 +97,281 @@ CREATE_CART_SCHEMA = {
                 }
             }
 
+        }
+    }
+}
+
+CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
+    "data": {
+        FUNCTIONS: [
+            {Dictionary: {}}
+        ],
+        SCHEMA: {
+            "shipping_address": {
+                FUNCTIONS: [
+                    {Dictionary: {}}
+                ],
+                SCHEMA: {
+                    "name": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_1": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_2": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "city": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "pincode": {
+                        FUNCTIONS: [{Pincode: {}}]
+                    },
+                    "state": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "mobile": {
+                        FUNCTIONS: [{MobileNumber: {}}]
+                    }
+                }
+            },
+
+            "billing_address": {
+                REQUIRED: False,
+                FUNCTIONS: [
+                    {Dictionary: {}}
+                ],
+                SCHEMA: {
+                    "name": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_1": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_2": {
+                        REQUIRED: False,
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "city": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "pincode": {
+                        FUNCTIONS: [{Pincode: {}}]
+                    },
+                    "state": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "mobile": {
+                        REQUIRED: False,
+                        FUNCTIONS: [{MobileNumber: {}}]
+                    }
+                }
+            },
+            "payment_mode": {
+                REQUIRED: True,
+                FUNCTIONS: [{Contained: {"contained_in": [d.value for d in PAYMENT_MODE]}}]
+            },
+            "freebie": {
+                REQUIRED: False,
+                FUNCTIONS: [
+                    {List: {}}
+                ],
+                SCHEMA: {
+                    "id": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "attributes": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "items_id": {
+                        FUNCTIONS: [{String: {}}]
+                    }
+                }
+            },
+            "delivery_type": {
+                FUNCTIONS: [{String: {}, Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
+            },
+            "delivery_date": {
+                REQUIRED: False,
+                FUNCTIONS: [{String: {}}]
+            },
+            "delivery_slot_time": {
+                REQUIRED: False,
+                FUNCTIONS: [{String: {}}]
+            },
+            "geo_id": {
+                FUNCTIONS: [{String: {}}]
+            },
+            "user_id": {
+                FUNCTIONS: [{String: {}}]
+            },
+            "promo_codes": {
+                REQUIRED: False,
+                FUNCTIONS: [
+                    {List: {}}
+                ]
+            },
+            "order_type": {
+                FUNCTIONS: [
+                   {Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
+                ]
+            },
+            "order_source_reference": {
+                REQUIRED: False,
+                FUNCTIONS: [
+                    {Contained: {"contained_in": [d.value for d in ORDER_SOURCE_REFERENCE]}}
+                ]
+            },
+            "total_offer_price": {
+                FUNCTIONS: [{String: {}}]
+            },
+            "total_display_price": {
+                FUNCTIONS: [{String: {}}]
+            },
+            "total_discount": {
+                REQUIRED: False,
+                FUNCTIONS: [{String: {}}]
+            },
+            "orderitems": {
+                FUNCTIONS: [
+                    {List: {}}
+                ],
+                SCHEMA: {
+                    "quantity": {
+                        FUNCTIONS: [
+                            {Integer: {"min_value": 0}}
+                        ]
+                    },
+                    "item_uuid": {
+                        FUNCTIONS: [
+                            {String: {}}
+                        ]
+                    },
+                    "promo_codes": {
+                        REQUIRED: False,
+                        FUNCTIONS: [
+                            {List: {}}
+                        ]
+                    },
+                    "display_price": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "offer_price": {
+                        FUNCTIONS: [{String: {}}]
+                    }
+                }
+            }
+
+        }
+    }
+}
+CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
+    "data": {
+        FUNCTIONS: [
+            {Dictionary: {}}
+        ],
+        SCHEMA: {
+            "cart_reference_uuid": {
+                FUNCTIONS: [
+                    {String: {}}
+                ]
+            },
+            "shipping_address": {
+                FUNCTIONS: [
+                    {Dictionary: {}}
+                ],
+                SCHEMA: {
+                    "name": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_1": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_2": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "city": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "pincode": {
+                        FUNCTIONS: [{Pincode: {}}]
+                    },
+                    "state": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "mobile": {
+                        FUNCTIONS: [{MobileNumber: {}}]
+                    }
+                }
+            },
+
+            "billing_address": {
+                REQUIRED: False,
+                FUNCTIONS: [
+                    {Dictionary: {}}
+                ],
+                SCHEMA: {
+                    "name": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_1": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "street_2": {
+                        REQUIRED: False,
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "city": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "pincode": {
+                        FUNCTIONS: [{Pincode: {}}]
+                    },
+                    "state": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "mobile": {
+                        REQUIRED: False,
+                        FUNCTIONS: [{MobileNumber: {}}]
+                    }
+                }
+            },
+            "payment_mode": {
+                REQUIRED: True,
+                FUNCTIONS: [{String: {}, Contained: {"contained_in": [p.value for p in PAYMENT_MODE]}}]
+            },
+            "freebie": {
+                REQUIRED: False,
+                FUNCTIONS: [
+                    {List: {}}
+                ],
+                SCHEMA: {
+                    "id": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "attributes": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "items_id": {
+                        FUNCTIONS: [{String: {}}]
+                    }
+                }
+            },
+            "delivery_type": {
+                FUNCTIONS: [{String: {}, Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
+            },
+            "delivery_date": {
+                REQUIRED: False,
+                FUNCTIONS: [{String: {}}]
+            },
+            "delivery_slot_time": {
+                REQUIRED: False,
+                FUNCTIONS: [{String: {}}]
+            },
+            "order_source_reference": {
+                REQUIRED : True,
+                FUNCTIONS: [{ Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
+            }
         }
     }
 }
