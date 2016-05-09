@@ -8,13 +8,15 @@ import json
 api_name = 'app_v1.test'
 
 
-class TestCartCreationUpdation(unittest.TestCase):
+class TestCartCreationUpdation(unittest.TestCase):\
+
     @classmethod
     def setUp(self):
         self.app = create_app('testing')
+        self.client = self.app.test_client()
         self.app_context = self.app.app_context()
         self.app_context.push()
-        self.client = self.app.test_client()
+
 
 
     @classmethod
@@ -22,7 +24,8 @@ class TestCartCreationUpdation(unittest.TestCase):
         self.app_context.pop()
 
     def testabc(self):
-        res = self.client.get(url_for(api_name))
+        with self.app.app_context():
+            res = self.client.get(url_for(api_name))
         response = json.loads(res.data)
         print(response)
 

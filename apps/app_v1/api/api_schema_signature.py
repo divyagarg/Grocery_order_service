@@ -62,7 +62,7 @@ CREATE_CART_SCHEMA = {
                 ]
             },
             "order_source_reference": {
-                REQUIRED: False,
+                REQUIRED: True,
                 FUNCTIONS: [
                     {Contained: {"contained_in": [d.value for d in ORDER_SOURCE_REFERENCE]}}
                 ]

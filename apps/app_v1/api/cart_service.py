@@ -1,16 +1,16 @@
-from apps.app_v1.api import parse_request_data
+from apps.app_v1.api import parse_request_data, RequiredFieldMissing
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models.models import Cart, Cart_Item
 from utils.api_utils.api_utils import Requests
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from utils.jsonutils.json_schema_validator import validate
-from config import APP_NAME, error_code
+from config import APP_NAME
 import datetime, logging, json, uuid, requests
 from flask import g, current_app
 from apps.app_v1.models.models import db
 import config
 from decimal import Decimal
-
+from apps.app_v1.api import error_code, error_messages
 
 __author__ = 'divyagarg'
 
@@ -19,13 +19,15 @@ Logger = logging.getLogger(APP_NAME)
 
 def check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item):
     if json_order_item is None:
-        Logger.error("{%s} No item is found in calculate price API response for the item {%s}" % (g.UUID, item['item_uuid']),
-                     exc_info=True)
+        Logger.error(
+            "{%s} No item is found in calculate price API response for the item {%s}" % (g.UUID, item['item_uuid']),
+            exc_info=True)
         return create_error_response(200, message='Error in calculate price')
     if json_order_item.get('available_quantity') is not None:
         Logger.error(
-            "{%s} Item quantity asked for is not available {%s} for the quantity {%s}" % (g.UUID, item['item_uuid'], item[
-                'quantity']), exc_info=True)
+            "{%s} Item quantity asked for is not available {%s} for the quantity {%s}" % (
+                g.UUID, item['item_uuid'], item[
+                    'quantity']), exc_info=True)
         return create_error_response(200, message='Quanity is not Available')
 
 
@@ -47,8 +49,9 @@ class CartService:
         self.total_display_price = 0
         self.now = datetime.datetime.utcnow()
         self.cart_items = None
+        self.item_id_to_existing_item_map = None
 
-    def createOrUpdateCart(self, body):
+    def create_or_update_cart(self, body):
         try:
             request_data = parse_request_data(body)
             validate(request_data, CREATE_CART_SCHEMA)
@@ -56,101 +59,128 @@ class CartService:
 
             cart = Cart().query.filter_by(geo_id=self.geoid, user_id=self.userid).first()
             if cart is not None:
-                Logger.info("{%s}Updating the cart {%s}" %(g.UUID, cart.cart_reference_uuid))
+                item_id_to_existing_item_map = {}
+                for existing_cart_item in cart.cartItem:
+                    item_id_to_existing_item_map[existing_cart_item.cart_item_id] = existing_cart_item
+                self.item_id_to_existing_item_map = item_id_to_existing_item_map
+                Logger.info("[%s] Updating the cart [%s]" % (g.UUID, cart.cart_reference_uuid))
                 self.cart_reference_uuid = cart.cart_reference_uuid
                 self.total_price = cart.total_offer_price
                 self.total_display_price = cart.total_display_price
+                self.total_discount = cart.total_discount
                 return self.update_items_in_cart(cart)
             else:
                 cart = Cart()
                 self.cart_reference_uuid = uuid.uuid1().hex
-                Logger.info("{%s} Creating the cart {%s}" %(g.UUID, self.cart_reference_uuid))
+                Logger.info("[%s] Creating the cart [%s]" % (g.UUID, self.cart_reference_uuid))
                 return self.insert_data_to_new_cart(request_data, cart)
                 # self.check_coupons(cart)
 
+        except RequiredFieldMissing as rfm:
+            Logger.error('{%s} Required field is missing in creating/updating cart API call{%s}' % (g.UUID, str(rfm)),
+                         exc_info=True)
+            return create_error_response(code=error_code["data_missing"], message=str(rfm))
         except Exception as e:
             Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
-            return create_error_response(code= error_code["cart_error"], message=str(e))
-
-
+            return create_error_response(code=error_code["cart_error"], message=str(e))
 
     def remove_cart_item_from_cart(self, cart_item_db):
-        self.total_display_price -= Decimal(cart_item_db.display_price)
-        self.total_price -= Decimal(cart_item_db.offer_price)
+        # self.total_display_price -= Decimal(cart_item_db.display_price)
+        # self.total_price -= Decimal(cart_item_db.offer_price)
+        # self.existing_cart_items.remove(cart_item_db)
+        # db.session.delete(cart_item_db)
         db.session.delete(cart_item_db)
-        db.session.commit()
 
-    def change_quantity_of_cart_item(self, cart_item_db, json_order_item, item):
+        # db.session.commit()
+
+    def change_quantity_of_cart_item(self, cart_item_db, check_price_json, item):
         cart_item_db.quantity = item['quantity']
-        self.total_display_price = self.total_display_price - cart_item_db.display_price
-        self.total_price = self.total_price - cart_item_db.offer_price
+        # self.total_display_price = self.total_display_price - cart_item_db.display_price
+        # self.total_price = self.total_price - cart_item_db.offer_price
         # cart_item_db.promo_codes = str(item['promo_codes'])
-        cart_item_db.display_price = json_order_item['display_price']
-        cart_item_db.offer_price = json_order_item['offer_price']
+        cart_item_db.display_price = check_price_json['display_price']
+        cart_item_db.offer_price = check_price_json['offer_price']
+        # existing_cart_item = self.existing_cart_items.get(cart_item_db)
 
-        self.total_display_price += json_order_item['display_price']
-        self.total_price += json_order_item['offer_price']
+
+        # self.total_display_price += json_order_item['display_price']
+        # self.total_price += json_order_item['offer_price']
 
     def add_new_item_to_cart(self, cart_item_db, json_order_item, item):
         cart_item_db.cart_item_id = item['item_uuid']
         cart_item_db.cart_id = self.cart_reference_uuid
         cart_item_db.quantity = item['quantity']
         cart_item_db.cart_id = self.cart_reference_uuid
-        # cart_item_db.promo_codes = str(item['promo_codes'])
         cart_item_db.display_price = json_order_item['display_price']
         cart_item_db.offer_price = json_order_item['offer_price']
-        self.total_display_price += json_order_item['display_price']
-        self.total_price += json_order_item['offer_price']
+        # self.total_display_price += json_order_item['display_price']
+        # self.total_price += json_order_item['offer_price']
 
-    def calculate_item_price(self, item):
+    def check_quantity_availability_of_item(self, item):
         dummy_item_list = list()
         dummy_item_list.append(item)
         response_data = self.fetch_product_price(dummy_item_list)
         order_item_dict = {}
         for response in response_data:
             order_item_dict[response['item_uuid']] = response
+        json_order_item = order_item_dict.get(item['item_uuid'])
+        check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item)
         return order_item_dict
 
     def update_items_in_cart(self, cart):
-        cart_items_list = list()
+        # cart_items_list = list()
+        updated_items_list = list()
         for item in self.cart_items:
             try:
-                cart_item_db = Cart_Item().query.filter_by(cart_item_id=item['item_uuid']).first()
+                cart_item_db = self.item_id_to_existing_item_map.get(item['item_uuid'])
                 if cart_item_db is not None and item['quantity'] <= 0:
                     self.remove_cart_item_from_cart(cart_item_db)
+                    del self.item_id_to_existing_item_map[item['item_uuid']]
+                elif cart_item_db is not None and cart_item_db.quantity == item['quantity']:
+                    continue
                 else:
-                    order_item_dict = self.calculate_item_price(item)
-                    json_order_item = order_item_dict.get(item['item_uuid'])
-                    check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item)
-
+                    check_price_json = self.check_quantity_availability_of_item(item)
                     if cart_item_db is not None and (item['quantity'] != cart_item_db.quantity):
-                        self.change_quantity_of_cart_item(cart_item_db, json_order_item, item)
-
+                        self.change_quantity_of_cart_item(cart_item_db, check_price_json[item['item_uuid']], item)
+                        updated_items_list.append(item['item_uuid'])
                     elif cart_item_db is None and item['quantity'] > 0:
                         cart_item_db = Cart_Item()
-                        self.add_new_item_to_cart(cart_item_db, json_order_item, item)
-
-                    db.session.add(cart_item_db)
-                    cart_items_list.append(cart_item_db)
+                        self.add_new_item_to_cart(cart_item_db, check_price_json[item['item_uuid']], item)
+                        self.item_id_to_existing_item_map[item['item_uuid']] = cart_item_db
+                        updated_items_list.append(item['item_uuid'])
             except Exception as e:
-                Logger.error("{%s} Exception occurred in Updating the cart {%s} " %(g.UUID, str(e)), exc_info=True)
-                return create_error_response(code=401, message="Exception in udating the Cart")
+                Logger.error("[%s] Exception occurred in Updating the cart [%s] " % (g.UUID, str(e)), exc_info=True)
+                return create_error_response(code=error_code["cart_error"], message=str(e))
 
         # if self.promocodes is not None:
         #     common_promo_codes = set(self.promocodes) & set(cart.promo_codes)
         #     if common_promo_codes != cart.promo_codes:
         #         cart.promo_codes = self.promocodes
-        cart.total_display_price = self.total_display_price
-        cart.total_offer_price = self.total_price
+        # cart.total_display_price = self.total_display_price
+        # cart.total_offer_price = self.total_price
         try:
+            for updated_item_id in updated_items_list:
+                updated_cart_item = self.item_id_to_existing_item_map[updated_item_id]
+                db.session.add(updated_cart_item)
+            cart_total_offer_price = 0.0
+            cart_total_display_price = 0.0
+            for each_cart_item in self.item_id_to_existing_item_map.values():
+                unit_offer_price = each_cart_item.offer_price
+                unit_display_price = each_cart_item.display_price
+                quantity = each_cart_item.quantity
+                # item_level_discount = each_cart_item.discount
+                cart_total_display_price += float(unit_display_price)*quantity
+                cart_total_offer_price += float(unit_offer_price)*quantity
+
+            cart.total_display_price = self.total_display_price = cart_total_display_price
+            cart.total_offer_price = self.total_price = cart_total_offer_price
             db.session.add(cart)
-            response_data = self.get_response(cart_items_list)
+            response_data = self.get_response()
             db.session.commit()
             return create_data_response(data=response_data)
         except Exception as e:
-            Logger.error("{%s} Error in getting response {%s}" % (g.UUID, str(e)), exc_info=True)
-            return create_error_response(code=401, message="Error Occurred")
-
+            Logger.error("[%s] Error in getting response [%s]" % (g.UUID, str(e)), exc_info=True)
+            return create_error_response(code=error_code["cart_error"], message=str(e))
 
     def populate_cart_object(self, request_data, cart):
         cart.geo_id = self.geoid
@@ -158,8 +188,7 @@ class CartService:
         cart.cart_reference_uuid = self.cart_reference_uuid
         cart.order_type = request_data['data']['order_type']
         cart.order_source_reference = request_data['data']['order_source_reference']
-        # cart.promo_codes = str(self.promocodes)
-
+        cart.promo_codes = str(self.promocodes)
 
     def fetch_items_price_return_dict(self, cart_items):
         response_product_fetch_data = self.fetch_product_price(cart_items)
@@ -167,7 +196,6 @@ class CartService:
         for response in response_product_fetch_data:
             order_item_dict[response['item_uuid']] = response
         return order_item_dict
-
 
     def insert_data_to_new_cart(self, request_data, cart):
         self.populate_cart_object(request_data, cart)
@@ -184,7 +212,7 @@ class CartService:
             cart_item.quantity = json_order_item['quantity']
             cart_item.display_price = json_order_item['display_price']
             cart_item.offer_price = json_order_item['offer_price']
-            # cart_item.promo_codes = str(item['promo_codes'])
+            cart_item.promo_codes = str(item['promo_codes'])
 
             cart_item_list.append(cart_item)
 
@@ -203,10 +231,10 @@ class CartService:
             db.session.commit()
             return create_data_response(data=response_data)
         except Exception as e:
-            Logger.error("{%s} Exception occurred while insert new items to Cart {%s}" % (g.UUID, str(e)), exc_info=True)
+            Logger.error("{%s} Exception occurred while insert new items to Cart {%s}" % (g.UUID, str(e)),
+                         exc_info=True)
             db.session.rollback()
             return create_error_response(code=500, message='DB Error')
-
 
     def check_coupons(self, cart):
         cart_items = Cart_Item().query.filter_by(cart_id=cart.id).all()
@@ -244,7 +272,6 @@ class CartService:
             self.cart_items = cart_items
             db.session.commit()
 
-
     def fetch_product_price(self, items):
         request_items = list()
         for item in items:
@@ -265,38 +292,37 @@ class CartService:
         Logger.info("{%s} Response got from calculate Price API is {%s}" % (g.UUID, json.dumps(json_data)))
         return json_data['items']
 
-
-    def get_response(self, cart_items):
+    def get_response(self):
         response_json = {
             "orderitems": [],
             "total_offer_price": str(self.total_price),
             "total_display_price": str(self.total_display_price),
+            "order_discount": 0.0,
             "total_discount": str(self.total_discount),
+            "total_shipping_charges": 0.0,
             "cart_reference_uuid": str(self.cart_reference_uuid)
         }
         items = list()
-        for item in cart_items:
+        for item in self.item_id_to_existing_item_map.values():
             order_item_dict = {}
             order_item_dict["item_uuid"] = item.cart_item_id
             order_item_dict["quantity"] = item.quantity
             order_item_dict["display_price"] = str(item.display_price)
             order_item_dict["offer_price"] = str(item.offer_price)
+            # order_item_dict["item_discount"] = str(item.discount)
+            order_item_dict["order_discount_part"] = 0.0
+            order_item_dict["shipping_charges"] = 0.0
             items.append(order_item_dict)
 
         response_json["orderitems"].append(items)
 
         return response_json
 
-
     def initialize_cart_with_request(self, request_data):
         self.geoid = request_data['data']['geo_id']
         self.userid = request_data['data']['user_id']
         self.order_type = request_data['data'].get('order_type')
-        if request_data['data'].get('order_source_reference') is not None:
-            self.order_source_reference = request_data['data']['order_source_reference']
-        # if hasattr(request_data['data'].get('promo_codes'), '__iter__'):
-        #     self.promocodes = str(request_data['data']['promo_codes'])
+        self.order_source_reference = request_data['data']['order_source_reference']
+        if hasattr(request_data['data'].get('promo_codes'), '__iter__'):
+            self.promocodes = str(request_data['data']['promo_codes'])
         self.cart_items = request_data['data']['orderitems']
-
-
-

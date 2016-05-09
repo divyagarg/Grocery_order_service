@@ -31,7 +31,7 @@ def createOrUpdateCart():
   g.UUID = uuid.uuid4()
   try:
     cartservice = CartService()
-    return cartservice.createOrUpdateCart(request.data)
+    return cartservice.create_or_update_cart(request.data)
   except Exception as e:
     logger.error("{%s} Exception occured in cart service {%s}" %(g.UUID, str(e)), exc_info = True)
     return create_error_response(code= error_code["cart_error"], message= error_messages["cart_error"])

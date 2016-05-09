@@ -7,7 +7,8 @@ from utils.api_utils.api_utils import Requests
 from apps.app_v1.models.models import Order, Order_Item, Base, Address, Payment, db, Cart
 from apps.app_v1.api import parse_request_data, NetworkError
 from apps.app_v1.models import DELIVERY_TYPE, ORDER_STATUS, ORDER_SOURCE_REFERENCE
-from config import APP_NAME, config, error_code, error_messages
+from config import APP_NAME, config
+from apps.app_v1.api import error_code, error_messages
 from flask import g, current_app
 from utils.jsonutils.json_schema_validator import validate
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
