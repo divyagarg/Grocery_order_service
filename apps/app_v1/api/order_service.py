@@ -82,7 +82,7 @@ class OrderService:
         order_id = self.save_order()
         # print("Order saved [%s]" %order_id)
         response = {}
-        response["order_id"]= order_id
+        response["order_id"] = order_id
         return create_data_response(response)
 
     def initialize_order_with_request(self, request_data):
@@ -131,7 +131,7 @@ class OrderService:
                 product_list.append(cart_item_dist)
         else:
             for item in self.order_items:
-                order_item_dist ={}
+                order_item_dist = {}
                 order_item_dist["item_id"] = item.item_id
                 order_item_dist["quantity"] = item.quantity
                 order_item_dist["coupon_code"] = item.promo_codes
@@ -154,31 +154,32 @@ class OrderService:
         except ConnectionError as e:
             Logger.error("[%s] Not able to Connect to Product catalog URl")
             raise e
-            return create_error_response(code=error_code["connection_error"], message=error_messages["connection_error"])
+            return create_error_response(code=error_code["connection_error"],
+                                         message=error_messages["connection_error"])
 
         if response is None:
             # raise NetworkError("COUPON CHECK API not responding ")
             response_data = {
-                  "status": "success",
-                  "totalDiscount": 0,
-                  "products": [
+                "status": "success",
+                "totalDiscount": 0,
+                "products": [
                     {
-                      "discount": 0,
-                      "item_id": 23,
-                      "quantity": 1
+                        "discount": 0,
+                        "item_id": 23,
+                        "quantity": 1
                     },
                     {
-                      "discount": 0,
-                      "item_id": 24,
-                      "quantity": 1
+                        "discount": 0,
+                        "item_id": 24,
+                        "quantity": 1
                     }
-                  ],
-                  "success": "true",
-                  "paymentMode": [
+                ],
+                "success": "true",
+                "paymentMode": [
                     "Prepaid"
-                  ],
-                  "channel": "WEB"
-                }
+                ],
+                "channel": "WEB"
+            }
         # Logger.info(
         #     '{%s} Resonse text from url {%s} with data {%s} is {%s}' % (
         #         g.UUID, current_app.config['COUPON_CHECK_URL'], data, response.text))
@@ -254,26 +255,26 @@ class OrderService:
             response = req.get_response()
             if response is None:
                 response = {
-                 "items": [
-                   {
-                     "item_uuid": "23",
-                     "display_price": 200,
-                     "offer_price": 180,
-                     "quantity": 1
-                   },
-                   {
-                     "item_uuid": "24",
-                     "display_price": 200,
-                     "offer_price": 180,
-                     "quantity": 1
-                   }
-                 ],
-                 "geo_id": "232"
+                    "items": [
+                        {
+                            "item_uuid": "23",
+                            "display_price": 200,
+                            "offer_price": 180,
+                            "quantity": 1
+                        },
+                        {
+                            "item_uuid": "24",
+                            "display_price": 200,
+                            "offer_price": 180,
+                            "quantity": 1
+                        }
+                    ],
+                    "geo_id": "232"
                 }
                 # raise ConnectionError("No response")
                 json_data = response
         except ConnectionError as e:
-            Logger.error("[%s] Not able to Connect to Product catalog URl [%s]" %(g.UUID, str(e)))
+            Logger.error("[%s] Not able to Connect to Product catalog URl [%s]" % (g.UUID, str(e)))
             raise ConnectionError
         # response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data,
         #                          headers={'Content-type': 'application/json'})
@@ -302,9 +303,6 @@ class OrderService:
                     g.UUID, self.total_display_price, tot_display_price))
             return create_error_response(code=error_code["product_display_price_changes"],
                                          message=error_messages["product_display_price_changes"])
-
-
-
 
         if self.order_items is not None:
             for each_product in self.order_items:
@@ -357,7 +355,6 @@ class OrderService:
         billing_address = Address.get_address(addr2["name"], addr2["mobile"], addr2["street_1"], addr2["street_2"],
                                               addr2["city"], addr2["pincode"], addr2["state"])
         db.session.add(billing_address)
-
 
         order = Order()
         order.geo_id = self.geo_id

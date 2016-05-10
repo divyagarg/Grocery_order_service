@@ -24,13 +24,13 @@ class ORDER_STATUS(Enum):
     CREATED = 'CREATED'
 
 
-
 class ORDER_SOURCE_REFERENCE(Enum):
     APP = 0
     WEB = 1
 
+
 class VALID_ORDER_TYPES(Enum):
-    PHARMA ='PHARMA'
-    GROCERY ='GROCERY'
+    PHARMA = 'PHARMA'
+    GROCERY = 'GROCERY'
     NATIONAL = 'NATIONAL'
     NDD = 'NDD'

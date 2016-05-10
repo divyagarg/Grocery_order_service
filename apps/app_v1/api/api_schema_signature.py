@@ -73,12 +73,12 @@ CREATE_CART_SCHEMA = {
                     {List: {}}
                 ]
             },
-            "payment_mode":{
+            "payment_mode": {
                 REQUIRED: False,
                 FUNCTIONS: [{String: {}}]
             },
-            "shipping_address":{
-                REQUIRED : False,
+            "shipping_address": {
+                REQUIRED: False,
                 FUNCTIONS: [
                     {Dictionary: {}}
                 ],
@@ -90,7 +90,7 @@ CREATE_CART_SCHEMA = {
                         FUNCTIONS: [{String: {}}]
                     },
                     "city": {
-                       FUNCTIONS: [{String: {}}]
+                        FUNCTIONS: [{String: {}}]
                     },
                     "pincode": {
                         FUNCTIONS: [{Pincode: {}}]
@@ -101,12 +101,12 @@ CREATE_CART_SCHEMA = {
                     "mobile": {
                         FUNCTIONS: [{MobileNumber: {}}]
                     },
-                    "email":{
-                        REQUIRED : False,
+                    "email": {
+                        REQUIRED: False,
                         FUNCTIONS: [{String: {}}]
                     },
-                    "landmark":{
-                        REQUIRED : False,
+                    "landmark": {
+                        REQUIRED: False,
                         FUNCTIONS: [{String: {}}]
                     }
                 }},
@@ -250,7 +250,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
             },
             "order_type": {
                 FUNCTIONS: [
-                   {Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
+                    {Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
                 ]
             },
             "order_source_reference": {
@@ -406,8 +406,8 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
                 FUNCTIONS: [{String: {}}]
             },
             "order_source_reference": {
-                REQUIRED : True,
-                FUNCTIONS: [{ Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
+                REQUIRED: True,
+                FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
             }
         }
     }

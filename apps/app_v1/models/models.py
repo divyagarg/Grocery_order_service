@@ -1,7 +1,6 @@
 from . import db
 import hashlib
 from sqlalchemy import func, Enum, Index
-from sqlalchemy_utils import ScalarListType
 
 
 __author__ = 'divyagarg'
@@ -58,10 +57,10 @@ class Cart(Base):
     order_source_reference = db.Column(db.String(255))
     promo_codes = db.Column(db.String(255))
     selected_freebee_items = db.Column(db.String(255))
-    total_offer_price = db.Column(db.Numeric, default=0.0)
-    total_discount = db.Column(db.Numeric, default=0.0)
-    total_display_price = db.Column(db.Numeric, default=0.0)
-    total_shipping_charges = db.Column(db.Numeric, default=0.0)
+    total_offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
+    total_discount = db.Column(db.Float(precision='10,2'), default=0.0)
+    total_display_price = db.Column(db.Float(precision='10,2'), default=0.0)
+    total_shipping_charges = db.Column(db.Float(precision='10,2'), default=0.0)
     shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'))
     payment_mode = db.Column(db.String(255))
     Index('cart_geo_user_idx',  geo_id, user_id)
@@ -75,9 +74,9 @@ class Cart_Item(db.Model):
     cart_item_id = db.Column(db.String(255), nullable=False, index= True)
     quantity = db.Column(db.Integer, nullable=False)
     promo_codes = db.Column(db.String(255))
-    offer_price = db.Column(db.Numeric, default=0.0)
-    display_price = db.Column(db.Numeric, default=0.0)
-    item_discount = db.Column(db.Numeric, default=0.0)
+    offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
+    display_price = db.Column(db.Float(precision='10,2'), default=0.0)
+    item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
     same_day_delivery = db.Column(db.String(255))
 
 
@@ -103,10 +102,10 @@ class Order(Base):
 
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    total_offer_price = db.Column(db.Numeric, nullable = False)
-    total_display_price = db.Column(db.Numeric)
-    total_discount = db.Column(db.Numeric)
-    payble_amount = db.Column(db.Numeric, default=0.0)
+    total_offer_price = db.Column(db.Float(precision='10,2'), nullable = False)
+    total_display_price = db.Column(db.Float(precision='10,2'))
+    total_discount = db.Column(db.Float(precision='10,2'))
+    payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
     payment_mode = db.Column(db.String(255), nullable=False)
     payment_transaction_id = db.Column(db.String(255))
     order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
@@ -116,9 +115,9 @@ class Order_Item(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     item_id = db.Column(db.String(255), nullable=False, index =True)
     quantity = db.Column(db.Integer, nullable=False)
-    display_price = db.Column(db.Numeric, default=0.0)
-    offer_price = db.Column(db.Numeric, default=0.0)
-    shipping_charge = db.Column(db.Numeric, default=0.0)
-    item_discount = db.Column(db.Numeric, default=0.0)
-    order_partial_discount = db.Column(db.Numeric, default=0.0)
+    display_price = db.Column(db.Float(precision='10,2'), default=0.0)
+    offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
+    shipping_charge = db.Column(db.Float(precision='10,2'), default=0.0)
+    item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
+    order_partial_discount = db.Column(db.Float(precision='10,2'), default=0.0)
     order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)

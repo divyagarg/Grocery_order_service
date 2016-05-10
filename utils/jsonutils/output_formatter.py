@@ -1,7 +1,6 @@
 __author__ = 'divyagarg'
 from config import RESPONSE_JSON
-from flask import Response
-import json
+
 
 def create_error_response(code, message):
     settings = RESPONSE_JSON
