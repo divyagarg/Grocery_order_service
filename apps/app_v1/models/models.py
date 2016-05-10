@@ -35,16 +35,17 @@ class Address(db.Model):
 
 
     @classmethod
-    def get_address(cls, name, mobile, street_1, street_2, city, pincode, state):
+    def get_address(cls, name, mobile, address, city, pincode, state, email, landmark):
 
-        address = Address(name=name, mobile=mobile, street_1=street_1, street_2=street_2, city=city,
-                            pincode=pincode, state=state)
+        address = Address(name=name, mobile=mobile, address=address, city=city,
+                            pincode=pincode, state=state, email = email, landmark = landmark)
 
-        existing_address = Address().query.filter_by(address_hash = address.__hash__())
+        existing_address = Address().query.filter_by(address_hash = address.__hash__()).first()
         if existing_address is not None:
-            return existing_address[0]
+            return existing_address
         else:
-            address.data_hash = address.__hash__()
+            address.address_hash = address.__hash__()
+            db.session.add(address)
             return address
 
 

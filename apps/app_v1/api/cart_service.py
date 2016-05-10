@@ -1,4 +1,5 @@
-from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException, IncorrectDataException
+from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException, IncorrectDataException, \
+	CouponInvalidException
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models.models import Cart, Cart_Item, Address
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
@@ -67,7 +68,8 @@ class CartService:
 				else:
 					for each_cart_item in self.cart_items:
 						if each_cart_item['quantity'] == 0:
-							raise IncorrectDataException(code = error_code['data_missing'], message ='zero quantity can not be added')
+							raise IncorrectDataException(code=error_code['data_missing'],
+														 message='zero quantity can not be added')
 				return self.create_cart(request_data)
 
 		except RequiredFieldMissing as rfm:
@@ -104,9 +106,6 @@ class CartService:
 		self.item_id_to_existing_item_map = item_id_to_existing_item_map
 		Logger.info("[%s] Updating the cart [%s]" % (g.UUID, cart.cart_reference_uuid))
 		self.cart_reference_uuid = cart.cart_reference_uuid
-		# self.total_price = float(cart.total_offer_price)
-		# self.total_display_price = float(cart.total_display_price)
-		# self.total_discount = float(cart.total_discount)
 		if self.promocodes == []:
 			cart.promo_codes = None
 		else:
@@ -147,24 +146,37 @@ class CartService:
 		return order_item_dict
 
 	def update_items_in_cart(self, cart):
-		if self.cart_items.__len__() >0:
+		if self.cart_items.__len__() > 0:
 			try:
 				self.update_quantity_of_items_in_cart()
-			except EmptyCartException as e:
+			except EmptyCartException:
 				cart.total_discount = 0.0
 				cart.total_offer_price = 0.0
 				cart.total_display_price = 0.0
 				cart.total_shipping_charges = 0.0
+				cart.promo_codes = None
 				db.session.add(cart)
 				db.session.commit()
 				return create_data_response(data=self.generate_response(None))
 
-		response_data = self.get_response_from_check_coupons_api( self.item_id_to_existing_item_map.values())
-		self.update_discounts_item_level(response_data, self.item_id_to_existing_item_map.values())
+		cart.payment_mode = self.payment_mode
+		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_map.values())
+		try:
+			self.update_discounts_item_level(response_data, self.item_id_to_existing_item_map.values())
+		except CouponInvalidException as cie:
+			Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)),
+						 exc_info=True)
+			db.session.rollback()
+			return create_error_response(code=error_code['coupon_error'], message=str(cie))
 		try:
 			self.update_cart_total_amounts(cart)
+			if self.shipping_address is not None:
+				hash = self.save_address_and_get_hash()
+				cart.shipping_address_ref = hash
+			cart.total_shipping_charges = 0.0
 			self.get_shipping_charges()
 			cart.total_shipping_charges = self.total_shipping_charges
+
 			db.session.add(cart)
 			for each_cart_item in self.item_id_to_existing_item_map.values():
 				db.session.add(each_cart_item)
@@ -173,6 +185,7 @@ class CartService:
 			return create_data_response(data=response_data)
 		except Exception as e:
 			Logger.error("[%s] Error in getting response [%s]" % (g.UUID, str(e)), exc_info=True)
+			db.session.rollback()
 			return create_error_response(code=error_code["cart_error"], message=str(e))
 
 	def populate_cart_object(self, request_data, cart):
@@ -182,7 +195,7 @@ class CartService:
 		cart.order_type = request_data['data']['order_type']
 		cart.order_source_reference = request_data['data']['order_source_reference']
 		cart.total_shipping_charges = self.total_shipping_charges
-		print("Updating cart promo code from [%s] to [%s]" %(cart.promo_codes, self.promocodes))
+		print("Updating cart promo code from [%s] to [%s]" % (cart.promo_codes, self.promocodes))
 		cart.promo_codes = self.promocodes
 		cart.payment_mode = request_data['data'].get('payment_mode')
 		addr1 = request_data['data'].get('shipping_address')
@@ -297,9 +310,12 @@ class CartService:
 
 			for each_cart_item in cart_items:
 				each_cart_item.item_discount = float(item_discount_dict[int(each_cart_item.cart_item_id)]['discount'])
+		else:
+			error_msg = response_data['error'].get('error')
+			raise CouponInvalidException(code = error_code['coupon_error'], message = error_msg)
 
 	def get_shipping_charges(self):
-		if (self.total_price - self.total_discount) <= config.SHIPPING_COST_THRESHOLD:
+		if (self.total_price - self.total_discount) <= config.SHIPPING_COST_THRESHOLD and (self.total_price - self.total_discount)>0:
 			self.total_shipping_charges = float(config.SHIPPING_COST)
 
 	def update_quantity_of_items_in_cart(self):
@@ -329,6 +345,7 @@ class CartService:
 				Logger.error("[%s] Exception occurred in Updating the cart [%s] " % (g.UUID, str(e)), exc_info=True)
 				return create_error_response(code=error_code["cart_error"], message=str(e))
 		if self.cart_items.__len__() > 0 and no_of_left_items_in_cart == 0:
+			Logger.info("[%s] Cart is empty" % g.UUID)
 			raise EmptyCartException(code=error_code['cart_empty'], message=error_messages["cart_empty"])
 
 	def update_cart_total_amounts(self, cart):
@@ -344,10 +361,9 @@ class CartService:
 			cart.total_offer_price += (float(unit_offer_price) * quantity)
 			cart.total_discount = float(cart.total_discount) + float(item_level_discount)
 
-			self.total_display_price = cart.total_display_price
-			self.total_price = cart.total_offer_price
-			self.total_discount = cart.total_discount
-
+		self.total_display_price = cart.total_display_price
+		self.total_price = cart.total_offer_price
+		self.total_discount = cart.total_discount
 
 	def get_response_from_check_coupons_api(self, cart_items):
 		data = {
@@ -398,3 +414,9 @@ class CartService:
 			self.total_display_price += float(json_order_item['display_price'])
 
 		self.cart_items = cart_item_list
+
+	def save_address_and_get_hash(self):
+		addr1 = self.shipping_address
+		address = Address.get_address(name=addr1["name"], mobile = addr1["mobile"], address = addr1["address"], city = addr1["city"], pincode = addr1["pincode"],state = addr1["state"], email = addr1.get('email'), landmark = addr1.get('landmark'))
+
+		return address.address_hash
