@@ -69,3 +69,9 @@ class EmptyCartException(Exception):
     def __init__(self, code, message):
         self.code = code
         super(Exception, self).__init__(message)
+
+class IncorrectDataException(Exception):
+    code = None
+    def __init__(self, code, message):
+        self.code = code
+        super(Exception, self).__init__(message)

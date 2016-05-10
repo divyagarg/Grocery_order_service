@@ -1,4 +1,4 @@
-from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException
+from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException, IncorrectDataException
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models.models import Cart, Cart_Item, Address
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
@@ -64,12 +64,20 @@ class CartService:
 			else:
 				if self.cart_items.__len__() == 0:
 					raise RequiredFieldMissing(code=error_code['data_missing'], message='cart items are missing')
+				else:
+					for each_cart_item in self.cart_items:
+						if each_cart_item['quantity'] == 0:
+							raise IncorrectDataException(code = error_code['data_missing'], message ='zero quantity can not be added')
 				return self.create_cart(request_data)
 
 		except RequiredFieldMissing as rfm:
 			Logger.error('{%s} Required field is missing in creating/updating cart API call{%s}' % (g.UUID, str(rfm)),
 						 exc_info=True)
 			return create_error_response(code=error_code["data_missing"], message=str(rfm))
+		except IncorrectDataException as ide:
+			Logger.error('{%s} Zero quantity can not be added{%s}' % (g.UUID, str(ide)),
+						 exc_info=True)
+			return create_error_response(code=error_code["data_missing"], message=str(ide))
 		except Exception as e:
 			Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
 			return create_error_response(code=error_code["cart_error"], message=str(e))
@@ -96,12 +104,13 @@ class CartService:
 		self.item_id_to_existing_item_map = item_id_to_existing_item_map
 		Logger.info("[%s] Updating the cart [%s]" % (g.UUID, cart.cart_reference_uuid))
 		self.cart_reference_uuid = cart.cart_reference_uuid
-		self.total_price = float(cart.total_offer_price)
-		self.total_display_price = float(cart.total_display_price)
-		self.total_discount = float(cart.total_discount)
+		# self.total_price = float(cart.total_offer_price)
+		# self.total_display_price = float(cart.total_display_price)
+		# self.total_discount = float(cart.total_discount)
 		if self.promocodes == []:
 			cart.promo_codes = None
-
+		else:
+			cart.promo_codes = self.promocodes
 		return self.update_items_in_cart(cart)
 
 	def create_cart(self, request_data):
@@ -154,6 +163,8 @@ class CartService:
 		self.update_discounts_item_level(response_data, self.item_id_to_existing_item_map.values())
 		try:
 			self.update_cart_total_amounts(cart)
+			self.get_shipping_charges()
+			cart.total_shipping_charges = self.total_shipping_charges
 			db.session.add(cart)
 			for each_cart_item in self.item_id_to_existing_item_map.values():
 				db.session.add(each_cart_item)
@@ -288,11 +299,11 @@ class CartService:
 				each_cart_item.item_discount = float(item_discount_dict[int(each_cart_item.cart_item_id)]['discount'])
 
 	def get_shipping_charges(self):
-		if self.total_price <= config.SHIPPING_COST_THRESHOLD:
+		if (self.total_price - self.total_discount) <= config.SHIPPING_COST_THRESHOLD:
 			self.total_shipping_charges = float(config.SHIPPING_COST)
 
 	def update_quantity_of_items_in_cart(self):
-		no_of_left_items_in_cart = 0
+		no_of_left_items_in_cart = self.item_id_to_existing_item_map.values().__len__()
 		for item in self.cart_items:
 			try:
 				cart_item_db = self.item_id_to_existing_item_map.get(item['item_uuid'])
@@ -336,6 +347,7 @@ class CartService:
 			self.total_display_price = cart.total_display_price
 			self.total_price = cart.total_offer_price
 			self.total_discount = cart.total_discount
+
 
 	def get_response_from_check_coupons_api(self, cart_items):
 		data = {
