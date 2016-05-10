@@ -148,19 +148,19 @@ class CartService:
             db.session.add(cart)
             db.session.commit()
             return create_data_response(data=self.generate_response(None))
-        if self.cart_items is not None:
-            self.update_discounts_item_level()
-            try:
-                self.update_cart_total_amounts(cart)
-                db.session.add(cart)
-                for each_cart_item in self.item_id_to_existing_item_map.values():
-                    db.session.add(each_cart_item)
-                response_data = self.generate_response(None)
-                db.session.commit()
-                return create_data_response(data=response_data)
-            except Exception as e:
-                Logger.error("[%s] Error in getting response [%s]" % (g.UUID, str(e)), exc_info=True)
-                return create_error_response(code=error_code["cart_error"], message=str(e))
+
+        self.update_discounts_item_level()
+        try:
+            self.update_cart_total_amounts(cart)
+            db.session.add(cart)
+            for each_cart_item in self.item_id_to_existing_item_map.values():
+                db.session.add(each_cart_item)
+            response_data = self.generate_response(None)
+            db.session.commit()
+            return create_data_response(data=response_data)
+        except Exception as e:
+            Logger.error("[%s] Error in getting response [%s]" % (g.UUID, str(e)), exc_info=True)
+            return create_error_response(code=error_code["cart_error"], message=str(e))
 
     def populate_cart_object(self, request_data, cart):
         cart.geo_id = self.geoid
@@ -272,7 +272,6 @@ class CartService:
             items = list()
             for item in new_items:
                 order_item_dict = {}
-                print(item)
                 order_item_dict["item_uuid"] = item.cart_item_id
                 order_item_dict["display_price"] = str(item.display_price)
                 order_item_dict["offer_price"] = str(item.offer_price)
@@ -303,9 +302,10 @@ class CartService:
             self.total_discount = response_data['totalDiscount']
             self.benefits = response_data['benefits']
             for item in response_data['products']:
-                item_discount_dict[item['item_id']] = item
+                item_discount_dict[item['itemid']] = item
+
             for each_cart_item in self.item_id_to_existing_item_map.values():
-                each_cart_item.item_discount = item_discount_dict[each_cart_item.cart_item_id]['discount']
+                each_cart_item.item_discount = item_discount_dict[int(each_cart_item.cart_item_id)]['discount']
 
     def get_shipping_charges(self):
         if self.total_price <= config.SHIPPING_COST_THRESHOLD:
@@ -319,8 +319,7 @@ class CartService:
                 check_price_json = self.check_quantity_availability_of_item(item)
                 if cart_item_db is not None:
                     cart_item_db.same_day_delivery = check_price_json.get(item['item_uuid']).get('same_day_delivery')
-                    print(str(item))
-                    if item['promocodes'] is not None:
+                    if item.get('promocodes') is not None:
                         cart_item_db.promo_codes = item['promocodes']
                     if item['quantity'] == 0:
                         self.remove_cart_item_from_cart(cart_item_db)
@@ -340,21 +339,25 @@ class CartService:
                 return create_error_response(code=error_code["cart_error"], message=str(e))
         if no_of_left_items_in_cart ==0:
             raise EmptyCartException(code = error_code['cart_empty'], message = error_messages["cart_empty"])
-    def update_cart_total_amounts(self, cart):
-        cart_total_offer_price = 0.0
-        cart_total_display_price = 0.0
 
+    def update_cart_total_amounts(self, cart):
+        cart.total_display_price =0.0
+        cart.total_offer_price = 0.0
+        cart.total_discount = 0.0
         for each_cart_item in self.item_id_to_existing_item_map.values():
             unit_offer_price = each_cart_item.offer_price
             unit_display_price = each_cart_item.display_price
             quantity = each_cart_item.quantity
-            item_level_discount = each_cart_item.discount
-            cart_total_display_price += float(unit_display_price) * quantity
-            cart_total_offer_price += float(unit_offer_price - item_level_discount) * quantity
+            item_level_discount = each_cart_item.item_discount
 
-        cart.total_display_price = self.total_display_price = cart_total_display_price
-        cart.total_offer_price = self.total_price = cart_total_offer_price - self.total_discount
-        cart.total_shipping_charges = self.get_shipping_charges()
+            cart.total_display_price = cart.total_display_price+ unit_display_price * quantity
+            cart.total_offer_price += unit_offer_price * quantity
+            cart.total_discount = float(cart.total_discount) + float(item_level_discount)
+
+            self.total_display_price = cart.total_display_price
+            self.total_price = cart.total_offer_price
+            self.total_discount = cart.total_discount
+
 
     def get_response_from_check_coupons_api(self):
         data = {
@@ -373,15 +376,21 @@ class CartService:
             'X-API-TOKEN': 'M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy',
             'Content-type': 'application/json'
         }
-        req = Requests(url=current_app.config['COUPON_CHECK_URL'], method='POST', data=json.dumps(data),
-                       headers=header)
-        req.execute_in_background()
-        response = req.get_response()
-        # if response is None:
-        #     Logger.error("Coupon API returned no response for the input [%s]" %json.dumps(data))
-        #     raise Ex
-        response_data = json.loads(response.text)
+
+        response = requests.post(url=current_app.config['COUPON_CHECK_URL'], data=json.dumps(data),
+                                 headers=header)
+        json_data = json.loads(response.text)
+
+
+        # req = Requests(url=current_app.config['COUPON_CHECK_URL'], method='POST', data=json.dumps(data),
+        #                headers=header)
+        # req.execute_in_background()
+        # response = req.get_response()
+        # # if response is None:
+        # #     Logger.error("Coupon API returned no response for the input [%s]" %json.dumps(data))
+        # #     raise Ex
+        # response_data = json.loads(response.text)
         Logger.info(
             '{%s} Resonse text from url {%s} with data {%s} is {%s}' % (
-                g.UUID, current_app.config['COUPON_CHECK_URL'], data, response_data))
-        return response_data
+                g.UUID, current_app.config['COUPON_CHECK_URL'], data, json_data))
+        return json_data
