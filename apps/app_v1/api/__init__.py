@@ -21,7 +21,8 @@ error_code = {
     "order_validation_request_error": 1011,
     "network_error":1012,
     "connection_error": 1013,
-    "data_missing": 1014
+    "data_missing": 1014,
+    "cart_empty": 1015
 }
 
 error_messages = {
@@ -37,7 +38,8 @@ error_messages = {
     "order_error":"Order Error",
     "order_validation_request_error": "Order Request Validation Failed",
     "network_error": "Network Error",
-    "connection_error": "Connection Error"
+    "connection_error": "Connection Error",
+    "cart_empty": "Cart is Empty"
 }
 
 
@@ -53,6 +55,12 @@ class NetworkError(RuntimeError):
         self.args = arg
 
 class RequiredFieldMissing(Exception):
+    code = None
+    def __init__(self, code, message):
+       self.code = code
+       super(Exception, self).__init__(message)
+
+class EmptyCartException(Exception):
     code = None
     def __init__(self, code, message):
        self.code = code

@@ -34,13 +34,22 @@ def String(val, min_length=None, max_length=None):
 
 def Contained(val, contained_in=None, not_contained_in=None):
     if contained_in is not None:
-        if val.upper() not in contained_in:
+        try:
+            val = int(val)
+        except ValueError:
+            val = val.upper()
+
+        if val not in contained_in:
             raise Exception('Value : {%s} has to be present in : {%s}'%(val, contained_in))
 
     if not_contained_in is not None:
-        if val.upper() in not_contained_in:
-            raise Exception('Value : {%s} should not be present in : {%s}'%(val, contained_in))
+        try:
+            val = int(val)
+        except ValueError:
+            val=val.upper()
 
+        if val in not_contained_in:
+            raise Exception('Value : {%s} should not be present in : {%s}'%(val, contained_in))
 
 def Float(val, min_value=None, max_value=None):
     try:

@@ -24,17 +24,10 @@ class ORDER_STATUS(Enum):
     CREATED = 'CREATED'
 
 
-class PAYMENT_MODE(Enum):
-    COD = 'COD'
-    PREPAID = 'PREPAID'
-    SODEXO = 'SODEXO'
-    TICKET = 'TICKET'
-
 
 class ORDER_SOURCE_REFERENCE(Enum):
-    WEB = 'WEB'
-    ANDROID = 'ANDROID'
-    IOS = 'IOS'
+    APP = 0
+    WEB = 1
 
 class VALID_ORDER_TYPES(Enum):
     PHARMA ='PHARMA'

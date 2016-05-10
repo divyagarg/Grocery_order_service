@@ -1,4 +1,4 @@
-from apps.app_v1.models import DELIVERY_TYPE, PAYMENT_MODE, ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES
+from apps.app_v1.models import DELIVERY_TYPE, ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES
 
 from utils.jsonutils.json_schema_validator import *
 
@@ -73,6 +73,43 @@ CREATE_CART_SCHEMA = {
                     {List: {}}
                 ]
             },
+            "payment_mode":{
+                REQUIRED: False,
+                FUNCTIONS: [{String: {}}]
+            },
+            "shipping_address":{
+                REQUIRED : False,
+                FUNCTIONS: [
+                    {Dictionary: {}}
+                ],
+                SCHEMA: {
+                    "name": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "address": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "city": {
+                       FUNCTIONS: [{String: {}}]
+                    },
+                    "pincode": {
+                        FUNCTIONS: [{Pincode: {}}]
+                    },
+                    "state": {
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "mobile": {
+                        FUNCTIONS: [{MobileNumber: {}}]
+                    },
+                    "email":{
+                        REQUIRED : False,
+                        FUNCTIONS: [{String: {}}]
+                    },
+                    "landmark":{
+                        REQUIRED : False,
+                        FUNCTIONS: [{String: {}}]
+                    }
+                }},
             "orderitems": {
                 FUNCTIONS: [
                     {List: {}}
@@ -169,7 +206,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
             },
             "payment_mode": {
                 REQUIRED: True,
-                FUNCTIONS: [{Contained: {"contained_in": [d.value for d in PAYMENT_MODE]}}]
+                FUNCTIONS: [{String: {}}]
             },
             "freebie": {
                 REQUIRED: False,
@@ -338,7 +375,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
             },
             "payment_mode": {
                 REQUIRED: True,
-                FUNCTIONS: [{String: {}, Contained: {"contained_in": [p.value for p in PAYMENT_MODE]}}]
+                FUNCTIONS: [{String: {}}]
             },
             "freebie": {
                 REQUIRED: False,

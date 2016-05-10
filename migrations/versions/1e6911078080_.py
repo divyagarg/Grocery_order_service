@@ -1,17 +1,18 @@
 """empty message
 
-Revision ID: 2fa2ab76429d
+Revision ID: 1e6911078080
 Revises: None
-Create Date: 2016-05-07 20:37:07.847868
+Create Date: 2016-05-10 09:54:21.213054
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '2fa2ab76429d'
+revision = '1e6911078080'
 down_revision = None
 
 from alembic import op
 import sqlalchemy as sa
+import sqlalchemy_utils
 
 
 def upgrade():
@@ -20,11 +21,12 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('mobile', sa.String(length=512), nullable=False),
-    sa.Column('street_1', sa.String(length=512), nullable=False),
-    sa.Column('street_2', sa.String(length=512), nullable=True),
+    sa.Column('address', sa.String(length=512), nullable=False),
     sa.Column('city', sa.String(length=512), nullable=False),
     sa.Column('pincode', sa.String(length=512), nullable=False),
     sa.Column('state', sa.String(length=512), nullable=False),
+    sa.Column('email', sa.String(length=512), nullable=True),
+    sa.Column('landmark', sa.String(length=512), nullable=True),
     sa.Column('address_hash', sa.String(length=255), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('address_hash')
@@ -36,25 +38,18 @@ def upgrade():
     sa.Column('cart_reference_uuid', sa.String(length=255), nullable=False),
     sa.Column('geo_id', sa.BigInteger(), nullable=False),
     sa.Column('user_id', sa.String(length=255), nullable=False),
-    sa.Column('promo_codes', sa.String(length=255), nullable=True),
+    sa.Column('order_type', sa.String(length=255), nullable=True),
+    sa.Column('order_source_reference', sa.String(length=255), nullable=True),
+    sa.Column('promo_codes', sqlalchemy_utils.types.scalar_list.ScalarListType(), nullable=True),
+    sa.Column('selected_freebee_items', sqlalchemy_utils.types.scalar_list.ScalarListType(), nullable=True),
     sa.Column('total_offer_price', sa.Numeric(), nullable=True),
     sa.Column('total_discount', sa.Numeric(), nullable=True),
     sa.Column('total_display_price', sa.Numeric(), nullable=True),
+    sa.Column('total_shipping_charges', sa.Numeric(), nullable=True),
+    sa.Column('shipping_address_ref', sa.String(length=255), nullable=False),
+    sa.ForeignKeyConstraint(['shipping_address_ref'], ['address.address_hash'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('cart_reference_uuid')
-    )
-    op.create_table('cart__item',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('cart_id', sa.String(length=255), nullable=False),
-    sa.Column('cart_item_id', sa.String(length=255), nullable=False),
-    sa.Column('quantity', sa.Integer(), nullable=False),
-    sa.Column('promo_codes', sa.String(length=255), nullable=True),
-    sa.Column('offer_price', sa.Numeric(), nullable=True),
-    sa.Column('display_price', sa.Numeric(), nullable=True),
-    sa.Column('item_discount', sa.Numeric(), nullable=True),
-    sa.Column('order_partial_discount', sa.Numeric(), nullable=True),
-    sa.ForeignKeyConstraint(['cart_id'], ['cart.cart_reference_uuid'], ),
-    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('order',
     sa.Column('created_on', sa.DateTime(), server_default=sa.text(u'now()'), nullable=True),
@@ -70,11 +65,24 @@ def upgrade():
     sa.Column('billing_address_ref', sa.String(length=255), nullable=True),
     sa.Column('delivery_type', sa.Enum('NORMAL', 'SLOTTED'), nullable=False),
     sa.Column('delivery_due_date', sa.Date(), nullable=True),
-    sa.Column('delivery_slot', sa.Enum('09:12', '12:15', '15:18', '18:21'), nullable=False),
+    sa.Column('delivery_slot', sa.Enum('09:12', '12:15', '15:18', '18:21'), nullable=True),
     sa.Column('freebie', sa.String(length=255), nullable=True),
     sa.ForeignKeyConstraint(['shipping_address_ref'], ['address.address_hash'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('order_reference_id')
+    )
+    op.create_table('cart__item',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('cart_id', sa.String(length=255), nullable=False),
+    sa.Column('cart_item_id', sa.String(length=255), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('promo_codes', sa.String(length=255), nullable=True),
+    sa.Column('offer_price', sa.Numeric(), nullable=True),
+    sa.Column('display_price', sa.Numeric(), nullable=True),
+    sa.Column('item_discount', sa.Numeric(), nullable=True),
+    sa.Column('same_day_delivery', sa.String(length=255), nullable=True),
+    sa.ForeignKeyConstraint(['cart_id'], ['cart.cart_reference_uuid'], ),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('order__item',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -94,8 +102,8 @@ def upgrade():
     sa.Column('total_offer_price', sa.Numeric(), nullable=False),
     sa.Column('total_display_price', sa.Numeric(), nullable=True),
     sa.Column('total_discount', sa.Numeric(), nullable=True),
-    sa.Column('amount', sa.Numeric(), nullable=True),
-    sa.Column('payment_mode', sa.Enum('COD', 'SODEXO', 'PREPAID', 'TICKET'), nullable=False),
+    sa.Column('payble_amount', sa.Numeric(), nullable=True),
+    sa.Column('payment_mode', sa.String(length=255), nullable=False),
     sa.Column('payment_transaction_id', sa.String(length=255), nullable=True),
     sa.Column('order_id', sa.String(length=255), nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['order.order_reference_id'], ),
@@ -108,8 +116,8 @@ def downgrade():
     ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('payment')
     op.drop_table('order__item')
-    op.drop_table('order')
     op.drop_table('cart__item')
+    op.drop_table('order')
     op.drop_table('cart')
     op.drop_table('address')
     ### end Alembic commands ###

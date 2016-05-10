@@ -1,6 +1,8 @@
 from . import db
 import hashlib
-from sqlalchemy import func, Enum
+from sqlalchemy import func, Enum, Index
+from sqlalchemy_utils import ScalarListType
+
 
 __author__ = 'divyagarg'
 
@@ -17,18 +19,18 @@ class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(255), nullable=False)
     mobile = db.Column(db.String(512), nullable=False)
-    street_1 = db.Column(db.String(512), nullable=False)
-    street_2 = db.Column(db.String(512))
+    address = db.Column(db.String(512), nullable=False)
     city = db.Column(db.String(512), nullable=False)
     pincode = db.Column(db.String(512), nullable=False)
     state = db.Column(db.String(512), nullable=False)
-    # email = db.Column(db.String(512))
-    # landmark = db.Column(db.String(512))
+    email = db.Column(db.String(512))
+    landmark = db.Column(db.String(512))
     order = db.relationship('Order', backref='Address')
+    cart = db.relationship('Cart', backref ='Address')
     address_hash = db.Column(db.String(255), nullable=False, unique=True)
 
     def __hash__(self):
-        raw_string = self.name + self.mobile + self.street_1 + self.street_2 + self.city + self.pincode + self.state
+        raw_string = self.name+ self.mobile + self.city + self.pincode + self.state
         return hashlib.sha512(raw_string).hexdigest()
 
 
@@ -52,26 +54,35 @@ class Cart(Base):
     cart_reference_uuid = db.Column(db.String(255), nullable=False, unique=True)
     geo_id = db.Column(db.BigInteger, nullable=False)
     user_id = db.Column(db.String(255), nullable=False)
+    order_type = db.Column(db.String(255))
+    order_source_reference = db.Column(db.String(255))
     promo_codes = db.Column(db.String(255))
+    selected_freebee_items = db.Column(db.String(255))
     total_offer_price = db.Column(db.Numeric, default=0.0)
     total_discount = db.Column(db.Numeric, default=0.0)
     total_display_price = db.Column(db.Numeric, default=0.0)
+    total_shipping_charges = db.Column(db.Numeric, default=0.0)
+    shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'))
+    payment_mode = db.Column(db.String(255))
+    Index('cart_geo_user_idx',  geo_id, user_id)
     cartItem = db.relationship('Cart_Item', backref='Cart')
+
 
 
 class Cart_Item(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable=False)
-    cart_item_id = db.Column(db.String(255), nullable=False)
+    cart_item_id = db.Column(db.String(255), nullable=False, index= True)
     quantity = db.Column(db.Integer, nullable=False)
     promo_codes = db.Column(db.String(255))
     offer_price = db.Column(db.Numeric, default=0.0)
     display_price = db.Column(db.Numeric, default=0.0)
     item_discount = db.Column(db.Numeric, default=0.0)
-    order_partial_discount = db.Column(db.Numeric, default=0.0)
+    same_day_delivery = db.Column(db.String(255))
 
 
 class Order(Base):
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     order_reference_id = db.Column(db.String(255), nullable=False, unique=True)
     geo_id = db.Column(db.BigInteger, nullable=False)
@@ -87,6 +98,7 @@ class Order(Base):
     freebie = db.Column(db.String(255))
     payment = db.relationship('Payment', backref='Order')
     orderItem = db.relationship('Order_Item', backref='Order')
+    Index('order_geo_user_idx',  geo_id, user_id)
 
 
 class Payment(db.Model):
@@ -94,15 +106,15 @@ class Payment(db.Model):
     total_offer_price = db.Column(db.Numeric, nullable = False)
     total_display_price = db.Column(db.Numeric)
     total_discount = db.Column(db.Numeric)
-    amount = db.Column(db.Numeric, default=0.0)
-    payment_mode = db.Column(Enum('COD', 'SODEXO', 'PREPAID', 'TICKET'), nullable=False)
+    payble_amount = db.Column(db.Numeric, default=0.0)
+    payment_mode = db.Column(db.String(255), nullable=False)
     payment_transaction_id = db.Column(db.String(255))
     order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
 
 
 class Order_Item(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    item_id = db.Column(db.String(255), nullable=False)
+    item_id = db.Column(db.String(255), nullable=False, index =True)
     quantity = db.Column(db.Integer, nullable=False)
     display_price = db.Column(db.Numeric, default=0.0)
     offer_price = db.Column(db.Numeric, default=0.0)

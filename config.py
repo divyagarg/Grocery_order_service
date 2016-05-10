@@ -10,6 +10,9 @@ ERROR_LOG_FILE = 'order_service_error.log'
 
 PORT = 9000
 APP_NAME = 'order_service'
+
+SHIPPING_COST = 20.0
+SHIPPING_COST_THRESHOLD=1000
 error_code = {
     "discount_changed": 1001,
     "product_offer_price_changes": 1002,
@@ -70,7 +73,7 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_POOL_SIZE = 10
     SQLALCHEMY_POOL_TIMEOUT = 20
     PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
-    COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
+    COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1.1/check"
     COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
 
 
