@@ -571,7 +571,7 @@ class CartService:
 				request_items.append(request_item_detail)
 
 			order_item_price_dict = self.check_prices_of_item(request_items, data)
-			Logger.info("order_item_price_dict is [%s]" %order_item_price_dict)
+			Logger.info("order_item_price_dict is [%s]" %(json.dumps(order_item_price_dict)))
 			for key in self.item_id_to_existing_item_dict:
 				existing_cart_item = self.item_id_to_existing_item_dict[key]
 				key = int(key)
