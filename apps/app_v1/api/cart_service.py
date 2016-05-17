@@ -149,7 +149,7 @@ class CartService:
 
 			# 7 Create Response
 			try:
-				response_data = self.generate_response(None)
+				response_data = self.generate_response(None, cart)
 			except Exception as e:
 				Logger.error(
 					'[%s] Exception occurred in creating response while updating the cart [%s]' % (g.UUID, str(e)),
@@ -254,7 +254,7 @@ class CartService:
 
 			# 6. create response
 			try:
-				response_data = self.generate_response(self.cart_items)
+				response_data = self.generate_response(self.cart_items, cart)
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in generating response for cart [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
@@ -375,14 +375,14 @@ class CartService:
 		Logger.info("{%s} Response got from calculate Price API is {%s}" % (g.UUID, json.dumps(json_data)))
 		return json_data['results']
 
-	def generate_response(self, new_items):
+	def generate_response(self, new_items, cart):
 		response_json = {
 			"orderitems": [],
 			"total_offer_price": self.total_price,
 			"total_display_price": self.total_display_price,
 			"total_discount": self.total_discount,
 			"total_shipping_charges": self.total_shipping_charges,
-			"cart_reference_uuid": str(self.cart_reference_uuid),
+			"cart_reference_uuid": cart.cart_reference_uuid,
 			"benefits": self.benefits
 		}
 
@@ -496,7 +496,7 @@ class CartService:
 			cart_item.offer_price = float(json_order_item['offerPrice'])
 			cart_item.promo_codes = item.get('promocodes')
 			cart_item.same_day_delivery = 'SDD' if json_order_item.get('deliveryDays') == 0 else 'NDD'
-
+			cart_item.transferPrice = float(json_order_item['offerPrice'])
 			cart_item_list.append(cart_item)
 
 			self.total_price += float(json_order_item['offerPrice']) * int(item['quantity'])
