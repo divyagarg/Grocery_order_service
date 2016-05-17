@@ -33,11 +33,10 @@ class ERROR(object):
 	CART_ITEM_MISSING = ERROR_DETAIL(code=1015, message="Cart items are missing")
 	CART_ZERO_QUANTITY_CAN_NOT_BE_ADDED = ERROR_DETAIL(code=1016, message="Zero quantity can not be added")
 	DATABASE_ERROR = ERROR_DETAIL(code=1017, message=None)
-	SUBSCRIPTION_NOT_FOUND = ERROR_DETAIL(code=1018, message="Item is not found")
+	SUBSCRIPTION_NOT_FOUND = ERROR_DETAIL(code=1018, message="Subscription id is not correct")
 	NOT_AVAILABLE_ERROR = ERROR_DETAIL(code=1019, message="Quantity not available")
 	KEY_MISSING = ERROR_DETAIL(code=1020, message=None)
-	INCORRECT_DATA = ERROR_DETAIL(code=1021, message="Incorrect data is given")
-
+	INCORRECT_DATA = ERROR_DETAIL(code=1021, message="Zero quantity can not be added")
 
 
 def parse_request_data(body):
@@ -55,42 +54,46 @@ class NetworkError(RuntimeError):
 class RequiredFieldMissing(Exception):
 	code = None
 
-	def __init__(self, ERROR_DETAIL):
-		self.code = ERROR_DETAIL.code
-		super(RequiredFieldMissing, self).__init__(ERROR_DETAIL.message)
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(RequiredFieldMissing, self).__init__(error_detail.message)
 
 
 class EmptyCartException(Exception):
 	code = None
 
-	def __init__(self, ERROR_DETAIL):
-		self.code = ERROR_DETAIL.code
-		super(EmptyCartException, self).__init__(ERROR_DETAIL.message)
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(EmptyCartException, self).__init__(error_detail.message)
 
 
 class IncorrectDataException(Exception):
 	code = None
 
-	def __init__(self, ERROR_DETAIL):
-		self.code = ERROR_DETAIL.code
-		super(IncorrectDataException, self).__init__(ERROR_DETAIL.message)
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(IncorrectDataException, self).__init__(error_detail.message)
 
 
 class CouponInvalidException(Exception):
 	code = None
-	def __init__(self, ERROR_DETAIL):
-		self.code = ERROR_DETAIL.code
-		super(CouponInvalidException, self).__init__(ERROR_DETAIL.message)
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(CouponInvalidException, self).__init__(error_detail.message)
 
 
 class SubscriptionNotFoundException(Exception):
 	code = None
-	def __init__(self, ERROR_DETAIL):
-		self.code = ERROR_DETAIL.code
-		super(SubscriptionNotFoundException, self).__init__(ERROR_DETAIL.message)
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(SubscriptionNotFoundException, self).__init__(error_detail.message)
+
 
 class QuantityNotAvailableException(Exception):
 	code = None
-	def __init__(self, ERROR_DETAIL):
-		self.code = ERROR_DETAIL.code
-		super(QuantityNotAvailableException, self).__init__(ERROR_DETAIL.message)
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(QuantityNotAvailableException, self).__init__(error_detail.message)

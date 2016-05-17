@@ -53,6 +53,7 @@ class CartService:
 		self.cart_items = None
 		self.is_cart_empty = False
 		self.item_id_to_existing_item_dict = None
+		self.deleted_cart_items = None
 
 	def create_or_update_cart(self, body):
 		try:
@@ -137,6 +138,10 @@ class CartService:
 				db.session.add(cart)
 				for each_cart_item in self.item_id_to_existing_item_dict.values():
 					db.session.add(each_cart_item)
+				if self.deleted_cart_items.values().__len__()>0:
+					for each_deleted_item in self.deleted_cart_items.values():
+						db.session.delete(each_deleted_item)
+
 			except Exception as e:
 				Logger.error('[%s] Shipping address could not be updated [%s]' % (g.UUID, str(e)), exc_info=True)
 				err = ERROR.DATABASE_ERROR
@@ -306,7 +311,9 @@ class CartService:
 		cart.geo_id = data['geo_id']
 		cart.user_id = data['user_id']
 		cart.cart_reference_uuid = self.cart_reference_uuid
-		cart.order_type = data.get('order_type')
+		cart.order_type = VALID_ORDER_TYPES.GROCERY.value.lower()
+		if data.get('order_type') is not None:
+			cart.order_type = data.get('order_type')
 		cart.order_source_reference = data['order_source_reference']
 		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
 			cart.promo_codes = data.get('promo_codes')
@@ -327,36 +334,13 @@ class CartService:
 
 
 		if response_product_fetch_data is None or response_product_fetch_data.__len__() ==0:
-			raise SubscriptionNotFoundException
+			raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
 
 		order_item_dict = {}
 		for response in response_product_fetch_data[0].get('items')[0].get('items'):
 			order_item_dict[response.get('id')] = response
 		return order_item_dict
 
-	def insert_data_to_new_cart(self, data, cart):
-
-		self.get_price_and_update_in_cart_item(data)
-		response_data = self.get_response_from_check_coupons_api(self.cart_items, data)
-		self.update_discounts_item_level(response_data, self.cart_items)
-		self.get_shipping_charges()
-		cart.total_offer_price = self.total_price
-		cart.total_display_price = self.total_display_price
-		cart.total_discount = self.total_discount
-		try:
-
-			db.session.add(cart)
-			for cart_item in self.cart_items:
-				db.session.add(cart_item)
-			response_data = self.generate_response(self.cart_items)
-			db.session.commit()
-			return create_data_response(data=response_data)
-		except Exception as e:
-			Logger.error("{%s} Exception occurred while insert new items to Cart {%s}" % (g.UUID, str(e)),
-						 exc_info=True)
-			db.session.rollback()
-			ERROR.DATABASE_ERROR.message = str(e)
-			return create_error_response(ERROR.DATABASE_ERROR)
 
 	def fetch_product_price(self, items, data):
 		request_items_ids = list()
@@ -459,6 +443,8 @@ class CartService:
 			item_level_discount = each_cart_item.item_discount
 			cart.total_display_price += (float(unit_display_price) * quantity)
 			cart.total_offer_price += (float(unit_offer_price) * quantity)
+			if item_level_discount is None:
+				item_level_discount =0.0
 			cart.total_discount = float(cart.total_discount) + float(item_level_discount)
 
 		self.total_display_price = cart.total_display_price
@@ -513,8 +499,8 @@ class CartService:
 
 			cart_item_list.append(cart_item)
 
-			self.total_price += float(json_order_item['offerPrice'])
-			self.total_display_price += float(json_order_item['basePrice'])
+			self.total_price += float(json_order_item['offerPrice']) * int(item['quantity'])
+			self.total_display_price += float(json_order_item['basePrice']) * int(item['quantity'])
 
 		self.cart_items = cart_item_list
 
@@ -530,7 +516,7 @@ class CartService:
 
 		response_data = self.fetch_product_price(request_items, data)
 		if response_data is None or response_data.__len__() == 0:
-			raise SubscriptionNotFoundException
+			raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
 		order_item_price_dict = {}
 		for response in response_data[0].get('items')[0].get('items'):
 			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(response.get('id'), response)
@@ -544,7 +530,7 @@ class CartService:
 			self.item_id_to_existing_item_dict[existing_cart_item.cart_item_id] = existing_cart_item
 
 		no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
-		deleted_cart_items = {}
+		self.deleted_cart_items = {}
 		updated_cart_items = {}
 		newly_added_cart_items = {}
 		if 'orderitems' in data and data['orderitems'].__len__() > 0:
@@ -555,7 +541,7 @@ class CartService:
 					existing_cart_item = self.item_id_to_existing_item_dict[data_item['item_uuid']]
 					del self.item_id_to_existing_item_dict[data_item['item_uuid']]
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
-					deleted_cart_items[data_item['item_uuid']] = existing_cart_item
+					self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
 
 				elif data_item['item_uuid'] in self.item_id_to_existing_item_dict:
 					existing_cart_item = self.item_id_to_existing_item_dict[data_item['item_uuid']]
@@ -564,6 +550,7 @@ class CartService:
 					updated_cart_items[data_item['item_uuid']] = existing_cart_item
 				else:
 					new_cart_item = Cart_Item()
+					new_cart_item.cart_id = cart.cart_reference_uuid
 					new_cart_item.cart_item_id = data_item['item_uuid']
 					new_cart_item.quantity = data_item['quantity']
 					new_cart_item.promo_codes = data_item.get('promo_codes')
