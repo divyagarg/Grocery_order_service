@@ -3,13 +3,13 @@ import os
 HOME = '/tmp'
 HOME = os.environ.get('LOG_HOME') or HOME
 
-LOG_DIR = 'order_service'
-LOG_FILE = 'order_service.log'
-DEBUG_LOG_FILE = 'order_service_debug.log'
-ERROR_LOG_FILE = 'order_service_error.log'
+LOG_DIR = 'grocery_order_service'
+LOG_FILE = 'grocery_order_service.log'
+DEBUG_LOG_FILE = 'grocery_order_service_debug.log'
+ERROR_LOG_FILE = 'grocery_order_service_error.log'
 
 PORT = 9000
-APP_NAME = 'order_service'
+APP_NAME = 'grocery_order_service'
 
 SHIPPING_COST = 20.0
 SHIPPING_COST_THRESHOLD = 1000
@@ -71,7 +71,7 @@ class TestingConfig(Config):
 
 
 class StagingConfig(Config):
-	HOME = '/tmp'
+	HOME = '/var/log/'
 	ENV = 'staging'
 	DEBUG = True
 	DATABASE_NAME = 'grocery_order_service'
@@ -90,7 +90,7 @@ class StagingConfig(Config):
 
 
 class ProductionConfig(Config):
-	HOME = '/tmp'
+	HOME = '/var/log/'
 	ENV = 'development'
 	DEBUG = True
 	DATABASE_NAME = 'grocery_order_service'
