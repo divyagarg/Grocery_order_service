@@ -571,14 +571,16 @@ class CartService:
 				request_items.append(request_item_detail)
 
 			order_item_price_dict = self.check_prices_of_item(request_items, data)
-
+			Logger.info("order_item_price_dict is [%s]" %order_item_price_dict)
 			for key in self.item_id_to_existing_item_dict:
 				existing_cart_item = self.item_id_to_existing_item_dict[key]
 				key = int(key)
-				existing_cart_item.same_day_delivery = 'SDD' if order_item_price_dict.get(key).get('deliveryDays') ==0 else 'NDD'
-				existing_cart_item.display_price = order_item_price_dict.get(key).get('basePrice')
-				existing_cart_item.offer_price = order_item_price_dict.get(key).get('offerPrice')
-				existing_cart_item.transferPrice = order_item_price_dict.get(key).get('transferPrice')
+				cart_item = order_item_price_dict.get(key)
+				if cart_item is not None:
+					existing_cart_item.same_day_delivery = 'SDD' if cart_item.get('deliveryDays') ==0 else 'NDD'
+					existing_cart_item.display_price = cart_item.get('basePrice')
+					existing_cart_item.offer_price = cart_item.get('offerPrice')
+					existing_cart_item.transferPrice = cart_item.get('transferPrice')
 
 	def check_for_coupons_applicable(self, data):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data)
