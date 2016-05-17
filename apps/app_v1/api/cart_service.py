@@ -538,13 +538,13 @@ class CartService:
 			for data_item in data['orderitems']:
 
 				if data_item['quantity'] == 0:
-					existing_cart_item = self.item_id_to_existing_item_dict[data_item['item_uuid']]
+					existing_cart_item = self.item_id_to_existing_item_dict[int(data_item['item_uuid'])]
 					del self.item_id_to_existing_item_dict[data_item['item_uuid']]
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 					self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
 
 				elif data_item['item_uuid'] in self.item_id_to_existing_item_dict:
-					existing_cart_item = self.item_id_to_existing_item_dict[data_item['item_uuid']]
+					existing_cart_item = self.item_id_to_existing_item_dict[int(data_item['item_uuid'])]
 					existing_cart_item.quantity = data_item['quantity']
 					existing_cart_item.promo_codes = data_item.get('promo_codes')
 					updated_cart_items[data_item['item_uuid']] = existing_cart_item
@@ -555,7 +555,7 @@ class CartService:
 					new_cart_item.quantity = data_item['quantity']
 					new_cart_item.promo_codes = data_item.get('promo_codes')
 					newly_added_cart_items[data_item['item_uuid']] = new_cart_item
-					self.item_id_to_existing_item_dict[data_item['item_uuid']] = new_cart_item
+					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 
 			if no_of_left_items_in_cart == 0:
