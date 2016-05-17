@@ -313,7 +313,7 @@ class CartService:
 		cart.cart_reference_uuid = self.cart_reference_uuid
 		cart.order_type = VALID_ORDER_TYPES.GROCERY.value.lower()
 		if data.get('order_type') is not None:
-			cart.order_type = data.get('order_type')
+			cart.order_type = data.get('order_type').lower()
 		cart.order_source_reference = data['order_source_reference']
 		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
 			cart.promo_codes = data.get('promo_codes')
