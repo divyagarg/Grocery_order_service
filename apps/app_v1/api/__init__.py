@@ -37,6 +37,7 @@ class ERROR(object):
 	NOT_AVAILABLE_ERROR = ERROR_DETAIL(code=1019, message="Quantity not available")
 	KEY_MISSING = ERROR_DETAIL(code=1020, message=None)
 	INCORRECT_DATA = ERROR_DETAIL(code=1021, message="Zero quantity can not be added")
+	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 1022, message="Non existing item can not be deleted")
 
 
 def parse_request_data(body):

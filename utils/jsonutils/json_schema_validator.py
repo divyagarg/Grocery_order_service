@@ -1,4 +1,4 @@
-from apps.app_v1.api import RequiredFieldMissing, ERROR
+from apps.app_v1.api import RequiredFieldMissing, ERROR, IncorrectDataException
 
 __author__ = 'divyagarg'
 import collections
@@ -40,7 +40,8 @@ def Contained(val, contained_in=None, not_contained_in=None):
             val = val.upper()
 
         if val not in contained_in:
-            raise Exception('Value : {%s} has to be present in : {%s}'%(val, contained_in))
+            ERROR.INCORRECT_DATA.message = 'Value : {%s} has to be present in : {%s}'%(val, contained_in)
+            raise IncorrectDataException(ERROR.INCORRECT_DATA)
 
     if not_contained_in is not None:
         try:
@@ -49,7 +50,9 @@ def Contained(val, contained_in=None, not_contained_in=None):
             val=val.upper()
 
         if val in not_contained_in:
-            raise Exception('Value : {%s} should not be present in : {%s}'%(val, contained_in))
+            ERROR.INCORRECT_DATA.message = 'Value : {%s} should not be present in : {%s}'%(val, contained_in)
+            raise IncorrectDataException(ERROR.INCORRECT_DATA)
+
 
 def Float(val, min_value=None, max_value=None):
     try:

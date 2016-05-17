@@ -64,6 +64,9 @@ class CartService:
 				return self.update_cart(cart, request_data['data'])
 			else:
 				return self.create_cart(request_data['data'])
+		except IncorrectDataException as ide:
+			Logger.error("[%s] Validation Error [%s]" %(g.UUID, str(ide.message)))
+			return create_error_response(ide)
 		except Exception as e:
 			Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
 			ERROR.INTERNAL_ERROR.message = str(e)
@@ -80,6 +83,10 @@ class CartService:
 			try:
 				self.update_cart_items(data, cart)
 
+			except IncorrectDataException:
+				Logger.error("[%s] Non existing item can not be deleted" %g.UUID)
+				err = ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED
+				break
 			except SubscriptionNotFoundException:
 				Logger.error("[%s] Subscription is not valid" % g.UUID)
 				err = ERROR.SUBSCRIPTION_NOT_FOUND
@@ -538,7 +545,9 @@ class CartService:
 			for data_item in data['orderitems']:
 
 				if data_item['quantity'] == 0:
-					existing_cart_item = self.item_id_to_existing_item_dict[int(data_item['item_uuid'])]
+					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
+					if existing_cart_item is None:
+						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
 					del self.item_id_to_existing_item_dict[data_item['item_uuid']]
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 					self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
@@ -554,6 +563,7 @@ class CartService:
 					new_cart_item.cart_item_id = data_item['item_uuid']
 					new_cart_item.quantity = data_item['quantity']
 					new_cart_item.promo_codes = data_item.get('promo_codes')
+					new_cart_item.item_discount = 0.0
 					newly_added_cart_items[data_item['item_uuid']] = new_cart_item
 					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
@@ -570,17 +580,18 @@ class CartService:
 				request_item_detail = {"item_uuid": key, "quantity": newly_added_cart_items[key].quantity}
 				request_items.append(request_item_detail)
 
-			order_item_price_dict = self.check_prices_of_item(request_items, data)
-			Logger.info("order_item_price_dict is [%s]" %(json.dumps(order_item_price_dict)))
-			for key in self.item_id_to_existing_item_dict:
-				existing_cart_item = self.item_id_to_existing_item_dict[key]
-				key = int(key)
-				cart_item = order_item_price_dict.get(key)
-				if cart_item is not None:
-					existing_cart_item.same_day_delivery = 'SDD' if cart_item.get('deliveryDays') ==0 else 'NDD'
-					existing_cart_item.display_price = cart_item.get('basePrice')
-					existing_cart_item.offer_price = cart_item.get('offerPrice')
-					existing_cart_item.transferPrice = cart_item.get('transferPrice')
+			if updated_cart_items.values().__len__()>0 or newly_added_cart_items.values().__len__()>0:
+				order_item_price_dict = self.check_prices_of_item(request_items, data)
+				Logger.info("order_item_price_dict is [%s]" %(json.dumps(order_item_price_dict)))
+				for key in self.item_id_to_existing_item_dict:
+					existing_cart_item = self.item_id_to_existing_item_dict[key]
+					key = int(key)
+					cart_item = order_item_price_dict.get(key)
+					if cart_item is not None:
+						existing_cart_item.same_day_delivery = 'SDD' if cart_item.get('deliveryDays') ==0 else 'NDD'
+						existing_cart_item.display_price = cart_item.get('basePrice')
+						existing_cart_item.offer_price = cart_item.get('offerPrice')
+						existing_cart_item.transferPrice = cart_item.get('transferPrice')
 
 	def check_for_coupons_applicable(self, data):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data)
