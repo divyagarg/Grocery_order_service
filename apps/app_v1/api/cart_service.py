@@ -553,7 +553,7 @@ class CartService:
 					self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
 
 				elif data_item['item_uuid'] in self.item_id_to_existing_item_dict:
-					existing_cart_item = self.item_id_to_existing_item_dict[int(data_item['item_uuid'])]
+					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					existing_cart_item.quantity = data_item['quantity']
 					existing_cart_item.promo_codes = data_item.get('promo_codes')
 					updated_cart_items[data_item['item_uuid']] = existing_cart_item
