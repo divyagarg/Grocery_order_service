@@ -13,37 +13,7 @@ APP_NAME = 'order_service'
 
 SHIPPING_COST = 20.0
 SHIPPING_COST_THRESHOLD=1000
-error_code = {
-    "discount_changed": 1001,
-    "product_offer_price_changes": 1002,
-    "product_display_price_changes": 1003,
-    "product_availability_changed": 1004,
-    "payment_mode_not_allowed": 1005,
-    "freebie_not_allowed": 1006,
-    "coupon_not_applid_for_channel": 1007,
-    "coupon_service_returning_failure_status": 1008,
-    "cart_error":1009,
-    "order_error":1010,
-    "order_validation_request_error": 1011,
-    "network_error":1012,
-    "connection_error": 1013
-}
 
-error_messages = {
-    "discount_changed": "Discount not applicable",
-    "product_offer_price_changes": "Product price changed",
-    "product_display_price_changes":"Product display prices changed",
-    "product_availability_changed": "Product is not available in the given quantity",
-    "payment_mode_not_allowed": "Selected Payment mode is not applicable for this order",
-    "freebie_not_allowed": "Freebie not allowed for this order",
-    "coupon_not_applid_for_channel" : "Coupon is not applicable for this channel",
-    "coupon_service_returning_failure_status": "Coupon service returning failure status",
-    "cart_error":"Error in updating cart",
-    "order_error":"Order Error",
-    "order_validation_request_error": "Order Request Validation Failed",
-    "network_error": "Network Error",
-    "connection_error": "Connection Error"
-}
 
 
 class Config:
@@ -72,9 +42,11 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_POOL_SIZE = 10
     SQLALCHEMY_POOL_TIMEOUT = 20
-    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
+    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
     COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1.1/check"
     COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+    X_API_USER = "askmegrocery"
+    X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 
 
 class TestingConfig(Config):
@@ -92,10 +64,12 @@ class TestingConfig(Config):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_POOL_SIZE = 10
     SQLALCHEMY_POOL_TIMEOUT = 20
-    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
+    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
     COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
     COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
-    # SERVER_NAME="http://127.0.0.1:9000/"
+    X_API_USER = "askmegrocery"
+    X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
+
 
 
 class StagingConfig(Config):
@@ -112,9 +86,11 @@ class StagingConfig(Config):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_POOL_SIZE = 10
     SQLALCHEMY_POOL_TIMEOUT = 20
-    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
+    PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
     COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
     COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+    X_API_USER = "askmegrocery"
+    X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 
 
 class ProductionConfig(Config):
@@ -134,6 +110,8 @@ class ProductionConfig(Config):
     PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
     COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
     COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+    X_API_USER = "askmegrocery"
+    X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 
 
 config = {

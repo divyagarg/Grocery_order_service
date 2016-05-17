@@ -30,7 +30,7 @@ class Address(db.Model):
 
     def __hash__(self):
         raw_string = self.name+ self.mobile + self.city + self.pincode + self.state
-        return hashlib.sha512(raw_string).hexdigest()
+        return hashlib.sha1(raw_string).hexdigest()
 
 
 
@@ -78,6 +78,7 @@ class Cart_Item(db.Model):
     offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
     display_price = db.Column(db.Float(precision='10,2'), default=0.0)
     item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
+    transferPrice = db.Column(db.Float(precision= '10,2'), default =0.0)
     same_day_delivery = db.Column(db.String(255))
 
 

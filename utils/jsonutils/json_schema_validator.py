@@ -1,4 +1,4 @@
-from apps.app_v1.api import RequiredFieldMissing, error_code
+from apps.app_v1.api import RequiredFieldMissing, ERROR
 
 __author__ = 'divyagarg'
 import collections
@@ -112,7 +112,8 @@ def validate(data, schema):
     for key, validator_json in schema.items():
         required = validator_json.get(REQUIRED, True)
         if required and key not in data:
-            raise RequiredFieldMissing(code = error_code['data_missing'], message = 'key missing is :{%s}'%key)
+            ERROR.KEY_MISSING.message = 'key missing is :{%s}'%key
+            raise RequiredFieldMissing(ERROR.KEY_MISSING)
         if key in data:
             value = data[key]
             if FUNCTIONS in validator_json:

@@ -8,7 +8,7 @@ import json
 api_name = 'app_v1.test'
 
 
-class TestCartCreationUpdation(unittest.TestCase):\
+class TestCartCreationUpdation(unittest.TestCase):
 
     @classmethod
     def setUp(self):
