@@ -187,10 +187,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 					"name": {
 						FUNCTIONS: [{String: {}}]
 					},
-					"street_1": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"street_2": {
+					"address": {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
@@ -204,6 +201,14 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 					},
 					"mobile": {
 						FUNCTIONS: [{MobileNumber: {}}]
+					},
+					"email": {
+						REQUIRED: False,
+						FUNCTIONS: [{String: {}}]
+					},
+					"landmark": {
+						REQUIRED: False,
+						FUNCTIONS: [{String: {}}]
 					}
 				}
 			},
@@ -217,11 +222,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 					"name": {
 						FUNCTIONS: [{String: {}}]
 					},
-					"street_1": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"street_2": {
-						REQUIRED: False,
+					"address": {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
@@ -234,8 +235,15 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
-						REQUIRED: False,
 						FUNCTIONS: [{MobileNumber: {}}]
+					},
+					"email": {
+						REQUIRED: False,
+						FUNCTIONS: [{String: {}}]
+					},
+					"landmark": {
+						REQUIRED: False,
+						FUNCTIONS: [{String: {}}]
 					}
 				}
 			},
@@ -243,20 +251,21 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 				REQUIRED: True,
 				FUNCTIONS: [{String: {}}]
 			},
-			"freebie": {
+			"selected_freebee_code": {
 				REQUIRED: False,
 				FUNCTIONS: [
 					{List: {}}
 				],
 				SCHEMA: {
-					"id": {
-						FUNCTIONS: [{String: {}}]
+					"coupon_code": {
+						FUNCTIONS: [
+							{String: {}}
+						]
 					},
-					"attributes": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"items_id": {
-						FUNCTIONS: [{String: {}}]
+						"subscription_id": {
+						FUNCTIONS: [
+							{String: {}}
+						]
 					}
 				}
 			},
@@ -330,6 +339,9 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 					},
 					"offer_price": {
 						FUNCTIONS: [{String: {}}]
+					},
+					"item_discount":{
+						FUNCTIONS: [{String: {}}]
 					}
 				}
 			}
@@ -348,34 +360,6 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 					{String: {}}
 				]
 			},
-			"shipping_address": {
-				FUNCTIONS: [
-					{Dictionary: {}}
-				],
-				SCHEMA: {
-					"name": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"street_1": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"street_2": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"city": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"pincode": {
-						FUNCTIONS: [{Pincode: {}}]
-					},
-					"state": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"mobile": {
-						FUNCTIONS: [{MobileNumber: {}}]
-					}
-				}
-			},
 
 			"billing_address": {
 				REQUIRED: False,
@@ -386,11 +370,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 					"name": {
 						FUNCTIONS: [{String: {}}]
 					},
-					"street_1": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"street_2": {
-						REQUIRED: False,
+					"address": {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
@@ -403,28 +383,14 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
-						REQUIRED: False,
 						FUNCTIONS: [{MobileNumber: {}}]
-					}
-				}
-			},
-			"payment_mode": {
-				REQUIRED: True,
-				FUNCTIONS: [{String: {}}]
-			},
-			"freebie": {
-				REQUIRED: False,
-				FUNCTIONS: [
-					{List: {}}
-				],
-				SCHEMA: {
-					"id": {
+					},
+					"email": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
-					"attributes": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"items_id": {
+					"landmark": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					}
 				}
@@ -441,7 +407,6 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 				FUNCTIONS: [{String: {}}]
 			},
 			"order_source_reference": {
-				REQUIRED: True,
 				FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
 			}
 		}

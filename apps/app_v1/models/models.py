@@ -78,7 +78,7 @@ class Cart_Item(db.Model):
     offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
     display_price = db.Column(db.Float(precision='10,2'), default=0.0)
     item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
-    transferPrice = db.Column(db.Float(precision= '10,2'), default =0.0)
+    transfer_price = db.Column(db.Float(precision= '10,2'), default =0.0)
     same_day_delivery = db.Column(db.String(255))
 
 
@@ -97,20 +97,14 @@ class Order(Base):
     delivery_due_date = db.Column(db.Date)
     delivery_slot = db.Column(Enum('09:12', '12:15', '15:18', '18:21'))
     freebie = db.Column(db.String(255))
-    payment = db.relationship('Payment', backref='Order')
-    orderItem = db.relationship('Order_Item', backref='Order')
-    Index('order_geo_user_idx',  geo_id, user_id)
-
-
-class Payment(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     total_offer_price = db.Column(db.Float(precision='10,2'), nullable = False)
     total_display_price = db.Column(db.Float(precision='10,2'))
     total_discount = db.Column(db.Float(precision='10,2'))
-    payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
-    payment_mode = db.Column(db.String(255), nullable=False)
-    payment_transaction_id = db.Column(db.String(255))
-    order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
+    total_payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
+    payment = db.relationship('Payment', backref='Order')
+    orderItem = db.relationship('Order_Item', backref='Order')
+    Index('order_user_idx',  user_id)
+    status_code = db.Column(db.String(255), db.ForeignKey('status.status_code'))
 
 
 class Order_Item(db.Model):
@@ -122,4 +116,18 @@ class Order_Item(db.Model):
     shipping_charge = db.Column(db.Float(precision='10,2'), default=0.0)
     item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
     order_partial_discount = db.Column(db.Float(precision='10,2'), default=0.0)
+    transfer_price = db.Column(db.Float(precision= '10,2'), default =0.0)
     order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
+
+
+class Payment(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    paid_amount = db.Column(db.Float(precision='10,2'), default=0.0)
+    payment_mode = db.Column(db.String(255), nullable=False)
+    payment_transaction_id = db.Column(db.String(255))
+    order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
+
+class Status(db.Model):
+     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+     status_code = db.Column(db.String(255), unique=True, nullable=False)
+     status_description = db.Column(db.String(255))

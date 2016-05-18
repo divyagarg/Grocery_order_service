@@ -503,7 +503,7 @@ class CartService:
 			cart_item.offer_price = float(json_order_item['offerPrice'])
 			cart_item.promo_codes = item.get('promocodes')
 			cart_item.same_day_delivery = 'SDD' if json_order_item.get('deliveryDays') == 0 else 'NDD'
-			cart_item.transferPrice = float(json_order_item['offerPrice'])
+			cart_item.transfer_price = float(json_order_item['offerPrice'])
 			cart_item_list.append(cart_item)
 
 			self.total_price += float(json_order_item['offerPrice']) * int(item['quantity'])
@@ -591,7 +591,7 @@ class CartService:
 						existing_cart_item.same_day_delivery = 'SDD' if cart_item.get('deliveryDays') ==0 else 'NDD'
 						existing_cart_item.display_price = cart_item.get('basePrice')
 						existing_cart_item.offer_price = cart_item.get('offerPrice')
-						existing_cart_item.transferPrice = cart_item.get('transferPrice')
+						existing_cart_item.transfer_price = cart_item.get('transferPrice')
 
 	def check_for_coupons_applicable(self, data):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data)
