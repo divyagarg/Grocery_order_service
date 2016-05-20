@@ -4,7 +4,7 @@ import json
 import uuid
 
 from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException, IncorrectDataException, \
-	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException
+	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException, get_shipping_charges
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models import VALID_ORDER_TYPES
 from apps.app_v1.models.models import Cart, Cart_Item, Address
@@ -14,7 +14,6 @@ from config import APP_NAME
 import requests
 from flask import g, current_app
 from apps.app_v1.models.models import db
-import config
 from apps.app_v1.api import ERROR
 
 __author__ = 'divyagarg'
@@ -437,10 +436,7 @@ class CartService:
 			ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
 			raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
 
-	def get_shipping_charges(self):
-		if (self.total_price - self.total_discount) <= config.SHIPPING_COST_THRESHOLD and (
-					self.total_price - self.total_discount) > 0:
-			self.total_shipping_charges = float(config.SHIPPING_COST)
+
 
 	def update_cart_total_amounts(self, cart):
 		cart.total_display_price = 0.0
@@ -461,7 +457,7 @@ class CartService:
 		self.total_price = cart.total_offer_price
 		self.total_discount = cart.total_discount
 
-		self.get_shipping_charges()
+		self.total_shipping_charges = get_shipping_charges(self.total_price, self.total_discount)
 		cart.total_shipping_charges = self.total_shipping_charges
 
 	def get_response_from_check_coupons_api(self, cart_items, data):
@@ -604,3 +600,10 @@ class CartService:
 		if data.get('shipping_address') is not None:
 			address = self.save_address_and_get_hash(data)
 			cart.shipping_address_ref = address.address_hash
+
+	def remove_cart(self, cart_reference_id):
+		if cart_reference_id is None:
+			ERROR.INTERNAL_ERROR.message = "Cart reference id can not be Null"
+			raise Exception(ERROR.INTERNAL_ERROR)
+		db.session.query(Cart_Item).filter(Cart_Item.cart_id == cart_reference_id).delete()
+		db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()

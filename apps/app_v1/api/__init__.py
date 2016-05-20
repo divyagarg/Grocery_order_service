@@ -2,6 +2,7 @@ import json
 import logging
 
 from config import APP_NAME
+import config
 from flask import g
 
 __author__ = 'divyagarg'
@@ -144,3 +145,10 @@ class NoSuchStatusException(Exception):
 	def __init__(self, error_detail):
 		self.code = error_detail.code
 		super(NoSuchStatusException, self).__init__(error_detail.message)
+
+
+def get_shipping_charges(total_price, total_discount):
+		if (total_price - total_discount) <= config.SHIPPING_COST_THRESHOLD and (
+					total_price - total_discount) > 0:
+			total_shipping_charges = float(config.SHIPPING_COST)
+			return total_shipping_charges

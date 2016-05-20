@@ -272,13 +272,21 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 			"delivery_type": {
 				FUNCTIONS: [{String: {}, Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
 			},
-			"delivery_date": {
+			"delivery_slot": {
 				REQUIRED: False,
-				FUNCTIONS: [{String: {}}]
-			},
-			"delivery_slot_time": {
-				REQUIRED: False,
-				FUNCTIONS: [{String: {}}]
+				FUNCTIONS: [
+					{List: {}}
+				],
+				SCHEMA: {
+					"sdd_slot": {
+						REQUIRED: False,
+						FUNCTIONS: [{String: {}}]
+					},
+					"ndd_slot": {
+						REQUIRED: False,
+						FUNCTIONS: [{String: {}}]
+					}
+				}
 			},
 			"geo_id": {
 				FUNCTIONS: [{String: {}}]
@@ -310,6 +318,10 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 				FUNCTIONS: [{String: {}}]
 			},
 			"total_discount": {
+				REQUIRED: False,
+				FUNCTIONS: [{String: {}}]
+			},
+			"total_shipping_charges":{
 				REQUIRED: False,
 				FUNCTIONS: [{String: {}}]
 			},

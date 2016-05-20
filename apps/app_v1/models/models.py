@@ -95,8 +95,7 @@ class Order(Base):
     shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'), nullable=False)
     billing_address_ref = db.Column(db.String(255))
     delivery_type = db.Column(Enum('NORMAL', 'SLOTTED'), nullable=False)
-    delivery_due_date = db.Column(db.Date)
-    delivery_slot = db.Column(Enum('09:12', '12:15', '15:18', '18:21'))
+    delivery_slot = db.Column(db.String(512))
     freebie = db.Column(db.String(255))
     total_offer_price = db.Column(db.Float(precision='10,2'), nullable = False)
     total_display_price = db.Column(db.Float(precision='10,2'))
@@ -118,7 +117,6 @@ class Order_Item(db.Model):
     offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
     shipping_charge = db.Column(db.Float(precision='10,2'), default=0.0)
     item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
-    order_partial_discount = db.Column(db.Float(precision='10,2'), default=0.0)
     transfer_price = db.Column(db.Float(precision= '10,2'), default =0.0)
     order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
 
