@@ -106,7 +106,7 @@ class Order(Base):
     payment = db.relationship('Payment', backref='Order')
     orderItem = db.relationship('Order_Item', backref='Order')
     Index('order_user_idx',  user_id)
-    status_id = db.Column(db.Integer, db.ForeignKey('status.id'))
+    status_id = db.Column(db.Integer, db.ForeignKey('status.id'), nullable = False)
 
 
 

@@ -1,13 +1,13 @@
 """empty message
 
-Revision ID: 5fd0f1e7f09c
+Revision ID: 9707f81164c0
 Revises: None
-Create Date: 2016-05-10 20:06:33.421359
+Create Date: 2016-05-20 11:16:37.058356
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '5fd0f1e7f09c'
+revision = '9707f81164c0'
 down_revision = None
 
 from alembic import op
@@ -29,6 +29,13 @@ def upgrade():
     sa.Column('address_hash', sa.String(length=255), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('address_hash')
+    )
+    op.create_table('status',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('status_code', sa.String(length=255), nullable=False),
+    sa.Column('status_description', sa.String(length=255), nullable=True),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('status_code')
     )
     op.create_table('cart',
     sa.Column('created_on', sa.DateTime(), server_default=sa.text(u'now()'), nullable=True),
@@ -56,6 +63,7 @@ def upgrade():
     sa.Column('created_on', sa.DateTime(), server_default=sa.text(u'now()'), nullable=True),
     sa.Column('updated_on', sa.DateTime(), server_default=sa.text(u'now()'), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('parent_order_id', sa.String(length=255), nullable=True),
     sa.Column('order_reference_id', sa.String(length=255), nullable=False),
     sa.Column('geo_id', sa.BigInteger(), nullable=False),
     sa.Column('user_id', sa.String(length=255), nullable=False),
@@ -68,11 +76,19 @@ def upgrade():
     sa.Column('delivery_due_date', sa.Date(), nullable=True),
     sa.Column('delivery_slot', sa.Enum('09:12', '12:15', '15:18', '18:21'), nullable=True),
     sa.Column('freebie', sa.String(length=255), nullable=True),
+    sa.Column('total_offer_price', sa.Float(precision='10,2'), nullable=False),
+    sa.Column('total_display_price', sa.Float(precision='10,2'), nullable=True),
+    sa.Column('total_discount', sa.Float(precision='10,2'), nullable=True),
+    sa.Column('total_shipping', sa.Float(precision='10,2'), nullable=True),
+    sa.Column('total_payble_amount', sa.Float(precision='10,2'), nullable=True),
+    sa.Column('status_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['shipping_address_ref'], ['address.address_hash'], ),
+    sa.ForeignKeyConstraint(['status_id'], ['status.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('order_reference_id')
     )
-    op.create_index('order_geo_user_idx', 'order', ['geo_id', 'user_id'], unique=False)
+    op.create_index(op.f('ix_order_parent_order_id'), 'order', ['parent_order_id'], unique=False)
+    op.create_index('order_user_idx', 'order', ['user_id'], unique=False)
     op.create_table('cart__item',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('cart_id', sa.String(length=255), nullable=False),
@@ -82,6 +98,7 @@ def upgrade():
     sa.Column('offer_price', sa.Float(precision='10,2'), nullable=True),
     sa.Column('display_price', sa.Float(precision='10,2'), nullable=True),
     sa.Column('item_discount', sa.Float(precision='10,2'), nullable=True),
+    sa.Column('transfer_price', sa.Float(precision='10,2'), nullable=True),
     sa.Column('same_day_delivery', sa.String(length=255), nullable=True),
     sa.ForeignKeyConstraint(['cart_id'], ['cart.cart_reference_uuid'], ),
     sa.PrimaryKeyConstraint('id')
@@ -96,6 +113,7 @@ def upgrade():
     sa.Column('shipping_charge', sa.Float(precision='10,2'), nullable=True),
     sa.Column('item_discount', sa.Float(precision='10,2'), nullable=True),
     sa.Column('order_partial_discount', sa.Float(precision='10,2'), nullable=True),
+    sa.Column('transfer_price', sa.Float(precision='10,2'), nullable=True),
     sa.Column('order_id', sa.String(length=255), nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['order.order_reference_id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -103,10 +121,7 @@ def upgrade():
     op.create_index(op.f('ix_order__item_item_id'), 'order__item', ['item_id'], unique=False)
     op.create_table('payment',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('total_offer_price', sa.Float(precision='10,2'), nullable=False),
-    sa.Column('total_display_price', sa.Float(precision='10,2'), nullable=True),
-    sa.Column('total_discount', sa.Float(precision='10,2'), nullable=True),
-    sa.Column('payble_amount', sa.Float(precision='10,2'), nullable=True),
+    sa.Column('paid_amount', sa.Float(precision='10,2'), nullable=True),
     sa.Column('payment_mode', sa.String(length=255), nullable=False),
     sa.Column('payment_transaction_id', sa.String(length=255), nullable=True),
     sa.Column('order_id', sa.String(length=255), nullable=False),
@@ -123,9 +138,11 @@ def downgrade():
     op.drop_table('order__item')
     op.drop_index(op.f('ix_cart__item_cart_item_id'), table_name='cart__item')
     op.drop_table('cart__item')
-    op.drop_index('order_geo_user_idx', table_name='order')
+    op.drop_index('order_user_idx', table_name='order')
+    op.drop_index(op.f('ix_order_parent_order_id'), table_name='order')
     op.drop_table('order')
     op.drop_index('cart_geo_user_idx', table_name='cart')
     op.drop_table('cart')
+    op.drop_table('status')
     op.drop_table('address')
     ### end Alembic commands ###

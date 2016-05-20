@@ -40,7 +40,8 @@ class ERROR(object):
 	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 1022, message="Non existing item can not be deleted")
 	VALIDATION_ERROR = ERROR_DETAIL(code=1023, message="Input data is incorrect")
 	NO_SUCH_CART_EXIST = ERROR_DETAIL(code=1024, message="No such cart exist")
-
+	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=1025, message="Shipping address is mandatory for Order placement")
+	INVALID_STATUS =ERROR_DETAIL(code=1026, message="No Such status Exist")
 
 
 def parse_request_data(body):
@@ -130,3 +131,16 @@ class FreebieNotApplicableException(Exception):
 	def __init__(self, error_detail):
 		self.code = error_detail.code
 		super(FreebieNotApplicableException, self).__init__(error_detail.message)
+class NoShippingAddressFoundException(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(NoShippingAddressFoundException, self).__init__(error_detail.message)
+
+class NoSuchStatusException(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(NoSuchStatusException, self).__init__(error_detail.message)

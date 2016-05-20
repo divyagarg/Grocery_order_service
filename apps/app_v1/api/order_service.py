@@ -1,17 +1,19 @@
 import json
 import logging
 import uuid
+from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
+from apps.app_v1.api.status_service import StatusService
 from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE
-from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item
+from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item, Status
 from config import APP_NAME
 import requests
 from flask import g, current_app
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
-	FreebieNotApplicableException
+	FreebieNotApplicableException, NoShippingAddressFoundException
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
@@ -35,8 +37,6 @@ class OrderService:
 		self.delivery_due_date = None
 		self.delivery_slot = None
 		self.selected_freebies = None
-		self.status_code = ORDER_STATUS.PENDING_STATUS.value
-
 		self.payment_mode = None
 		self.order = None
 		# self.now = datetime.datetime.utcnow()
@@ -59,7 +59,7 @@ class OrderService:
 		try:
 			if user_id is None or not isinstance(user_id, (unicode, str)):
 				return create_error_response(ERROR.VALIDATION_ERROR)
-			count = Order.query.filter(Order.user_id == user_id).filter(Order.status_code != ORDER_STATUS.CANCELLED.value).count()
+			count = db.session.query(func.count(distinct(Order.parent_order_id))).filter(Order.user_id == user_id).filter(Order.status_id == Status.id).filter(Status.status_code != ORDER_STATUS.CANCELLED.value).group_by(Order.parent_order_id).count()
 		except Exception as e:
 			Logger.error('{%s} Exception occured while fetching data from db {%s}' % (g.UUID, str(e)), exc_info=True)
 			ERROR.INTERNAL_ERROR.message = str(e)
@@ -102,6 +102,10 @@ class OrderService:
 					self.initialize_order_from_cart_db_data(request_data['data'])
 				else:
 					self.initialize_order_with_request_data(request_data['data'])
+			except RequiredFieldMissing as rfm:
+				Logger.error("[%s] cart is empty [%s]" %(g.UUID, rfm.message))
+				err = rfm
+				break
 			except NoSuchCartExistException as ncee:
 				Logger.error("[%s] Cart does not Exist [%s]" %(g.UUID, ncee.message))
 				err=ncee
@@ -156,7 +160,7 @@ class OrderService:
 
 		#6 Create two orders based on ndd and sdd and create a master order id
 			try:
-				order = self.create_and_save_order()
+				parent_reference_id = self.create_and_save_order()
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in saving order [%s]" %(g.UUID, str(e)), exc_info = True)
 				ERROR.INTERNAL_ERROR.message = str(e)
@@ -172,9 +176,13 @@ class OrderService:
 			db.session.rollback()
 			return create_error_response(err)
 		else:
-			db.session.commit()
-			return create_data_response(order.order_reference_id)
-
+			try:
+				db.session.commit()
+				return create_data_response(parent_reference_id)
+			except Exception as e:
+				Logger.error("[%s] Exception occured in committing db changes [%s]" %(g.UUID, str(e)))
+				ERROR.INTERNAL_ERROR = str(e)
+				return create_error_response(ERROR.INTERNAL_ERROR)
 
 	def initialize_order_from_cart_db_data(self, data):
 		cart_ref_id = data['cart_reference_uuid']
@@ -190,8 +198,12 @@ class OrderService:
 		self.total_offer_price = cart.total_offer_price
 		self.total_shipping_charges = cart.total_shipping_charges
 		self.total_discount = cart.total_discount
+		if cart.shipping_address_ref is None:
+			raise NoShippingAddressFoundException(ERROR.NO_SHIPPING_ADDRESS_FOUND)
 		self.shipping_address = cart.shipping_address_ref
 		self.payment_mode = cart.payment_mode
+		if cart.cartItem is None:
+			raise RequiredFieldMissing(ERROR.CART_EMPTY)
 		self.order_items = cart.cartItem
 		self.order_source_reference = data['order_source_reference']
 		if 'billing_address' in data:
@@ -224,7 +236,7 @@ class OrderService:
 	def fetch_items_price(self, list_of_item_ids):
 		req_data = {
 			"query": {
-				"type": [self.order_type],
+				"type": [self.order_type.lower()],
 				"filters": {
 					"id": list_of_item_ids
 				},
@@ -233,6 +245,7 @@ class OrderService:
 			"count": list_of_item_ids.__len__(),
 			"offset": 0
 		}
+		Logger.info("[%s] Request data for calculate price while creating order is [%s]" %(g.UUID, req_data))
 		response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'],
 								 data= json.dumps(req_data),
 								 headers={'Content-type': 'application/json'})
@@ -393,25 +406,26 @@ class OrderService:
 	def create_and_save_order(self):
 		if not self.split_order:
 			order = Order()
-			order.master_order_id = uuid.uuid1().hex
-			order.order_reference_id = order.master_order_id
+			order.parent_order_id = uuid.uuid1().hex
+			order.order_reference_id = order.parent_order_id
 
-			order_items = self.create_order_items(master_order_id=order.order_reference_id, sdd_order_id=None, ndd_order_id=None)
+			order_items = self.create_order_items(parent_order_id=order.order_reference_id, sdd_order_id=None, ndd_order_id=None)
 			order.orderItem = order_items
 
 			self.create_order(master_order = order, sdd_order = None, ndd_order =None)
 
 			db.session.add(order)
 			db.session.add_all(order_items)
+			return order.order_reference_id
 		else:
 			sdd_order = Order()
 			sdd_order.order_reference_id = uuid.uuid1().hex
-			sdd_order_items = self.create_order_items(master_order_id=None, sdd_order_id=sdd_order.order_reference_id, ndd_order_id=None)
+			sdd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=sdd_order.order_reference_id, ndd_order_id=None)
 			sdd_order.orderItem = sdd_order_items
 
 			ndd_order = Order()
 			ndd_order.order_reference_id = uuid.uuid1().hex
-			ndd_order_items = self.create_order_items(master_order_id=None, sdd_order_id=None, ndd_order_id=ndd_order.order_reference_id)
+			ndd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=None, ndd_order_id=ndd_order.order_reference_id)
 			ndd_order.orderItem = ndd_order_items
 
 			parent_reference_id = uuid.uuid1().hex
@@ -419,15 +433,13 @@ class OrderService:
 			sdd_order.parent_order_id = parent_reference_id
 			ndd_order.parent_order_id = parent_reference_id
 
-			self.create_order(master_order=None, sdd_order = sdd_order, ndd_order = None)
-			self.create_order(master_order=None, sdd_order = None, ndd_order = ndd_order)
-
-			db.session.add(sdd_order)
-			db.session.add(ndd_order)
+			self.create_order(master_order=None, sdd_order = sdd_order, ndd_order = ndd_order)
 			all_items = sdd_order_items + ndd_order_items
 			db.session.add_all(all_items)
+			db.session.add(sdd_order)
+			db.session.add(ndd_order)
 
-		return order
+			return parent_reference_id
 
 	def create_order(self, master_order, sdd_order, ndd_order):
 		if not self.split_order:
@@ -438,8 +450,6 @@ class OrderService:
 			self.save_common_order_data(ndd_order)
 			self.save_specific_order_data(order=None, sdd_order=sdd_order, ndd_order=ndd_order)
 
-
-
 	def save_common_order_data(self, order):
 		order.user_id = self.user_id
 		order.geo_id = self.geo_id
@@ -449,7 +459,11 @@ class OrderService:
 		order.delivery_type = self.delivery_type
 		order.delivery_slot = self.delivery_slot
 		order.delivery_due_date = self.delivery_due_date
-		order.status_code = ORDER_STATUS.PENDING_STATUS.value
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		order.total_discount =0.0
+		order.total_offer_price =0.0
+		order.total_display_price =0.0
+		order.total_payble_amount =0.0
 		if self.cart_reference_given:
 			order.shipping_address_ref = self.shipping_address
 		else:
@@ -459,6 +473,7 @@ class OrderService:
 										  shipping_address['pincode'], shipping_address['state'],
 										  shipping_address.get('email'), shipping_address.get('landmark'))
 			order.shipping_address_ref = address.address_hash
+		order.billing_address_ref = order.shipping_address_ref
 		if self.billing_address is not None:
 			billing_address = self.billing_address
 			address = Address.get_address(billing_address['name'], billing_address['mobile'],
@@ -508,10 +523,10 @@ class OrderService:
 
 
 
-	def create_order_items(self, master_order_id, sdd_order_id, ndd_order_id):
+	def create_order_items(self, parent_order_id, sdd_order_id, ndd_order_id):
 		order_item_list = list()
 		if self.cart_reference_given and self.split_order == False:
-			self.create_order_item_obj(master_order_id, self.item_id_to_item_obj_dict, order_item_list)
+			self.create_order_item_obj(parent_order_id, self.item_id_to_item_obj_dict, order_item_list)
 
 		elif self.cart_reference_given and self.split_order and sdd_order_id is not None:
 			self.create_order_item_obj(sdd_order_id, self.sdd_items_dict, order_item_list)
@@ -520,7 +535,7 @@ class OrderService:
 			self.create_order_item_obj(ndd_order_id, self.ndd_items_dict, order_item_list)
 
 		elif self.cart_reference_given == False and self.split_order == False:
-			self.create_order_item_json(master_order_id, self.item_id_to_item_json_dict, order_item_list)
+			self.create_order_item_json(parent_order_id, self.item_id_to_item_json_dict, order_item_list)
 
 		elif self.cart_reference_given == False and self.split_order and sdd_order_id is not None:
 			self.create_order_item_json(sdd_order_id, self.sdd_items_dict, order_item_list)

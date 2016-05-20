@@ -352,7 +352,7 @@ class CartService:
 	def fetch_product_price(self, items, data):
 		request_items_ids = list()
 		for item in items:
-			request_items_ids.append(item["item_uuid"])
+			request_items_ids.append(int(item["item_uuid"]))
 
 		order_type = VALID_ORDER_TYPES.GROCERY.value.lower()
 		if data.get('order_type') is not None:
@@ -380,6 +380,9 @@ class CartService:
 								 headers={'Content-type': 'application/json'})
 		json_data = json.loads(response.text)
 		Logger.info("{%s} Response got from calculate Price API is {%s}" % (g.UUID, json.dumps(json_data)))
+		if 'status' in json_data and json_data.get('status') != 200:
+			ERROR.INTERNAL_ERROR.message = json_data['msg']
+			raise Exception(ERROR.INTERNAL_ERROR)
 		return json_data['results']
 
 	def generate_response(self, new_items, cart):
