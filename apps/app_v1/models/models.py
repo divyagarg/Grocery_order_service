@@ -126,7 +126,7 @@ class Payment(db.Model):
     paid_amount = db.Column(db.Float(precision='10,2'), default=0.0)
     payment_mode = db.Column(db.String(255), nullable=False)
     payment_transaction_id = db.Column(db.String(255))
-    order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
+    order_id = db.Column(db.String(255), db.ForeignKey('order.parent_order_id'), nullable=False)
 
 class Status(db.Model):
      id = db.Column(db.Integer, primary_key=True, autoincrement=True)

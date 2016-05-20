@@ -507,21 +507,28 @@ class OrderService:
 			order.total_display_price = self.total_display_price
 			order.total_offer_price = self.total_offer_price
 			order.total_shipping = get_shipping_charges(order.total_offer_price, order.total_discount)
+			Logger.info("[%s] Total offer price is [%s], Total shipping cost is [%s]" %(g.UUID, order.total_offer_price, order.total_shipping))
+			if order.total_shipping != self.total_shipping_charges:
+				raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
 			order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
 		elif sdd_order is not None and ndd_order is not None:
 			if self.cart_reference_given:
 				for sdd_order_item in self.sdd_items_dict.values():
 					sdd_order.total_discount += sdd_order_item.item_discount
-					sdd_order.total_display_price += sdd_order_item.display_price
-					sdd_order.total_offer_price += sdd_order_item.offer_price
+					sdd_order.total_display_price += sdd_order_item.display_price * sdd_order_item.quantity
+					sdd_order.total_offer_price += sdd_order_item.offer_price * sdd_order_item.quantity
 				sdd_order.total_shipping = self.total_shipping_charges
+				Logger.info("[%s] SDD Order: Total offer price is [%s], Total shipping cost is [%s]" %(g.UUID, sdd_order.total_offer_price, sdd_order.total_shipping))
+				if sdd_order.total_shipping != self.total_shipping_charges:
+					raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
 				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
 
 				for ndd_order_item in self.ndd_items_dict.values():
 					ndd_order.total_discount += ndd_order_item.item_discount
-					ndd_order.total_display_price += ndd_order_item.display_price
-					ndd_order.total_offer_price += ndd_order_item.offer_price
+					ndd_order.total_display_price += ndd_order_item.display_price * ndd_order_item.quantity
+					ndd_order.total_offer_price += ndd_order_item.offer_price * ndd_order_item.quantity
 				ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
+				Logger.info("[%s] SDD Order: Total offer price is [%s]" %(g.UUID, ndd_order.total_offer_price))
 				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
 			else:
 				for sdd_order_item in self.sdd_items_dict.values():
@@ -530,8 +537,8 @@ class OrderService:
 					offer_price = float(sdd_order_item["offer_price"]) if sdd_order_item["offer_price"] is not None else 0.0
 
 					sdd_order.total_discount +=item_discount
-					sdd_order.total_display_price += display_price
-					sdd_order.total_offer_price += offer_price
+					sdd_order.total_display_price += display_price * sdd_order_item["quantity"]
+					sdd_order.total_offer_price += offer_price * sdd_order_item["quantity"]
 
 				sdd_order.total_shipping = get_shipping_charges(self.total_offer_price, self.total_discount)
 				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
@@ -542,8 +549,8 @@ class OrderService:
 					offer_price = float(ndd_order_item["offer_price"]) if ndd_order_item["offer_price"] is not None else 0.0
 
 					ndd_order.total_discount += item_discount
-					ndd_order.total_display_price += display_price
-					ndd_order.total_offer_price += offer_price
+					ndd_order.total_display_price += display_price * ndd_order_item["quantity"]
+					ndd_order.total_offer_price += offer_price * ndd_order_item["quantity"]
 				ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
 				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
 

@@ -42,7 +42,8 @@ class ERROR(object):
 	VALIDATION_ERROR = ERROR_DETAIL(code=1023, message="Input data is incorrect")
 	NO_SUCH_CART_EXIST = ERROR_DETAIL(code=1024, message="No such cart exist")
 	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=1025, message="Shipping address is mandatory for Order placement")
-	INVALID_STATUS =ERROR_DETAIL(code=1026, message="No Such status Exist")
+	INVALID_STATUS = ERROR_DETAIL(code=1026, message="No Such status Exist")
+	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=1027, message="Shipping charges changed")
 
 
 def parse_request_data(body):
@@ -148,7 +149,8 @@ class NoSuchStatusException(Exception):
 
 
 def get_shipping_charges(total_price, total_discount):
+		total_shipping_charges =0.0
 		if (total_price - total_discount) <= config.SHIPPING_COST_THRESHOLD and (
 					total_price - total_discount) > 0:
 			total_shipping_charges = float(config.SHIPPING_COST)
-			return total_shipping_charges
+		return total_shipping_charges

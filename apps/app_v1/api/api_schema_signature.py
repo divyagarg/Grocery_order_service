@@ -322,7 +322,6 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 				FUNCTIONS: [{String: {}}]
 			},
 			"total_shipping_charges":{
-				REQUIRED: False,
 				FUNCTIONS: [{String: {}}]
 			},
 			"orderitems": {
