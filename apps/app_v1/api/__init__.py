@@ -21,7 +21,7 @@ class ERROR(object):
 	PRODUCT_DISPLAY_PRICE_CHANGED = ERROR_DETAIL(code=1003, message="Product display prices changed")
 	PRODUCT_AVAILABILITY_CHANGED = ERROR_DETAIL(code=1004, message="Product is not available in the given quantity")
 	PAYMENT_MODE_NOT_ALLOWED = ERROR_DETAIL(code=1005, message="Selected Payment mode is not applicable for this order")
-	FREEBIE_NOT_ALLOWED = ERROR_DETAIL(code=1006, message="Freebie not allowed for this order")
+	FREEBIE_NOT_ALLOWED = ERROR_DETAIL(code=1006, message="Freebie is not correct")
 	COUPON_NOT_APPLIED_FOR_CHANNEL = ERROR_DETAIL(code=1007, message="Coupon is not applicable for this channel")
 	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=1008, message="Coupon service returning failure status")
 	INTERNAL_ERROR = ERROR_DETAIL(code=1009, message=None)
@@ -39,6 +39,8 @@ class ERROR(object):
 	INCORRECT_DATA = ERROR_DETAIL(code=1021, message="Zero quantity can not be added")
 	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 1022, message="Non existing item can not be deleted")
 	VALIDATION_ERROR = ERROR_DETAIL(code=1023, message="Input data is incorrect")
+	NO_SUCH_CART_EXIST = ERROR_DETAIL(code=1024, message="No such cart exist")
+
 
 
 def parse_request_data(body):
@@ -99,3 +101,32 @@ class QuantityNotAvailableException(Exception):
 	def __init__(self, error_detail):
 		self.code = error_detail.code
 		super(QuantityNotAvailableException, self).__init__(error_detail.message)
+
+
+class NoSuchCartExistException(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(NoSuchCartExistException, self).__init__(error_detail.message)
+
+class PriceChangedException(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(PriceChangedException, self).__init__(error_detail.message)
+
+class DiscountHasChangedException(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(DiscountHasChangedException, self).__init__(error_detail.message)
+
+class FreebieNotApplicableException(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(FreebieNotApplicableException, self).__init__(error_detail.message)

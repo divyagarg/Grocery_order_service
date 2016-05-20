@@ -1,12 +1,18 @@
+import json
 import logging
-from apps.app_v1.models import ORDER_STATUS
-
-from apps.app_v1.models.models import Order
+import uuid
+from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
+	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
+from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE
+from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item
 from config import APP_NAME
-# from apps.app_v1.api import error_code, error_messages
-from flask import g
+import requests
+from flask import g, current_app
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
-from apps.app_v1.api import ERROR
+from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
+	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
+	FreebieNotApplicableException
+from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
 
@@ -14,6 +20,40 @@ Logger = logging.getLogger(APP_NAME)
 
 
 class OrderService:
+
+	def __init__(self):
+		self.cart_reference_id = None
+		self.order_reference_id = None
+		self.geo_id = None
+		self.user_id = None
+		self.order_type = None
+		self.order_source_reference =None
+		self.promo_codes = None
+		self.shipping_address = None
+		self.billing_address = None
+		self.delivery_type = DELIVERY_TYPE.NORMAL_DELIVERY.value
+		self.delivery_due_date = None
+		self.delivery_slot = None
+		self.selected_freebies = None
+		self.status_code = ORDER_STATUS.PENDING_STATUS.value
+
+		self.payment_mode = None
+		self.order = None
+		# self.now = datetime.datetime.utcnow()
+		self.total_offer_price = 0.0
+		self.total_shipping_charges = 0.0
+		self.total_discount = 0.0
+		self.total_display_price = 0.0
+		self.total_payble_amount =0.0
+		self.order_items = None
+
+		self.item_id_to_item_obj_dict = None
+		self.item_id_to_item_json_dict = None
+
+		self.cart_reference_given = None
+		self.sdd_items_dict = {}
+		self.ndd_items_dict = {}
+		self.split_order = False
 
 	def get_count_of_orders_of_user(self, user_id):
 		try:
@@ -28,397 +68,491 @@ class OrderService:
 		return create_data_response({"count": count})
 
 
-    # def __init__(self):
-    #     self.billing_address = None
-    #     self.shipping_address = None
-    #     self.reference_orderid = None
-    #     self.payment_mode = None
-    #     self.order_status = ORDER_STATUS.CREATED.value
-    #     self.order = None
-    #     self.now = datetime.datetime.utcnow()
-    #     self.total_offer_price = 0.0
-    #     self.total_shipping = 0.0
-    #     self.total_discount = 0.0
-    #     self.total_display_price = 0.0
-    #     self.delivery_charges = 0.0
-    #     self.cart_reference_id = None
-    #     self.freebies = None
-    #     self.delivery_type = DELIVERY_TYPE.NORMAL_DELIVERY.value
-    #     self.delivery_date = None
-    #     self.delivery_slot_time = None
-    #     self.geo_id = None
-    #     self.user_id = None
-    #     self.promo_codes = None
-    #     self.order_type = None
-    #     self.order_source_reference = ORDER_SOURCE_REFERENCE.WEB.value
-    #     self.order_items = None
+
+	def createorder(self, body):
+		error = True
+		err = None
+
+		while True:
+
+		#1 Parse request
+			request_data = parse_request_data(body)
+			if "cart_reference_uuid" in request_data.get('data'):
+				self.cart_reference_given = True
+			else:
+				self.cart_reference_given = False
+		#2. validate request data fields
+			try:
+				if self.cart_reference_given:
+					validate(request_data, CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE)
+				else:
+					validate(request_data, CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE)
+			except RequiredFieldMissing as rfm:
+				Logger.error("[%s] Required field is missing [%s]" %(g.UUID, rfm.message))
+				err=rfm
+				break
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in validating order creation request [%s]" %(g.UUID, str(e)), exc_info = True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+		#3. Initialize order Object
+			try:
+				if self.cart_reference_given:
+					self.initialize_order_from_cart_db_data(request_data['data'])
+				else:
+					self.initialize_order_with_request_data(request_data['data'])
+			except NoSuchCartExistException as ncee:
+				Logger.error("[%s] Cart does not Exist [%s]" %(g.UUID, ncee.message))
+				err=ncee
+				break
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in initializing order [%s]" %(g.UUID, str(e)), exc_info = True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+		#3. calculate and validate price
+			try:
+				self.calculate_and_validate_prices()
+			except SubscriptionNotFoundException:
+				Logger.error("[%s] Subscript not found for data [%s]" % (g.UUID, json.dumps(request_data['data'])))
+				err = ERROR.SUBSCRIPTION_NOT_FOUND
+				break
+			except  PriceChangedException as pce:
+				Logger.error("[%s] Data was stale, price has changed [%s]" %(g.UUID, json.dumps(request_data['data'])))
+				err = pce
+				break
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in calculating and validating prices of subscriptions [%s]" %(g.UUID, str(e)), exc_info = True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+
+		#4. check and apply coupons and freebie
+			# try:
+			# 	response_data = self.get_response_from_check_coupons_api()
+			# 	self.compare_discounts_and_freebies(response_data)
+			#
+			# except DiscountHasChangedException as dce:
+			# 	Logger.error("[%s] Discount has changed  [%s]" % (g.UUID, str(dce.message)))
+			# 	err = ERROR.DISCOUNT_CHANGED
+			# 	break
+			# except FreebieNotApplicableException as fnae:
+			# 	Logger.error("[%s] Freebie not applicable  [%s]" % (g.UUID, str(fnae.message)))
+			# 	err = ERROR.FREEBIE_NOT_ALLOWED
+			# 	break
+			# except CouponInvalidException as cie:
+			# 	Logger.error("[%s]Coupon Not valid  [%s]" % (g.UUID, str(cie.message)))
+			# 	err = cie
+			# 	break
+			# except Exception as e:
+			# 	Logger.error("[%s] Exception occurred in checking discounts [%s]" %(g.UUID, str(e)), exc_info = True)
+			# 	ERROR.INTERNAL_ERROR.message = str(e)
+			# 	err = ERROR.INTERNAL_ERROR
+			# 	break
+
+		#5. Segregate order items based on sdd and ndd, and add freebies with ndd
+			self.segregate_order_based_on_ndd_sdd()
+
+		#6 Create two orders based on ndd and sdd and create a master order id
+			try:
+				order = self.create_and_save_order()
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in saving order [%s]" %(g.UUID, str(e)), exc_info = True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+		#7 Save it in old system
+
+		#8 Order History
+			error = False
+			break
+
+		if error:
+			db.session.rollback()
+			return create_error_response(err)
+		else:
+			db.session.commit()
+			return create_data_response(order.order_reference_id)
+
+
+	def initialize_order_from_cart_db_data(self, data):
+		cart_ref_id = data['cart_reference_uuid']
+		cart = Cart.query.filter_by(cart_reference_uuid = cart_ref_id).first()
+		if cart is None:
+			raise NoSuchCartExistException(ERROR.NO_SUCH_CART_EXIST)
+		self.user_id = cart.user_id
+		self.geo_id = cart.geo_id
+		self.order_type = cart.order_type
+		self.promo_codes = cart.promo_codes
+		self.selected_freebies = cart.selected_freebee_items
+		self.total_display_price = cart.total_display_price
+		self.total_offer_price = cart.total_offer_price
+		self.total_shipping_charges = cart.total_shipping_charges
+		self.total_discount = cart.total_discount
+		self.shipping_address = cart.shipping_address_ref
+		self.payment_mode = cart.payment_mode
+		self.order_items = cart.cartItem
+		self.order_source_reference = data['order_source_reference']
+		if 'billing_address' in data:
+			self.billing_address = data.get('billing_address')
+		self.delivery_type = data.get('delivery_type')
+		self.delivery_due_date = data.get('delivery_due_date')
+		self.delivery_slot = data.get('delivery_slot')
+
+
+	def initialize_order_with_request_data(self, data):
+		self.user_id = data.get('user_id')
+		self.geo_id = data.get('geo_id')
+		self.order_type = data.get('order_type').lower()
+		self.order_source_reference = data.get('order_source_reference')
+		self.promo_codes = data.get('promo_codes')
+		self.payment_mode = data.get('payment_mode')
+		self.total_display_price = data.get('total_display_price')
+		self.total_offer_price = data.get('total_offer_price')
+		self.total_shipping_charges = data.get('total_shipping_charges')
+		self.total_discount = data.get('total_discount')
+		self.order_items = data.get('orderitems')
+		self.shipping_address = data.get('shipping_address')
+		if 'billing_address' in data:
+			self.billing_address = data.get('billing_address')
+		self.selected_freebies = data.get('selected_free_bees_code')
+		self.delivery_type = data.get('delivery_type')
+		self.delivery_due_date = data.get('delivery_due_date')
+		self.delivery_slot = data.get('delivery_slot')
+
+	def fetch_items_price(self, list_of_item_ids):
+		req_data = {
+			"query": {
+				"type": [self.order_type],
+				"filters": {
+					"id": list_of_item_ids
+				},
+				"select": ["deliveryDays", "transferPrice"]
+			},
+			"count": list_of_item_ids.__len__(),
+			"offset": 0
+		}
+		response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'],
+								 data= json.dumps(req_data),
+								 headers={'Content-type': 'application/json'})
+		json_data = json.loads(response.text)
+		Logger.info("{%s} Calculate Price API Request [%s], Response [%s]" % (g.UUID, json.dumps(req_data), json.dumps(json_data)))
+		return json_data['results']
+
+	def calculate_and_validate_prices(self):
+		list_of_items_ids = list()
+
+		if self.cart_reference_given:
+			item_id_to_item_obj_dict = {}
+			for order_item in self.order_items:
+				list_of_items_ids.append(int(order_item.cart_item_id))
+				item_id_to_item_obj_dict[int(order_item.cart_item_id)] = order_item
+			self.item_id_to_item_obj_dict = item_id_to_item_obj_dict
+		else:
+			item_id_to_item_json_dict = {}
+			for order_item in self.order_items:
+				list_of_items_ids.append(int(order_item.get('item_uuid')))
+				item_id_to_item_json_dict[int(order_item.get('item_uuid'))] = order_item
+			self.item_id_to_item_json_dict = item_id_to_item_json_dict
+
+		response = self.fetch_items_price(list_of_items_ids)
+		if response is None or response.__len__() == 0:
+			raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
+		order_item_dict = {}
+		for each_response_item in response[0].get('items')[0].get('items'):
+			order_item_dict[int(each_response_item.get('id'))] = each_response_item
+
+		if self.cart_reference_given:
+			self.compare_prices_of_items_objects(item_id_to_item_obj_dict, order_item_dict)
+		else:
+			self.compare_prices_of_items_json(item_id_to_item_json_dict, order_item_dict)
+
+	def compare_prices_of_items_objects(self,item_id_to_item_obj_dict,  order_item_dict):
+		for key in item_id_to_item_obj_dict:
+			src = order_item_dict.get(key)
+			if src is None:
+				raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
+			tar = item_id_to_item_obj_dict.get(key)
+			if src.get('basePrice') != tar.display_price:
+				raise PriceChangedException(ERROR.PRODUCT_DISPLAY_PRICE_CHANGED)
+			if src.get('offerPrice') != tar.offer_price:
+				raise PriceChangedException(ERROR.PRODUCT_OFFER_PRICE_CHANGED)
+			if (src.get('deliveryDays') == 0 and tar.same_day_delivery == 'NDD') or (src.get('deliveryDays') == 1 and tar.same_day_delivery == 'SDD'):
+				tar.same_day_delivery = 'SDD' if src.get('deliveryDays') ==0 else 'NDD'
+			if src.get('transferPrice') != tar.transfer_price:
+				tar.transfer_price = src.get('transferPrice')
+
+
+	def compare_prices_of_items_json(self, item_id_to_item_json_dict, order_item_dict):
+		for key in item_id_to_item_json_dict:
+			src = order_item_dict.get(key)
+			if src is None:
+				raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
+			tar = item_id_to_item_json_dict.get(key)
+			if src.get('basePrice') != tar.get('display_price'):
+				raise PriceChangedException(ERROR.PRODUCT_DISPLAY_PRICE_CHANGED)
+			if src.get('offerPrice') != tar.get('offer_price'):
+				raise PriceChangedException(ERROR.PRODUCT_OFFER_PRICE_CHANGED)
+			if (src.get('deliveryDays') == 0 and tar.get('same_day_delivery') == False) or (src.get('deliveryDays') == 1 and tar.get('same_day_delivery') == True):
+				tar["same_day_delivery"] = 'SDD' if src.get('deliveryDays') == 0 else 'NDD'
+			tar["transfer_price"] = src.get('transferPrice')
+
+
+	def get_response_from_check_coupons_api(self):
+		product_list = list()
+		if self.cart_reference_given:
+			for key in self.item_id_to_item_obj_dict:
+				product = {}
+				product["item_id"] = key
+				product["quantity"] = self.item_id_to_item_obj_dict[key].quantity
+				product["coupon_code"] = self.item_id_to_item_obj_dict[key].promo_codes
+				product_list.append(product)
+		else:
+			for key in self.item_id_to_item_json_dict:
+				product = {}
+				product["item_id"] = key
+				product["quantity"] = self.item_id_to_item_obj_dict[key].get('quantity')
+				product["coupon_code"] = self.item_id_to_item_obj_dict[key].get('promo_codes')
+				product_list.append(product)
+		req_data = {
+			"area_id": self.geo_id,
+			"customer_id": self.user_id,
+			'channel': self.order_source_reference,
+			"products": product_list,
+			"payment_mode": self.payment_mode
+		}
+		if self.promo_codes is not None and self.promo_codes != []:
+			coupon_codes = map(str, self.promo_codes)
+			req_data["coupon_codes"] = coupon_codes
+
+		header = {
+			'X-API-USER': current_app.config['X_API_USER'],
+			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
+			'Content-type': 'application/json'
+		}
+
+		response = requests.post(url=current_app.config['COUPON_CHECK_URL'], data=json.dumps(req_data),
+								 headers=header)
+		json_data = json.loads(response.text)
+		Logger.info(
+			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
+				g.UUID, json.dumps(req_data), json_data))
+		return json_data
+
+	def compare_discounts_and_freebies(self , response_data):
+		if response_data['success']:
+			if self.total_discount != float(response_data['totalDiscount']):
+				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
+
+			if self.selected_freebiesis is not None and self.selected_freebiesis not in response_data['benefits']:
+				raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_ALLOWED)
+
+			item_discount_dict = {}
+			for item in response_data['products']:
+				item_discount_dict[item['itemid']] = item
+
+			if self.cart_reference_given:
+				for key in self.item_id_to_item_obj_dict:
+					if self.item_id_to_item_obj_dict[key].item_discount != item_discount_dict[key].get('item_discount'):
+						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
+			else:
+				for key in self.item_id_to_item_json_dict:
+					if self.item_id_to_item_obj_dict[key].get('item_discount') != item_discount_dict[key].get(
+							'item_discount'):
+						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
+		else:
+			error_msg = response_data['error'].get('error')
+			ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
+			raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
+
+	def segregate_order_based_on_ndd_sdd(self):
+		if self.cart_reference_given:
+			for item_obj in self.item_id_to_item_obj_dict.values():
+				if item_obj.same_day_delivery == 'SDD':
+					self.sdd_items_dict[item_obj.cart_item_id] = item_obj
+				else:
+					self.ndd_items_dict[item_obj.cart_item_id] = item_obj
+			if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
+				self.split_order = False
+			else:
+				self.split_order = True
+
+		else:
+			for item_json in self.item_id_to_item_json_dict.values():
+				if item_json.get('same_day_delivery') == 'SDD':
+					self.sdd_items_dict[item_json['item_uuid']] = item_json
+				else:
+					self.ndd_items_dict[item_json['item_uuid']] = item_json
+			if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
+				self.split_order = False
+			else:
+				self.split_order = True
+
+
+	def create_and_save_order(self):
+		if not self.split_order:
+			order = Order()
+			order.master_order_id = uuid.uuid1().hex
+			order.order_reference_id = order.master_order_id
+
+			order_items = self.create_order_items(master_order_id=order.order_reference_id, sdd_order_id=None, ndd_order_id=None)
+			order.orderItem = order_items
+
+			self.create_order(master_order = order, sdd_order = None, ndd_order =None)
+
+			db.session.add(order)
+			db.session.add_all(order_items)
+		else:
+			sdd_order = Order()
+			sdd_order.order_reference_id = uuid.uuid1().hex
+			sdd_order_items = self.create_order_items(master_order_id=None, sdd_order_id=sdd_order.order_reference_id, ndd_order_id=None)
+			sdd_order.orderItem = sdd_order_items
+
+			ndd_order = Order()
+			ndd_order.order_reference_id = uuid.uuid1().hex
+			ndd_order_items = self.create_order_items(master_order_id=None, sdd_order_id=None, ndd_order_id=ndd_order.order_reference_id)
+			ndd_order.orderItem = ndd_order_items
+
+			parent_reference_id = uuid.uuid1().hex
+
+			sdd_order.parent_order_id = parent_reference_id
+			ndd_order.parent_order_id = parent_reference_id
+
+			self.create_order(master_order=None, sdd_order = sdd_order, ndd_order = None)
+			self.create_order(master_order=None, sdd_order = None, ndd_order = ndd_order)
+
+			db.session.add(sdd_order)
+			db.session.add(ndd_order)
+			all_items = sdd_order_items + ndd_order_items
+			db.session.add_all(all_items)
+
+		return order
+
+	def create_order(self, master_order, sdd_order, ndd_order):
+		if not self.split_order:
+			self.save_common_order_data(master_order)
+			self.save_specific_order_data(order=master_order, sdd_order=None, ndd_order=None)
+		else:
+			self.save_common_order_data(sdd_order)
+			self.save_common_order_data(ndd_order)
+			self.save_specific_order_data(order=None, sdd_order=sdd_order, ndd_order=ndd_order)
 
 
 
-    # def createOrder(self, body):
-    #     request_data = parse_request_data(body)
-    #     is_validated = False
-    #     try:
-    #         validate(request_data, CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE)
-    #         is_validated = True
-    #     except Exception as e:
-    #         Logger.error("[%s] Exception occurred in validating create order request body with cart reference {%s}" % (
-    #             g.UUID, str(e)))
-    #         return create_error_response(code=error_code['order_validation_request_error'],
-    #                                      message=error_messages['order_validation_request_error'])
-	#
-    #     if is_validated == False:
-    #         try:
-    #             validate(request_data, CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE)
-    #         except Exception as e:
-    #             Logger.error(
-    #                 "Exception occurred in validating create order request body without cart reference {%s}" % (
-    #                     g.UUID, str(e)))
-    #             return create_error_response(code=error_code['order_validation_request_error'],
-    #                                          message=error_messages['order_validation_request_error'])
-	#
-    #     print("Validation Success!!")
-    #     self.initialize_order_with_request(request_data)
-    #     print ("Initialization Of Order Object Successfull")
-    #     try:
-    #         self.validate_requested_data()
-    #         print("Requested data is Correct!!")
-    #     except ConnectionError as c:
-    #         raise c
-    #     except Exception:
-    #         raise Exception
-    #     order_id = self.save_order()
-    #     # print("Order saved [%s]" %order_id)
-    #     response = {}
-    #     response["order_id"] = order_id
-    #     return create_data_response(response)
-	#
-    # def initialize_order_with_request(self, request_data):
-    #     self.cart_reference_id = request_data['data'].get('cart_reference_uuid')
-    #     if self.cart_reference_id is not None:
-    #         cart = Cart().query.filter_by(cart_reference_uuid=self.cart_reference_id).first()
-    #         self.cart_items = cart.cartItem
-    #         self.total_offer_price = cart.total_offer_price
-    #         self.total_display_price = cart.total_display_price
-    #         self.total_discount = cart.total_discount
-    #     else:
-    #         self.order_items = request_data['data'].get('orderitems')
-    #         self.total_offer_price = request_data['data'].get('total_offer_price')
-    #         self.total_display_price = request_data['data'].get('total_display_price')
-    #         self.total_discount = request_data['data'].get('total_discount')
-	#
-    #     self.geo_id = request_data['data'].get('geo_id')
-    #     self.user_id = request_data['data'].get('user_id')
-    #     self.promo_codes = request_data['data'].get('promo_codes')
-    #     self.payment_mode = request_data['data'].get('payment_mode')
-    #     self.shipping_address = request_data['data'].get('shipping_address')
-    #     self.billing_address = self.shipping_address
-    #     if request_data['data'].get('billing_address') is not None:
-    #         self.billing_address = request_data['data'].get('billing_address')
-    #     self.delivery_type = request_data['data'].get('delivery_type')
-    #     self.delivery_date = request_data['data'].get('delivery_date')
-    #     self.delivery_slot_time = request_data['data'].get('delivery_slot_time')
-    #     self.freebies = request_data['data'].get('freebies')
-	#
-    # def validate_requested_data(self):
-    #     self.validate_coupons()
-    #     self.validate_product_price()
-	#
-    # def validate_discount_if_applicable(self):
-    #     if self.promo_codes is not None:
-    #         self.create_coupon_request_data()
-	#
-    # def validate_coupons(self):
-    #     product_list = list()
-    #     if self.cart_reference_id is not None:
-    #         for item in self.cart_items:
-    #             cart_item_dist = {}
-    #             cart_item_dist["item_id"] = item.cart_item_id
-    #             cart_item_dist["quantity"] = item.quantity
-    #             cart_item_dist["coupon_code"] = item.promo_codes
-    #             product_list.append(cart_item_dist)
-    #     else:
-    #         for item in self.order_items:
-    #             order_item_dist = {}
-    #             order_item_dist["item_id"] = item.item_id
-    #             order_item_dist["quantity"] = item.quantity
-    #             order_item_dist["coupon_code"] = item.promo_codes
-    #             product_list.append(order_item_dist)
-	#
-    #     data = {
-    #         "coupoun_codes": self.promo_codes,
-    #         "area_id": self.geo_id,
-    #         "customer_id": self.user_id,
-    #         "channel": self.order_source_reference,
-    #         "products": product_list
-	#
-    #         # "payment_mode": "COD"
-    #     }
-    #     req = Requests(url=current_app.config['COUPON_CHECK_URL'], method='POST', data=json.dumps(data),
-    #                    headers={'Content-type': 'application/json'})
-    #     try:
-    #         req.execute_in_background()
-    #         response = req.get_response()
-    #     except ConnectionError as e:
-    #         Logger.error("[%s] Not able to Connect to Product catalog URl")
-    #         raise e
-    #         return create_error_response(code=error_code["connection_error"],
-    #                                      message=error_messages["connection_error"])
-	#
-    #     if response is None:
-    #         # raise NetworkError("COUPON CHECK API not responding ")
-    #         response_data = {
-    #             "status": "success",
-    #             "totalDiscount": 0,
-    #             "products": [
-    #                 {
-    #                     "discount": 0,
-    #                     "item_id": 23,
-    #                     "quantity": 1
-    #                 },
-    #                 {
-    #                     "discount": 0,
-    #                     "item_id": 24,
-    #                     "quantity": 1
-    #                 }
-    #             ],
-    #             "success": "true",
-    #             "paymentMode": [
-    #                 "Prepaid"
-    #             ],
-    #             "channel": "WEB"
-    #         }
-    #     # Logger.info(
-    #     #     '{%s} Resonse text from url {%s} with data {%s} is {%s}' % (
-    #     #         g.UUID, current_app.config['COUPON_CHECK_URL'], data, response.text))
-    #     # response_data = json.loads(response.text)
-    #     if response_data['success']:
-    #         tot_discount = response_data['totalDiscount']
-    #         if tot_discount != self.total_discount:
-    #             Logger.error(
-    #                 "[%s] Discount provide by request is [%s] and return by coupon service is [%s] does not match" % (
-    #                     g.UUID, self.total_discount, tot_discount))
-    #             return create_error_response(code=error_code["discount_changed"],
-    #                                          message=error_messages["discount_changed"])
-    #         pay_mode = response_data['paymentMode']
-    #         if self.payment_mode not in pay_mode:
-    #             Logger.error(
-    #                 "[%s] Payment mode allowed for this order is [%s] but request payment mode is [%s] does not match" % (
-    #                     g.UUID, pay_mode, self.payment_mode))
-    #             return create_error_response(code=error_code["payment_mode_not_allowed"],
-    #                                          message=error_messages["payment_mode_not_allowed"])
-	#
-    #         if self.freebies is not None:
-    #             if response_data['benefits'] is None:
-    #                 Logger.error("[%s] Freebie selected by buyer is [%s] but coupon service didn't give any freebie" % (
-    #                     g.UUID, self.freebies))
-    #                 return create_error_response(code=error_code["freebie_not_allowed"],
-    #                                              message=error_messages["freebie_not_allowed"])
-	#
-    #             else:
-    #                 freebies_list = list()
-    #                 for each_benefit in response_data['benefits']:
-    #                     freebies_list.append(each_benefit["couponCode"])
-    #                 if self.freebies not in freebies_list:
-    #                     Logger.error(
-    #                         "[%s] Freebie selected by buyer is [%s] and coupon service provided freebies are [%s]" % (
-    #                             g.UUID, self.freebies, freebies_list))
-    #                     return create_error_response(code=error_code["freebie_not_allowed"],
-    #                                                  message=["freebie_not_allowed"])
-    #         if self.order_source_reference not in response_data['channel']:
-    #             Logger.error("[%s] Order source channel is [%s] but coupon is valid only for these channels [%s]" % (
-    #                 g.UUID, self.order_source_reference, response_data['channel']))
-    #             return create_error_response(code=error_code["coupon_not_applid_for_channel"],
-    #                                          message=error_messages["coupon_not_applid_for_channel"])
-    #     else:
-    #         Logger.error("Error occured while communicating with coupon service")
-    #         return create_error_response(code=error_code['coupon_service_returning_failure_status'],
-    #                                      message=error_messages['coupon_service_returning_failure_status'])
-	#
-    # def validate_product_price(self):
-    #     request_items = list()
-    #     if self.order_items is None:
-    #         for cart_item in self.cart_items:
-    #             request_item_detail = {}
-    #             request_item_detail["item_uuid"] = cart_item.cart_item_id
-    #             request_item_detail["quantity"] = cart_item.quantity
-    #             request_items.append(request_item_detail)
-    #     else:
-    #         for order_item in self.order_items:
-    #             request_item_detail = {}
-    #             request_item_detail["item_uuid"] = order_item.item_id
-    #             request_item_detail["quantity"] = order_item.quantity
-    #             request_items.append(request_item_detail)
-	#
-    #     data = {
-    #         "geo_id": self.geo_id,
-    #         "items": request_items
-    #     }
-    #     request_data = json.dumps(data)
-    #     Logger.info("{%s} Order API: Request data for calculate price API is {%s}" % (g.UUID, request_data))
-    #     req = Requests(url=current_app.config['PRODUCT_CATALOGUE_URL'], method='POST', data=request_data,
-    #                    headers={'Content-type': 'application/json'})
-    #     try:
-    #         req.execute_in_background()
-    #         response = req.get_response()
-    #         if response is None:
-    #             response = {
-    #                 "items": [
-    #                     {
-    #                         "item_uuid": "23",
-    #                         "display_price": 200,
-    #                         "offer_price": 180,
-    #                         "quantity": 1
-    #                     },
-    #                     {
-    #                         "item_uuid": "24",
-    #                         "display_price": 200,
-    #                         "offer_price": 180,
-    #                         "quantity": 1
-    #                     }
-    #                 ],
-    #                 "geo_id": "232"
-    #             }
-    #             # raise ConnectionError("No response")
-    #             json_data = response
-    #     except ConnectionError as e:
-    #         Logger.error("[%s] Not able to Connect to Product catalog URl [%s]" % (g.UUID, str(e)))
-    #         raise ConnectionError
-    #     # response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data,
-    #     #                          headers={'Content-type': 'application/json'})
-	#
-    #     # json_data = json.loads(response.text)
-    #     Logger.info("{%s} Order API: Response got from calculate Price API is {%s}" % (g.UUID, json.dumps(json_data)))
-    #     order_item_dict = {}
-    #     tot_offer_price = 0.0
-    #     tot_display_price = 0.0
-    #     print(json_data)
-    #     for response_json in json_data['items']:
-    #         print(response_json)
-    #         order_item_dict[response_json['item_uuid']] = response_json
-    #         tot_offer_price += response_json['offer_price']
-    #         tot_display_price += response_json['display_price']
-	#
-    #     if tot_offer_price != self.total_offer_price:
-    #         Logger.error(
-    #             "[%s] Total Price passed in request [%s] does not match with the response of calculate price API [%s]" % (
-    #                 g.UUID, self.total_offer_price, tot_offer_price))
-    #         return create_error_response(code=error_code["product_offer_price_changes"],
-    #                                      message=error_messages["product_offer_price_changes"])
-    #     elif tot_display_price != self.total_display_price:
-    #         Logger.error(
-    #             "[%s] Total Display Price passed in request [%s] does not match with the response of calculate price API [%s]" % (
-    #                 g.UUID, self.total_display_price, tot_display_price))
-    #         return create_error_response(code=error_code["product_display_price_changes"],
-    #                                      message=error_messages["product_display_price_changes"])
-	#
-    #     if self.order_items is not None:
-    #         for each_product in self.order_items:
-    #             json_order_item = order_item_dict.get(each_product['item_uuid'])
-    #             if json_order_item['offer_price'] != each_product['offer_price']:
-    #                 Logger.error(
-    #                     "[%s] Offer price passed in request [%s] does not match with the response of calculate price api [%s]" % (
-    #                         g.UUID, each_product['offer_price'], json_order_item['offer_price']))
-    #                 return create_error_response(code=error_code["product_offer_price_changes"],
-    #                                              message=error_messages["product_offer_price_changes"])
-    #             elif json_order_item['display_price'] != each_product['display_price']:
-    #                 Logger.error(
-    #                     "[%s] Display price passed in request [%s] does not match with the response of calculate price api [%s]" % (
-    #                         g.UUID, each_product['display_price'], json_order_item['display_price']))
-    #                 return create_error_response(code=error_code["product_display_price_changes"],
-    #                                              message=error_messages["product_display_price_changes"])
-    #     else:
-    #         for each_product in self.cart_items:
-    #             json_order_item = order_item_dict.get(each_product.cart_item_id)
-    #             if json_order_item['offer_price'] != each_product.offer_price:
-    #                 Logger.error(
-    #                     "[%s] Offer price passed in request [%s] does not match with the response of calculate price api [%s]" % (
-    #                         g.UUID, each_product.offer_price, json_order_item['offer_price']))
-    #                 return create_error_response(code=error_code["product_offer_price_changes"],
-    #                                              message=error_messages["product_offer_price_changes"])
-    #             elif json_order_item['display_price'] != each_product.display_price:
-    #                 Logger.error(
-    #                     "[%s] Display price passed in request [%s] does not match with the response of calculate price api [%s]" % (
-    #                         g.UUID, each_product.display_price, json_order_item['display_price']))
-    #                 return create_error_response(code=error_code["product_display_price_changes"],
-    #                                              message=error_messages["product_display_price_changes"])
-	#
-    #     return
-	#
-    # def save_order(self):
-	#
-    #     addr1 = self.shipping_address
-    #     shipping_address = Address()
-    #     shipping_address.name = addr1["name"]
-    #     shipping_address.mobile = addr1["mobile"]
-    #     shipping_address.street_1 = addr1["street_1"]
-    #     shipping_address.street_2 = addr1["street_2"]
-    #     shipping_address.city = addr1["city"]
-    #     shipping_address.pincode = addr1["pincode"]
-    #     shipping_address.state = addr1["state"]
-    #     shipping_address.address_hash = shipping_address.__hash__()
-    #     db.session.add(shipping_address)
-	#
-    #     addr2 = self.billing_address
-    #     billing_address = Address.get_address(addr2["name"], addr2["mobile"], addr2["street_1"], addr2["street_2"],
-    #                                           addr2["city"], addr2["pincode"], addr2["state"])
-    #     db.session.add(billing_address)
-	#
-    #     order = Order()
-    #     order.geo_id = self.geo_id
-    #     order.user_id = self.user_id
-    #     order.order_reference_id = uuid.uuid4().hex
-    #     order.order_type = self.order_type
-    #     order.order_source_reference = self.order_source_reference
-    #     order.promo_codes = str(self.promo_codes)
-    #     order.delivery_type = self.delivery_type
-    #     order.delivery_due_date = self.delivery_date
-    #     order.delivery_slot = self.delivery_slot_time
-    #     order.freebie = self.freebies
-    #     order.shipping_address_ref = shipping_address.address_hash
-    #     order.billing_address_ref = billing_address.address_hash
-    #     db.session.add(order)
-	#
-    #     payment = Payment()
-    #     payment.total_offer_price = self.total_offer_price
-    #     payment.total_display_price = self.total_display_price
-    #     payment.total_discount = self.total_discount
-    #     payment.amount = float(self.total_offer_price) - float(self.total_discount) + float(self.delivery_charges)
-    #     payment.payment_mode = self.payment_mode
-    #     payment.order_id = order.order_reference_id
-    #     db.session.add(payment)
-	#
-    #     order_items_list = list()
-    #     if self.cart_items is not None:
-    #         for item in self.cart_items:
-    #             print(item)
-    #             order_item = Order_Item()
-    #             order_item.order_id = order.order_reference_id
-    #             order_item.item_id = item.cart_item_id
-    #             order_item.quantity = item.quantity
-    #             order_item.display_price = item.display_price
-    #             order_item.offer_price = item.offer_price
-    #             order_item.item_discount = item.item_discount
-    #             order_item.order_partial_discount = item.order_partial_discount
-    #             order_items_list.append(order_item)
-	#
-    #     else:
-    #         items = self.order_items
-    #         no_of_items = items.__len__
-    #         item_level_discount = self.total_discount / no_of_items
-    #         for item in items:
-    #             print(item)
-    #             order_item = Order_Item()
-    #             order_item.order_id = order.order_reference_id
-    #             order_item.item_id = item.item_uuid
-    #             order_item.quantity = item.quantity
-    #             order_item.display_price = item.display_price
-    #             order_item.offer_price = item.order_price
-    #             order_item.item_discount = item.discount
-    #             order_item.order_partial_discount = item_level_discount
-    #             order_items_list.append(order_item)
-	#
-    #     db.session.add_all(order_items_list)
-    #     db.session.commit()
-    #     return order.order_reference_id
+	def save_common_order_data(self, order):
+		order.user_id = self.user_id
+		order.geo_id = self.geo_id
+		order.order_type = self.order_type
+		order.order_source_reference = self.order_source_reference
+		order.promo_codes = self.promo_codes
+		order.delivery_type = self.delivery_type
+		order.delivery_slot = self.delivery_slot
+		order.delivery_due_date = self.delivery_due_date
+		order.status_code = ORDER_STATUS.PENDING_STATUS.value
+		if self.cart_reference_given:
+			order.shipping_address_ref = self.shipping_address
+		else:
+			shipping_address = self.shipping_address
+			address = Address.get_address(shipping_address['name'], shipping_address['mobile'],
+										  shipping_address['address'], shipping_address['city'],
+										  shipping_address['pincode'], shipping_address['state'],
+										  shipping_address.get('email'), shipping_address.get('landmark'))
+			order.shipping_address_ref = address.address_hash
+		if self.billing_address is not None:
+			billing_address = self.billing_address
+			address = Address.get_address(billing_address['name'], billing_address['mobile'],
+										  billing_address['address'], billing_address['city'],
+										  billing_address['pincode'], billing_address['state'],
+										  billing_address.get('email'), billing_address.get('landmark'))
+			order.billing_address_ref = address.address_hash
 
+
+	def save_specific_order_data(self, order, sdd_order, ndd_order):
+		if not self.split_order:
+			order.freebie = self.selected_freebies
+			order.total_discount = self.total_discount
+			order.total_display_price = self.total_display_price
+			order.total_offer_price = self.total_offer_price
+			order.total_shipping = self.total_shipping_charges
+			order.total_payble_amount = self.total_offer_price - self.total_discount + self.total_shipping_charges
+		elif sdd_order is not None and ndd_order is not None:
+			if self.cart_reference_given:
+				for sdd_order_item in self.sdd_items_dict.values():
+					sdd_order.total_discount += sdd_order_item.item_discount
+					sdd_order.total_display_price += sdd_order_item.display_price
+					sdd_order.total_offer_price += sdd_order_item.offer_price
+				sdd_order.total_shipping = self.total_shipping_charges
+				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
+
+				for ndd_order_item in self.ndd_items_dict.values():
+					ndd_order.total_discount += ndd_order_item.item_discount
+					ndd_order.total_display_price += ndd_order_item.display_price
+					ndd_order.total_offer_price += ndd_order_item.offer_price
+				ndd_order.freebie = self.selected_freebies
+				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
+			else:
+				for sdd_order_item in self.sdd_items_dict.values():
+					sdd_order.total_discount += sdd_order_item["item_discount"]
+					sdd_order.total_display_price += sdd_order_item["display_price"]
+					sdd_order.total_offer_price += sdd_order_item["offer_price"]
+				sdd_order.total_shipping = self.total_shipping_charges
+				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
+
+				for ndd_order_item in self.ndd_items_dict.values():
+					ndd_order.total_discount += ndd_order_item["item_discount"]
+					ndd_order.total_display_price += ndd_order_item["display_price"]
+					ndd_order.total_offer_price += ndd_order_item["offer_price"]
+				ndd_order.freebie = self.selected_freebies
+				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
+
+
+
+	def create_order_items(self, master_order_id, sdd_order_id, ndd_order_id):
+		order_item_list = list()
+		if self.cart_reference_given and self.split_order == False:
+			self.create_order_item_obj(master_order_id, self.item_id_to_item_obj_dict, order_item_list)
+
+		elif self.cart_reference_given and self.split_order and sdd_order_id is not None:
+			self.create_order_item_obj(sdd_order_id, self.sdd_items_dict, order_item_list)
+
+		elif self.cart_reference_given and self.split_order and ndd_order_id is not None:
+			self.create_order_item_obj(ndd_order_id, self.ndd_items_dict, order_item_list)
+
+		elif self.cart_reference_given == False and self.split_order == False:
+			self.create_order_item_json(master_order_id, self.item_id_to_item_json_dict, order_item_list)
+
+		elif self.cart_reference_given == False and self.split_order and sdd_order_id is not None:
+			self.create_order_item_json(sdd_order_id, self.sdd_items_dict, order_item_list)
+
+		elif self.cart_reference_given == False and self.split_order and ndd_order_id is not None:
+			self.create_order_item_json(ndd_order_id, self.ndd_items_dict, order_item_list)
+
+		return order_item_list
+
+
+	def create_order_item_obj(self, order_id, src_dict, list_of_items):
+		for src_item in src_dict.values():
+			order_item = Order_Item()
+			order_item.item_id = src_item.cart_item_id
+			order_item.quantity = src_item.quantity
+			order_item.item_discount = src_item.item_discount
+			order_item.offer_price = src_item.offer_price
+			order_item.display_price = src_item.display_price
+			order_item.transfer_price = src_item.transfer_price
+			# order_item.order_partial_discount = src_item.order_partial_discount
+			order_item.order_id = order_id
+			list_of_items.append(order_item)
+
+	def create_order_item_json(self, order_id, src_dict, list_of_items):
+		for src_item in src_dict.values():
+			order_item = Order_Item()
+			order_item.item_id = src_item["item_uuid"]
+			order_item.quantity = src_item["quantity"]
+			order_item.item_discount = src_item["item_discount"]
+			order_item.offer_price = src_item["offer_price"]
+			order_item.display_price = src_item["display_price"]
+			order_item.transfer_price = src_item.get('transfer_price')
+			# order_item.order_partial_discount = src_item.get('order_partial_discount')
+			order_item.order_id = order_id
+			list_of_items.append(order_item)

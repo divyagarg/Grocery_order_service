@@ -85,6 +85,7 @@ class Cart_Item(db.Model):
 class Order(Base):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    parent_order_id = db.Column(db.String(255), index = True)
     order_reference_id = db.Column(db.String(255), nullable=False, unique=True)
     geo_id = db.Column(db.BigInteger, nullable=False)
     user_id = db.Column(db.String(255), nullable=False)
@@ -100,11 +101,13 @@ class Order(Base):
     total_offer_price = db.Column(db.Float(precision='10,2'), nullable = False)
     total_display_price = db.Column(db.Float(precision='10,2'))
     total_discount = db.Column(db.Float(precision='10,2'))
+    total_shipping = db.Column(db.Float(precision='10,2'), default=0.0)
     total_payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
     payment = db.relationship('Payment', backref='Order')
     orderItem = db.relationship('Order_Item', backref='Order')
     Index('order_user_idx',  user_id)
-    status_code = db.Column(db.String(255), db.ForeignKey('status.status_code'))
+    status_id = db.Column(db.Integer, db.ForeignKey('status.id'))
+
 
 
 class Order_Item(db.Model):
