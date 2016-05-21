@@ -137,7 +137,15 @@ class CartService:
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
-
+			# Selected Freebie
+			try:
+				if data.get('selected_freebee_code') is not None:
+					cart.selected_freebee_items = json.dumps(data.get('selected_freebee_code'))
+			except Exception as e:
+				Logger.error('[%s] Selected Freebee code could not be set in cart [%s]' % (g.UUID, str(e)), exc_info=True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
 
 			# 6 Save cart
 			try:
@@ -241,7 +249,7 @@ class CartService:
 
 			# 4. apply shipping charges
 			try:
-				self.get_shipping_charges()
+				self.total_shipping_charges = get_shipping_charges(self.total_price, self.total_discount)
 			except Exception as e:
 				Logger.error(
 					"[%s] Exception occurred in getting shipping charges for cart item [%s]" % (g.UUID, str(e)), exc_info=True)
@@ -571,26 +579,23 @@ class CartService:
 				Logger.info("[%s] Cart is empty" % g.UUID)
 				raise EmptyCartException(ERROR.CART_EMPTY)
 
-			request_items = list()
-			for key in updated_cart_items:
-				request_item_detail = {"item_uuid": key, "quantity": updated_cart_items[key].quantity}
-				request_items.append(request_item_detail)
-			for key in newly_added_cart_items:
-				request_item_detail = {"item_uuid": key, "quantity": newly_added_cart_items[key].quantity}
-				request_items.append(request_item_detail)
+		request_items = list()
+		for cart_item in self.item_id_to_existing_item_dict.values():
+			request_item_detail = {"item_uuid": cart_item.cart_item_id, "quantity": cart_item.quantity}
+			request_items.append(request_item_detail)
 
-			if updated_cart_items.values().__len__()>0 or newly_added_cart_items.values().__len__()>0:
-				order_item_price_dict = self.check_prices_of_item(request_items, data)
-				Logger.info("order_item_price_dict is [%s]" %(json.dumps(order_item_price_dict)))
-				for key in self.item_id_to_existing_item_dict:
-					existing_cart_item = self.item_id_to_existing_item_dict[key]
-					key = int(key)
-					cart_item = order_item_price_dict.get(key)
-					if cart_item is not None:
-						existing_cart_item.same_day_delivery = 'SDD' if cart_item.get('deliveryDays') ==0 else 'NDD'
-						existing_cart_item.display_price = cart_item.get('basePrice')
-						existing_cart_item.offer_price = cart_item.get('offerPrice')
-						existing_cart_item.transfer_price = cart_item.get('transferPrice')
+		if self.item_id_to_existing_item_dict.values().__len__() > 0:
+			order_item_price_dict = self.check_prices_of_item(request_items, data)
+			Logger.info("order_item_price_dict is [%s]" % (json.dumps(order_item_price_dict)))
+			for key in self.item_id_to_existing_item_dict:
+				existing_cart_item = self.item_id_to_existing_item_dict[key]
+				key = int(key)
+				cart_item = order_item_price_dict.get(key)
+				if cart_item is not None:
+					existing_cart_item.same_day_delivery = 'SDD' if cart_item.get('deliveryDays') == 0 else 'NDD'
+					existing_cart_item.display_price = cart_item.get('basePrice')
+					existing_cart_item.offer_price = cart_item.get('offerPrice')
+					existing_cart_item.transfer_price = cart_item.get('transferPrice')
 
 	def check_for_coupons_applicable(self, data):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data)

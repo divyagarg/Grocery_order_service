@@ -59,6 +59,7 @@ def get_count_of_orders_of_a_user(user_id):
 @logrequest
 def createOrder():
     logger.info(
+
         '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
     try:
