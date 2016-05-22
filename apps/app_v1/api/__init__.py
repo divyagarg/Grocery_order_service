@@ -1,5 +1,7 @@
 import json
 import logging
+import random
+import time
 
 from config import APP_NAME
 import config
@@ -154,3 +156,9 @@ def get_shipping_charges(total_price, total_discount):
 					total_price - total_discount) > 0:
 			total_shipping_charges = float(config.SHIPPING_COST)
 		return total_shipping_charges
+
+def generate_reference_order_id():
+	longtime = str(int(time.time()))
+	longtime = 'ORD'+ longtime[6:] + longtime[:4]
+	reference_orderid = longtime + str(random.randint(10000,100000))
+	return reference_orderid

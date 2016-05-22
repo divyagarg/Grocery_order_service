@@ -14,7 +14,7 @@ from flask import g, current_app
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
-	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges
+	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
@@ -422,7 +422,7 @@ class OrderService:
 
 
 	def create_and_save_order(self):
-		self.parent_reference_id = uuid.uuid1().hex
+		self.parent_reference_id = generate_reference_order_id()
 		if not self.split_order:
 			order = Order()
 			order.parent_order_id = self.parent_reference_id
