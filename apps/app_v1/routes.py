@@ -37,6 +37,22 @@ def createOrUpdateCart():
         return create_error_response(ERROR.INTERNAL_ERROR)
 
 
+@app_v1.route('/add_to_cart', methods =['POST'])
+@jsonify
+@logrequest
+def add_item_to_cart_and_get_count_of_items():
+    logger.info(
+        '%s : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
+    g.UUID = uuid.uuid4()
+    try:
+        cartservice = CartService()
+        return cartservice.add_item_to_cart(request.data)
+    except Exception as e:
+        logger.error("{%s} Exception occured in getting count of cart items {%s}" % (g.UUID, str(e)), exc_info=True)
+        ERROR.INTERNAL_ERROR.message = str(e)
+        return create_error_response(ERROR.INTERNAL_ERROR)
+
+
 
 @app_v1.route('/user/<user_id>', methods = ['GET'])
 @jsonify

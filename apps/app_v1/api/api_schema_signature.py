@@ -72,7 +72,6 @@ CREATE_CART_SCHEMA = {
 				]
 			},
 			"order_type": {
-				REQUIRED: False,
 				FUNCTIONS: [
 					{Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
 				]
@@ -420,6 +419,59 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 			"order_source_reference": {
 				FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
 			}
+		}
+	}
+}
+
+
+GET_COUNT_OF_CART_ITEMS = {
+	"data": {
+		FUNCTIONS: [
+			{Dictionary: {}}
+		],
+		SCHEMA: {
+			"geo_id": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			},
+			"user_id": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			},
+			"order_type": {
+				REQUIRED: True,
+				FUNCTIONS: [
+					{Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
+				]
+			},
+			"order_source_reference": {
+				REQUIRED: True,
+				FUNCTIONS: [
+					{Contained: {"contained_in": [d.value for d in ORDER_SOURCE_REFERENCE]}}
+				]
+			},
+			"orderitems": {
+				REQUIRED:False,
+				FUNCTIONS: [
+					{List: {}}
+				],
+				SCHEMA: {
+					"quantity": {
+						FUNCTIONS: [
+							{Integer: {"min_value": 0}}
+						]
+					},
+					"item_uuid": {
+						FUNCTIONS: [
+							{String: {}}
+						]
+					}
+				}
+			}
+
+
 		}
 	}
 }

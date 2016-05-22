@@ -98,6 +98,8 @@ class CartService:
 				cart.total_shipping_charges = 0.0
 				cart.promo_codes = None
 				self.is_cart_empty = True
+				err = ERROR.CART_EMPTY
+				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in updating cart items [%s]" % (g.UUID, str(e)), exc_info = True)
 				ERROR.INTERNAL_ERROR.message = str(e)
@@ -400,7 +402,8 @@ class CartService:
 			"total_discount": self.total_discount,
 			"total_shipping_charges": self.total_shipping_charges,
 			"cart_reference_uuid": cart.cart_reference_uuid,
-			"benefits": self.benefits
+			"benefits": self.benefits,
+			"cart_items_count": self.get_count_of_items(new_items)
 		}
 
 		if new_items is not None:
@@ -551,7 +554,7 @@ class CartService:
 
 			for data_item in data['orderitems']:
 
-				if data_item['quantity'] == 0:
+				if data_item['quantity'] == 0 and no_of_left_items_in_cart > 0:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					if existing_cart_item is None:
 						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
@@ -564,7 +567,7 @@ class CartService:
 					existing_cart_item.quantity = data_item['quantity']
 					existing_cart_item.promo_codes = data_item.get('promo_codes')
 					updated_cart_items[data_item['item_uuid']] = existing_cart_item
-				else:
+				elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity'] > 0:
 					new_cart_item = Cart_Item()
 					new_cart_item.cart_id = cart.cart_reference_uuid
 					new_cart_item.cart_item_id = data_item['item_uuid']
@@ -575,9 +578,9 @@ class CartService:
 					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 
-			if no_of_left_items_in_cart == 0:
-				Logger.info("[%s] Cart is empty" % g.UUID)
-				raise EmptyCartException(ERROR.CART_EMPTY)
+				if data_item['quantity'] == 0 and no_of_left_items_in_cart == 0:
+					Logger.info("[%s] Cart is empty" % g.UUID)
+					raise EmptyCartException(ERROR.CART_EMPTY)
 
 		request_items = list()
 		for cart_item in self.item_id_to_existing_item_dict.values():
@@ -612,3 +615,225 @@ class CartService:
 			raise Exception(ERROR.INTERNAL_ERROR)
 		db.session.query(Cart_Item).filter(Cart_Item.cart_id == cart_reference_id).delete()
 		db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()
+
+	def get_count_of_items(self, new_items):
+		if new_items is not None:
+			return new_items.__len__()
+		else:
+			return self.item_id_to_existing_item_dict.values().__len__()
+
+
+
+
+
+	def add_item_to_cart(self, body):
+		try:
+			request_data = parse_request_data(body)
+			validate(request_data, CREATE_CART_SCHEMA)
+			cart = self.get_cart_for_geo_user_id(request_data['data'])
+			if cart is not None:
+				return self.add_item_to_existing_cart_no_price_cal(cart, request_data['data'])
+			else:
+				return self.create_cart_no_price_cal(request_data['data'])
+		except IncorrectDataException as ide:
+			Logger.error("[%s] Validation Error [%s]" %(g.UUID, str(ide.message)))
+			return create_error_response(ide)
+		except Exception as e:
+			Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
+			ERROR.INTERNAL_ERROR.message = str(e)
+			return create_error_response(ERROR.INTERNAL_ERROR)
+
+	def create_cart_no_price_cal(self, data):
+		error = True
+		err = None
+		while True:
+
+			# 0. Validation
+			try:
+				self.validate_create_new_cart(data)
+			except RequiredFieldMissing as rfm:
+				Logger.error(
+					'{%s} Required field is missing in creating cart API call{%s}' % (g.UUID, str(rfm)),
+					exc_info=True)
+				err = ERROR.CART_ITEM_MISSING
+				break
+			except IncorrectDataException as ide:
+				Logger.error('{%s} Zero quantity can not be added{%s}' % (g.UUID, str(ide)),
+							 exc_info=True)
+				err = ERROR.INCORRECT_DATA
+				break
+
+
+			# 1. Initialize cart object
+			try:
+				self.cart_reference_uuid = uuid.uuid1().hex
+				cart = Cart()
+				self.prepare_cart_object(data, cart)
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in populating cart object [%s]" % (g.UUID, str(e)), exc_info=True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+
+
+			# 2. save in DB
+			try:
+				self.save_new_item_to_cart(cart)
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in saving cart item in DB [%s]" % (g.UUID, str(e)), exc_info=True)
+				ERROR.DATABASE_ERROR.message = str(e)
+				err = ERROR.DATABASE_ERROR
+				break
+
+			# 3. create response
+			try:
+				response_data = self.generate_add_item_to_cart_response(self.cart_items, cart)
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in generating response for cart [%s]" % (g.UUID, str(e)), exc_info=True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+
+			error = False
+			break
+
+		if error:
+			db.session.rollback()
+			return create_error_response(err)
+		else:
+			db.session.commit()
+			return create_data_response(data=response_data)
+
+	def prepare_cart_object(self, data, cart):
+
+		cart.geo_id = data['geo_id']
+		cart.user_id = data['user_id']
+		cart.cart_reference_uuid = self.cart_reference_uuid
+		cart.order_type = VALID_ORDER_TYPES.GROCERY.value.lower()
+		if data.get('order_type') is not None:
+			cart.order_type = data.get('order_type').lower()
+		cart.order_source_reference = data['order_source_reference']
+		cart_item_list = list()
+		for item in data['orderitems']:
+			cart_item = Cart_Item()
+			cart_item.cart_item_id = item['item_uuid']
+			cart_item.cart_id = self.cart_reference_uuid
+			cart_item.quantity = 1 if item.get('quantity') is None else item.get('quantity')
+			cart_item_list.append(cart_item)
+
+		self.cart_items = cart_item_list
+
+	def save_new_item_to_cart(self, cart):
+		db.session.add(cart)
+		for cart_item in self.cart_items:
+			db.session.add(cart_item)
+
+
+
+	def generate_add_item_to_cart_response(self, new_items, cart):
+		response_json = {
+			"cart_reference_uuid": cart.cart_reference_uuid,
+			"cart_items_count": self.get_count_of_items(new_items)
+		}
+		return response_json
+
+
+
+	def add_item_to_existing_cart_no_price_cal(self, cart, data):
+		error = True
+		err = None
+		while True:
+			# 1 Item update(Added, removed, update)
+			try:
+				self.update_cart_items_no_price_cal(cart, data)
+
+			except IncorrectDataException:
+				Logger.error("[%s] Non existing item can not be deleted" %g.UUID)
+				err = ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED
+				break
+			except SubscriptionNotFoundException:
+				Logger.error("[%s] Subscription is not valid" % g.UUID)
+				err = ERROR.SUBSCRIPTION_NOT_FOUND
+				break
+			except EmptyCartException:
+				Logger.error("[%s] Cart has become empty" % g.UUID)
+				self.is_cart_empty = True
+				err = ERROR.CART_EMPTY
+				break
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in updating cart items [%s]" % (g.UUID, str(e)), exc_info = True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+
+			# 6 Save cart
+			try:
+
+				for each_cart_item in self.item_id_to_existing_item_dict.values():
+					db.session.add(each_cart_item)
+				if self.deleted_cart_items.values().__len__()>0:
+					for each_deleted_item in self.deleted_cart_items.values():
+						db.session.delete(each_deleted_item)
+
+			except Exception as e:
+				Logger.error('[%s] Shipping address could not be updated [%s]' % (g.UUID, str(e)), exc_info=True)
+				err = ERROR.DATABASE_ERROR
+				break
+
+			# 7 Create Response
+			try:
+				response_data = self.generate_add_item_to_cart_response(self.item_id_to_existing_item_dict, cart)
+			except Exception as e:
+				Logger.error(
+					'[%s] Exception occurred in creating response while updating the cart [%s]' % (g.UUID, str(e)),
+					exc_info=True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+
+			error = False
+			break;
+		if error:
+			db.session.rollback()
+			return create_error_response(err)
+		else:
+			db.session.commit()
+			return create_data_response(data=response_data)
+
+
+	def update_cart_items_no_price_cal(self, cart, data):
+		self.item_id_to_existing_item_dict = {}
+		for existing_cart_item in cart.cartItem:
+			self.item_id_to_existing_item_dict[existing_cart_item.cart_item_id] = existing_cart_item
+
+		no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
+		self.deleted_cart_items = {}
+
+
+		if 'orderitems' in data and data['orderitems'].__len__() > 0:
+
+			for data_item in data['orderitems']:
+
+				if data_item['quantity'] == 0 and no_of_left_items_in_cart>0:
+					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
+					if existing_cart_item is None:
+						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
+					del self.item_id_to_existing_item_dict[data_item['item_uuid']]
+					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
+					self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
+
+				elif data_item['item_uuid'] in self.item_id_to_existing_item_dict:
+					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
+					existing_cart_item.quantity = existing_cart_item+1 if data_item.get('quantity') is None else data_item.get('quantity')
+
+				elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity'] > 0:
+					new_cart_item = Cart_Item()
+					new_cart_item.cart_id = cart.cart_reference_uuid
+					new_cart_item.cart_item_id = data_item['item_uuid']
+					new_cart_item.quantity = 1 if data_item.get('quantity') is None else data_item.get('quantity')
+					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
+					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
+
+				if data_item['quantity'] == 0 and no_of_left_items_in_cart == 0:
+					Logger.info("[%s] Cart is empty" % g.UUID)
+					raise EmptyCartException(ERROR.CART_EMPTY)
