@@ -475,7 +475,7 @@ class OrderService:
 		order.promo_codes = self.promo_codes
 		order.delivery_type = self.delivery_type
 		order.delivery_slot = self.delivery_slot
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == 'COD' else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
 		order.total_discount =0.0
 		order.total_offer_price =0.0
 		order.total_display_price =0.0
