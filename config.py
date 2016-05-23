@@ -13,7 +13,7 @@ APP_NAME = 'grocery_order_service'
 
 SHIPPING_COST = 20.0
 SHIPPING_COST_THRESHOLD = 1000
-
+PUBLISH_TO_KAFKA = True
 
 class Config:
 	DEBUG = False
@@ -46,6 +46,8 @@ class DevelopmentConfig(Config):
 	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
+	KAFKA_TOPIC = 'grocery_orderservice_staging'
+	KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
 
 
 class TestingConfig(Config):
@@ -87,6 +89,8 @@ class StagingConfig(Config):
 	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
+	KAFKA_TOPIC = 'grocery_orderservice_staging'
+	KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
 
 
 class ProductionConfig(Config):

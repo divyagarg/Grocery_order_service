@@ -11,3 +11,10 @@ class StatusService:
 		if status is None:
 			raise NoSuchStatusException(ERROR.INVALID_STATUS)
 		return status.id
+
+	@staticmethod
+	def get_status_code(status_id):
+		status = Status.query.filter_by(id = status_id).first()
+		if status is None:
+			raise NoSuchStatusException(ERROR.INVALID_STATUS)
+		return status.status_code

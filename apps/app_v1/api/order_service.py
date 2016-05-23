@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+import datetime
 from apps.app_v1.api.cart_service import CartService
 from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
@@ -11,11 +12,14 @@ from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item, Stat
 from config import APP_NAME
 import requests
 from flask import g, current_app
+from utils.jsonutils.json_utility import json_serial
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
-	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id
+	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, get_address, \
+	get_payment, PaymentCanNotBeNullException
 from utils.jsonutils.json_schema_validator import validate
+from utils.kafka_utils.kafka_publisher import Publisher
 
 __author__ = 'divyagarg'
 
@@ -40,6 +44,8 @@ class OrderService:
 		self.selected_freebies = None
 		self.payment_mode = None
 		self.order = None
+		self.sdd_order = None
+		self.ndd_order = None
 		# self.now = datetime.datetime.utcnow()
 		self.total_offer_price = 0.0
 		self.total_shipping_charges = 0.0
@@ -183,7 +189,20 @@ class OrderService:
 		#8 Order History
 
 		#9 Save in old system/ publish on kafka
-
+			try:
+				if not self.split_order:
+					message = self.create_publisher_message(self.order)
+					Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
+				else:
+					message1 = self.create_publisher_message(self.sdd_order)
+					Publisher.publish_message(self.order.order_reference_id, json.dumps(message1, default=json_serial))
+					message2 = self.create_publisher_message(self.ndd_order)
+					Publisher.publish_message(self.order.order_reference_id, json.dumps(message2, default=json_serial))
+			except Exception as e:
+				Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(e)))
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
 
 			error = False
 			break
@@ -432,7 +451,7 @@ class OrderService:
 			order.orderItem = order_items
 
 			self.create_order(master_order = order, sdd_order = None, ndd_order =None)
-
+			self.order = order
 			db.session.add(order)
 			db.session.add_all(order_items)
 			return order.order_reference_id
@@ -451,6 +470,8 @@ class OrderService:
 			ndd_order.parent_order_id = self.parent_reference_id
 
 			self.create_order(master_order=None, sdd_order = sdd_order, ndd_order = ndd_order)
+			self.sdd_order = sdd_order
+			self.ndd_order = ndd_order
 			all_items = sdd_order_items + ndd_order_items
 			db.session.add_all(all_items)
 			db.session.add(sdd_order)
@@ -609,3 +630,72 @@ class OrderService:
 		payment.order_id = self.parent_reference_id
 		payment.payment_mode = self.payment_mode
 		db.session.add(payment)
+
+	def create_publisher_message(self, order):
+		data ={}
+		data['parent_order_id'] = order.parent_order_id
+		data['order_id'] = order.order_reference_id
+		data['status_code'] = StatusService.get_status_code(order.status_id)
+		data['geo_id'] = order.geo_id
+		data['user_id'] = order.user_id
+		data['order_type'] = order.order_type
+		data['order_source_reference'] = order.order_reference_id
+		data['delivery_type'] = order.delivery_type
+		data['delivery_slot'] = order.delivery_slot
+		data['freebie'] = order.freebie
+		data['total_offer_price'] = order.total_offer_price
+		data['total_display_price'] = order.total_display_price
+		data['total_discount'] = order.total_discount
+		data['total_shipping_charges'] = order.total_shipping
+		data['total_payble_amount'] = order.total_payble_amount
+		data['promo_codes'] = order.promo_codes
+		data['created_at'] = order.created_on
+		payment = get_payment(order.parent_order_id)
+		if payment is not None:
+			data['payment_mode'] = payment.payment_mode
+		else:
+			raise PaymentCanNotBeNullException(ERROR.PAYMENT_CAN_NOT_NULL)
+		address = get_address(order.shipping_address_ref)
+		if address is None:
+			raise NoShippingAddressFoundException(ERROR.NO_SHIPPING_ADDRESS_FOUND)
+		data['shipping_address'] =  self.create_address_dict(address)
+
+		if order.shipping_address_ref == order.billing_address_ref:
+			data['billing_address'] = data['shipping_address']
+		else:
+			billing_address = get_address(order.billing_address_ref)
+			data['billing_address'] = self.create_address_dict(billing_address)
+
+		order_item_list = list()
+		for item in order.orderItem:
+			order_item = {}
+			order_item['item_id'] = item.item_id
+			order_item['quantity'] = item.quantity
+			order_item['display_price'] = item.display_price
+			order_item['offer_price'] = item.offer_price
+			order_item['shipping_charge'] = item.shipping_charge
+			order_item['item_discount'] = item.item_discount
+			order_item['transfer_price'] = item.transfer_price
+			order_item_list.append(order_item)
+
+		data['order_items'] = order_item_list
+
+		publishing_message = {}
+		publishing_message['msg_type'] = 'create_order'
+		publishing_message['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		publishing_message['data'] = data
+		print(publishing_message)
+		return publishing_message
+
+	def create_address_dict(self, address):
+		shipping_address = {}
+		shipping_address['name'] = address.name
+		shipping_address['mobile'] = address.mobile
+		shipping_address['address'] = address.address
+		shipping_address['city'] = address.city
+		shipping_address['pincode'] = address.pincode
+		shipping_address['state'] = address.state
+		shipping_address['email'] = address.email
+		shipping_address['landmark'] = address.landmark
+		return shipping_address
+

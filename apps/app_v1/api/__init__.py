@@ -2,7 +2,7 @@ import json
 import logging
 import random
 import time
-
+from apps.app_v1.models.models import Address, Payment
 from config import APP_NAME
 import config
 from flask import g
@@ -46,7 +46,7 @@ class ERROR(object):
 	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=1025, message="Shipping address is mandatory for Order placement")
 	INVALID_STATUS = ERROR_DETAIL(code=1026, message="No Such status Exist")
 	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=1027, message="Shipping charges changed")
-
+	PAYMENT_CAN_NOT_NULL = ERROR_DETAIL(code= 1028, message= "Payment can not be null for an order")
 
 def parse_request_data(body):
 	Logger.info('{%s} Received request to create cart for request {%s}' % (g.UUID, body))
@@ -149,6 +149,13 @@ class NoSuchStatusException(Exception):
 		self.code = error_detail.code
 		super(NoSuchStatusException, self).__init__(error_detail.message)
 
+class PaymentCanNotBeNullException(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(PaymentCanNotBeNullException, self).__init__(error_detail.message)
+
 
 def get_shipping_charges(total_price, total_discount):
 		total_shipping_charges =0.0
@@ -162,3 +169,15 @@ def generate_reference_order_id():
 	longtime = 'GRCY'+ longtime[6:] + longtime[:4]
 	reference_orderid = longtime + str(random.randint(10000,100000))
 	return reference_orderid
+
+
+def get_address(address_hash):
+	address = Address.query.filter_by(address_hash = address_hash).first()
+	if address is None:
+		Logger.info("[%s] No address is found for address hash [%s]" %(g.UUID, address_hash))
+		return None
+	return address
+
+def get_payment(order_id):
+	payment = Payment.query.filter_by(order_id = order_id).first()
+	return payment
