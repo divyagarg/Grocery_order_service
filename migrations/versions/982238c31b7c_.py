@@ -1,13 +1,13 @@
 """empty message
 
-Revision ID: 9707f81164c0
+Revision ID: 982238c31b7c
 Revises: None
-Create Date: 2016-05-20 11:16:37.058356
+Create Date: 2016-05-23 11:56:16.730112
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '9707f81164c0'
+revision = '982238c31b7c'
 down_revision = None
 
 from alembic import op
@@ -29,13 +29,6 @@ def upgrade():
     sa.Column('address_hash', sa.String(length=255), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('address_hash')
-    )
-    op.create_table('status',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('status_code', sa.String(length=255), nullable=False),
-    sa.Column('status_description', sa.String(length=255), nullable=True),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('status_code')
     )
     op.create_table('cart',
     sa.Column('created_on', sa.DateTime(), server_default=sa.text(u'now()'), nullable=True),
@@ -73,8 +66,7 @@ def upgrade():
     sa.Column('shipping_address_ref', sa.String(length=255), nullable=False),
     sa.Column('billing_address_ref', sa.String(length=255), nullable=True),
     sa.Column('delivery_type', sa.Enum('NORMAL', 'SLOTTED'), nullable=False),
-    sa.Column('delivery_due_date', sa.Date(), nullable=True),
-    sa.Column('delivery_slot', sa.Enum('09:12', '12:15', '15:18', '18:21'), nullable=True),
+    sa.Column('delivery_slot', sa.String(length=512), nullable=True),
     sa.Column('freebie', sa.String(length=255), nullable=True),
     sa.Column('total_offer_price', sa.Float(precision='10,2'), nullable=False),
     sa.Column('total_display_price', sa.Float(precision='10,2'), nullable=True),
@@ -112,7 +104,6 @@ def upgrade():
     sa.Column('offer_price', sa.Float(precision='10,2'), nullable=True),
     sa.Column('shipping_charge', sa.Float(precision='10,2'), nullable=True),
     sa.Column('item_discount', sa.Float(precision='10,2'), nullable=True),
-    sa.Column('order_partial_discount', sa.Float(precision='10,2'), nullable=True),
     sa.Column('transfer_price', sa.Float(precision='10,2'), nullable=True),
     sa.Column('order_id', sa.String(length=255), nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['order.order_reference_id'], ),
@@ -125,7 +116,7 @@ def upgrade():
     sa.Column('payment_mode', sa.String(length=255), nullable=False),
     sa.Column('payment_transaction_id', sa.String(length=255), nullable=True),
     sa.Column('order_id', sa.String(length=255), nullable=False),
-    sa.ForeignKeyConstraint(['order_id'], ['order.order_reference_id'], ),
+    sa.ForeignKeyConstraint(['order_id'], ['order.parent_order_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     ### end Alembic commands ###
@@ -143,6 +134,5 @@ def downgrade():
     op.drop_table('order')
     op.drop_index('cart_geo_user_idx', table_name='cart')
     op.drop_table('cart')
-    op.drop_table('status')
     op.drop_table('address')
     ### end Alembic commands ###
