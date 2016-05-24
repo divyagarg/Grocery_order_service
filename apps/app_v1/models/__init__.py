@@ -31,7 +31,22 @@ class ORDER_SOURCE_REFERENCE(Enum):
 
 
 class VALID_ORDER_TYPES(Enum):
-    PHARMA = 'PHARMA'
-    GROCERY = 'GROCERY'
-    NATIONAL = 'NATIONAL'
-    NDD = 'NDD'
+    grocery = 0
+    bazzar = 1
+    pharma = 2
+
+order_types= {}
+order_types[0] = 'grocery'
+order_types[1] ='bazzar'
+order_types[2] = 'pharma'
+
+
+
+
+class PAYMENT_MODE(Enum):
+    COD = 0
+    PREPAID =1
+
+payment_modes_dict = {}
+payment_modes_dict[0] = 'COD'
+payment_modes_dict[1] = 'PREPAID'

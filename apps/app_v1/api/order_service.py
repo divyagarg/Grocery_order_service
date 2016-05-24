@@ -7,7 +7,7 @@ from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
 from apps.app_v1.api.status_service import StatusService
-from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE
+from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict
 from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item, Status, Payment
 from config import APP_NAME
 import requests
@@ -252,10 +252,10 @@ class OrderService:
 	def initialize_order_with_request_data(self, data):
 		self.user_id = data.get('user_id')
 		self.geo_id = data.get('geo_id')
-		self.order_type = data.get('order_type').lower()
+		self.order_type = order_types[data.get('order_type')]
 		self.order_source_reference = data.get('order_source_reference')
 		self.promo_codes = data.get('promo_codes')
-		self.payment_mode = data.get('payment_mode')
+		self.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		self.total_display_price = float(data.get('total_display_price')) if data.get('total_display_price') is not None else 0.0
 		self.total_offer_price = float(data.get('total_offer_price')) if data.get('total_offer_price') is not None else 0.0
 		self.total_shipping_charges = float(data.get('total_shipping_charges')) if data.get('total_shipping_charges') is not None else 0.0
@@ -271,7 +271,7 @@ class OrderService:
 	def fetch_items_price(self, list_of_item_ids):
 		req_data = {
 			"query": {
-				"type": [self.order_type.lower()],
+				"type": [self.order_type],
 				"filters": {
 					"id": list_of_item_ids
 				},
@@ -496,7 +496,7 @@ class OrderService:
 		order.promo_codes = self.promo_codes
 		order.delivery_type = self.delivery_type
 		order.delivery_slot = self.delivery_slot
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == 'COD' else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == payment_modes_dict[0] else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
 		order.total_discount =0.0
 		order.total_offer_price =0.0
 		order.total_display_price =0.0

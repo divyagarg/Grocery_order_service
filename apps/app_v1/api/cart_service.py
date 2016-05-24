@@ -1,3 +1,4 @@
+__author__ = 'divyagarg'
 import datetime
 import logging
 import json
@@ -6,7 +7,7 @@ import uuid
 from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException, IncorrectDataException, \
 	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException, get_shipping_charges
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
-from apps.app_v1.models import VALID_ORDER_TYPES
+from apps.app_v1.models import order_types, payment_modes_dict
 from apps.app_v1.models.models import Cart, Cart_Item, Address
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from utils.jsonutils.json_schema_validator import validate
@@ -16,7 +17,7 @@ from flask import g, current_app
 from apps.app_v1.models.models import db
 from apps.app_v1.api import ERROR
 
-__author__ = 'divyagarg'
+
 
 Logger = logging.getLogger(APP_NAME)
 
@@ -27,12 +28,6 @@ def check_if_calculate_price_api_response_is_correct_or_quantity_is_available(it
 			"{%s} No item is found in calculate price API response for the item {%s}" % (g.UUID, item['item_uuid']),
 			exc_info=True)
 		raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
-	# if json_order_item.get('available_quantity') is not None:
-	# 	Logger.error(
-	# 		"{%s} Item quantity asked for is not available {%s} for the quantity {%s}" % (
-	# 			g.UUID, item['item_uuid'], item[
-	# 				'quantity']), exc_info=True)
-	# 	raise QuantityNotAvailableException(ERROR.NOT_AVAILABLE_ERROR)
 
 
 class CartService:
@@ -46,7 +41,7 @@ class CartService:
 		self.total_discount = 0.0
 		self.total_display_price = 0.0
 		self.now = datetime.datetime.utcnow()
-		
+
 		self.total_shipping_charges = 0.0
 		self.benefits = None
 		self.cart_items = None
@@ -64,7 +59,7 @@ class CartService:
 			else:
 				return self.create_cart(request_data['data'])
 		except IncorrectDataException as ide:
-			Logger.error("[%s] Validation Error [%s]" %(g.UUID, str(ide.message)))
+			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)
 		except Exception as e:
 			Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
@@ -83,7 +78,7 @@ class CartService:
 				self.update_cart_items(data, cart)
 
 			except IncorrectDataException:
-				Logger.error("[%s] Non existing item can not be deleted" %g.UUID)
+				Logger.error("[%s] Non existing item can not be deleted" % g.UUID)
 				err = ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED
 				break
 			except SubscriptionNotFoundException:
@@ -101,7 +96,7 @@ class CartService:
 				err = ERROR.CART_EMPTY
 				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in updating cart items [%s]" % (g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in updating cart items [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -109,7 +104,7 @@ class CartService:
 
 			# 2 Payment Mode
 			if data.get('payment_mode') is not None:
-				cart.payment_mode = data.get('payment_mode')
+				cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 
 			# 3 Coupon Update (Cart Level or Item level)
 			# if self.is_cart_empty == False:
@@ -144,7 +139,8 @@ class CartService:
 				if data.get('selected_freebee_code') is not None:
 					cart.selected_freebee_items = json.dumps(data.get('selected_freebee_code'))
 			except Exception as e:
-				Logger.error('[%s] Selected Freebee code could not be set in cart [%s]' % (g.UUID, str(e)), exc_info=True)
+				Logger.error('[%s] Selected Freebee code could not be set in cart [%s]' % (g.UUID, str(e)),
+							 exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -154,7 +150,7 @@ class CartService:
 				db.session.add(cart)
 				for each_cart_item in self.item_id_to_existing_item_dict.values():
 					db.session.add(each_cart_item)
-				if self.deleted_cart_items.values().__len__()>0:
+				if self.deleted_cart_items.values().__len__() > 0:
 					for each_deleted_item in self.deleted_cart_items.values():
 						db.session.delete(each_deleted_item)
 
@@ -229,7 +225,8 @@ class CartService:
 				err = ERROR.NOT_AVAILABLE_ERROR
 				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in getting price and update in cart item [%s]" % (g.UUID, str(e)), exc_info=True)
+				Logger.error("[%s] Exception occurred in getting price and update in cart item [%s]" % (g.UUID, str(e)),
+							 exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -254,7 +251,8 @@ class CartService:
 				self.total_shipping_charges = get_shipping_charges(self.total_price, self.total_discount)
 			except Exception as e:
 				Logger.error(
-					"[%s] Exception occurred in getting shipping charges for cart item [%s]" % (g.UUID, str(e)), exc_info=True)
+					"[%s] Exception occurred in getting shipping charges for cart item [%s]" % (g.UUID, str(e)),
+					exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -272,7 +270,8 @@ class CartService:
 			try:
 				response_data = self.generate_response(self.cart_items, cart)
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in generating response for cart [%s]" % (g.UUID, str(e)), exc_info=True)
+				Logger.error("[%s] Exception occurred in generating response for cart [%s]" % (g.UUID, str(e)),
+							 exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -327,13 +326,13 @@ class CartService:
 		cart.geo_id = data['geo_id']
 		cart.user_id = data['user_id']
 		cart.cart_reference_uuid = self.cart_reference_uuid
-		cart.order_type = VALID_ORDER_TYPES.GROCERY.value.lower()
+		cart.order_type = order_types[0]
 		if data.get('order_type') is not None:
-			cart.order_type = data.get('order_type').lower()
+			cart.order_type = order_types[data.get('order_type')]
 		cart.order_source_reference = data['order_source_reference']
 		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
 			cart.promo_codes = data.get('promo_codes')
-		cart.payment_mode = data.get('payment_mode')
+		cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
 			cart.selected_freebee_items = data.get('selected_freebee_code')
 
@@ -348,8 +347,7 @@ class CartService:
 	def fetch_items_price_return_dict(self, data):
 		response_product_fetch_data = self.fetch_product_price(data['orderitems'], data)
 
-
-		if response_product_fetch_data is None or response_product_fetch_data.__len__() ==0:
+		if response_product_fetch_data is None or response_product_fetch_data.__len__() == 0:
 			raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
 
 		order_item_dict = {}
@@ -357,19 +355,18 @@ class CartService:
 			order_item_dict[response.get('id')] = response
 		return order_item_dict
 
-
 	def fetch_product_price(self, items, data):
 		request_items_ids = list()
 		for item in items:
 			request_items_ids.append(int(item["item_uuid"]))
 
-		order_type = VALID_ORDER_TYPES.GROCERY.value.lower()
+		order_type = order_types[0]
 		if data.get('order_type') is not None:
-			order_type = data.get('order_type').lower()
+			order_type = order_types[data.get('order_type')]
 
 		req_data = {
 			"query": {
-				"type": [str(order_type)],
+				"type": [order_type],
 				"filters": {
 					"id": request_items_ids
 				},
@@ -447,8 +444,6 @@ class CartService:
 			ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
 			raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
 
-
-
 	def update_cart_total_amounts(self, cart):
 		cart.total_display_price = 0.0
 		cart.total_offer_price = 0.0
@@ -461,7 +456,7 @@ class CartService:
 			cart.total_display_price += (float(unit_display_price) * quantity)
 			cart.total_offer_price += (float(unit_offer_price) * quantity)
 			if item_level_discount is None:
-				item_level_discount =0.0
+				item_level_discount = 0.0
 			cart.total_discount = float(cart.total_discount) + float(item_level_discount)
 
 		self.total_display_price = cart.total_display_price
@@ -480,7 +475,7 @@ class CartService:
 				{"item_id": each_cart_item.cart_item_id, "quantity": each_cart_item.quantity,
 				 "coupon_code": each_cart_item.promo_codes}
 				for each_cart_item in cart_items],
-			"payment_mode": data.get('payment_mode')
+			"payment_mode": payment_modes_dict[data.get('payment_mode')]
 		}
 		if hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 			coupon_codes = map(str, data.get('promo_codes'))
@@ -496,7 +491,8 @@ class CartService:
 								 headers=header)
 		json_data = json.loads(response.text)
 		Logger.info(
-			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (g.UUID, json.dumps(req_data), json_data))
+			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
+			g.UUID, json.dumps(req_data), json_data))
 		return json_data
 
 	def get_price_and_update_in_cart_item(self, data):
@@ -622,10 +618,6 @@ class CartService:
 		else:
 			return self.item_id_to_existing_item_dict.values().__len__()
 
-
-
-
-
 	def add_item_to_cart(self, body):
 		try:
 			request_data = parse_request_data(body)
@@ -636,7 +628,7 @@ class CartService:
 			else:
 				return self.create_cart_no_price_cal(request_data['data'])
 		except IncorrectDataException as ide:
-			Logger.error("[%s] Validation Error [%s]" %(g.UUID, str(ide.message)))
+			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)
 		except Exception as e:
 			Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
@@ -689,7 +681,8 @@ class CartService:
 			try:
 				response_data = self.generate_add_item_to_cart_response(self.cart_items, cart)
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in generating response for cart [%s]" % (g.UUID, str(e)), exc_info=True)
+				Logger.error("[%s] Exception occurred in generating response for cart [%s]" % (g.UUID, str(e)),
+							 exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -709,9 +702,9 @@ class CartService:
 		cart.geo_id = data['geo_id']
 		cart.user_id = data['user_id']
 		cart.cart_reference_uuid = self.cart_reference_uuid
-		cart.order_type = VALID_ORDER_TYPES.GROCERY.value.lower()
+		cart.order_type = order_types[0]
 		if data.get('order_type') is not None:
-			cart.order_type = data.get('order_type').lower()
+			cart.order_type = order_types[data.get('order_type')]
 		cart.order_source_reference = data['order_source_reference']
 		cart_item_list = list()
 		for item in data['orderitems']:
@@ -728,16 +721,12 @@ class CartService:
 		for cart_item in self.cart_items:
 			db.session.add(cart_item)
 
-
-
 	def generate_add_item_to_cart_response(self, new_items, cart):
 		response_json = {
 			"cart_reference_uuid": cart.cart_reference_uuid,
 			"cart_items_count": self.get_count_of_items(new_items)
 		}
 		return response_json
-
-
 
 	def add_item_to_existing_cart_no_price_cal(self, cart, data):
 		error = True
@@ -748,7 +737,7 @@ class CartService:
 				self.update_cart_items_no_price_cal(cart, data)
 
 			except IncorrectDataException:
-				Logger.error("[%s] Non existing item can not be deleted" %g.UUID)
+				Logger.error("[%s] Non existing item can not be deleted" % g.UUID)
 				err = ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED
 				break
 			except SubscriptionNotFoundException:
@@ -761,7 +750,7 @@ class CartService:
 				err = ERROR.CART_EMPTY
 				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in updating cart items [%s]" % (g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in updating cart items [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -771,7 +760,7 @@ class CartService:
 
 				for each_cart_item in self.item_id_to_existing_item_dict.values():
 					db.session.add(each_cart_item)
-				if self.deleted_cart_items.values().__len__()>0:
+				if self.deleted_cart_items.values().__len__() > 0:
 					for each_deleted_item in self.deleted_cart_items.values():
 						db.session.delete(each_deleted_item)
 
@@ -800,7 +789,6 @@ class CartService:
 			db.session.commit()
 			return create_data_response(data=response_data)
 
-
 	def update_cart_items_no_price_cal(self, cart, data):
 		self.item_id_to_existing_item_dict = {}
 		for existing_cart_item in cart.cartItem:
@@ -809,12 +797,11 @@ class CartService:
 		no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 		self.deleted_cart_items = {}
 
-
 		if 'orderitems' in data and data['orderitems'].__len__() > 0:
 
 			for data_item in data['orderitems']:
 
-				if data_item['quantity'] == 0 and no_of_left_items_in_cart>0:
+				if data_item['quantity'] == 0 and no_of_left_items_in_cart > 0:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					if existing_cart_item is None:
 						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
@@ -824,7 +811,8 @@ class CartService:
 
 				elif data_item['item_uuid'] in self.item_id_to_existing_item_dict:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
-					existing_cart_item.quantity = existing_cart_item+1 if data_item.get('quantity') is None else data_item.get('quantity')
+					existing_cart_item.quantity = existing_cart_item + 1 if data_item.get(
+						'quantity') is None else data_item.get('quantity')
 
 				elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity'] > 0:
 					new_cart_item = Cart_Item()

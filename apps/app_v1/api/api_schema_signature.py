@@ -1,4 +1,4 @@
-from apps.app_v1.models import DELIVERY_TYPE, ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES
+from apps.app_v1.models import DELIVERY_TYPE, ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES, PAYMENT_MODE
 
 from utils.jsonutils.json_schema_validator import *
 
@@ -90,7 +90,7 @@ CREATE_CART_SCHEMA = {
 			},
 			"payment_mode": {
 				REQUIRED: False,
-				FUNCTIONS: [{String: {}}]
+				FUNCTIONS: [	{Contained: {"contained_in": [d.value for d in PAYMENT_MODE]}}]
 			},
 			"shipping_address": {
 				REQUIRED: False,
@@ -247,8 +247,8 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 				}
 			},
 			"payment_mode": {
-				REQUIRED: True,
-				FUNCTIONS: [{String: {}}]
+				REQUIRED: False,
+				FUNCTIONS: [	{Contained: {"contained_in": [d.value for d in PAYMENT_MODE]}}]
 			},
 			"selected_freebee_code": {
 				REQUIRED: False,
