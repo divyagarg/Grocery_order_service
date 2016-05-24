@@ -255,7 +255,8 @@ class OrderService:
 		self.order_type = order_types[data.get('order_type')]
 		self.order_source_reference = data.get('order_source_reference')
 		self.promo_codes = data.get('promo_codes')
-		self.payment_mode = payment_modes_dict[data.get('payment_mode')]
+		if data.get('payment_mode') is not None:
+			self.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		self.total_display_price = float(data.get('total_display_price')) if data.get('total_display_price') is not None else 0.0
 		self.total_offer_price = float(data.get('total_offer_price')) if data.get('total_offer_price') is not None else 0.0
 		self.total_shipping_charges = float(data.get('total_shipping_charges')) if data.get('total_shipping_charges') is not None else 0.0
