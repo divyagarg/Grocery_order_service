@@ -13,7 +13,7 @@ cart_end_point = 'app_v1.createOrUpdateCart'
 class TestCartCreationUpdation(unittest.TestCase):
 	update_cart_with_payment_mode_shipping_address_data = {
 		"data": {
-			"geo_id": "29557",
+			"geo_id": 29557,
 			"user_id": "8088275032",
 			"order_type": 0,
 			"order_source_reference": 0,
@@ -33,7 +33,7 @@ class TestCartCreationUpdation(unittest.TestCase):
 
 	create_cart_without_payment_mode_with_shipping_address_data = {
 		"data": {
-			"geo_id": "29557",
+			"geo_id": 29557,
 			"user_id": "8088275032",
 			"order_type": 0,
 			"order_source_reference": 0,
@@ -62,7 +62,7 @@ class TestCartCreationUpdation(unittest.TestCase):
 	}
 	create_cart_without_payment_mode_and_shipping_address_data = {
 		"data": {
-			"geo_id": "29557",
+			"geo_id": 29557,
 			"user_id": "8088275032",
 			"order_type": 0,
 			"order_source_reference": 0,
@@ -82,7 +82,7 @@ class TestCartCreationUpdation(unittest.TestCase):
 
 	update_cart_item_quantity_data = {
 		"data": {
-			"geo_id": "29557",
+			"geo_id": 29557,
 			"user_id": "8088275032",
 			"order_type": 0,
 			"order_source_reference": 0,
@@ -102,7 +102,7 @@ class TestCartCreationUpdation(unittest.TestCase):
 
 	view_cart = {
 		"data": {
-			"geo_id": "29557",
+			"geo_id": 29557,
 			"user_id": "8088275032",
 			"order_type": 0,
 			"order_source_reference": 0
@@ -146,23 +146,13 @@ class TestCartCreationUpdation(unittest.TestCase):
 		self.assertTrue(response['status'])
 		self.assertEquals(response['data']['cart_items_count'], 2)
 
-	def test_update_cart_with_payment_mode_and_shipping_address(self):
-		headers = {'Content-Type': 'application/json'}
-		url = url_for(cart_end_point)
-		r = self.app.post(url, data=json.dumps(self.update_cart_with_payment_mode_shipping_address_data), headers=headers)
-		self.assertEqual(r._status_code, 200)
-		response = json.loads(r.data)
-		printTest("Update Cart payment mode and shipping address", url_for(cart_end_point), response)
-		self.assertTrue(response['status'])
-		self.assertEquals(response['data']['cart_items_count'], 2)
-
-	# def test_view_cart(self):
+	# def test_update_cart_with_payment_mode_and_shipping_address(self):
 	# 	headers = {'Content-Type': 'application/json'}
 	# 	url = url_for(cart_end_point)
-	# 	r = self.app.post(url, data=json.dumps(self.view_cart), headers=headers)
+	# 	r = self.app.post(url, data=json.dumps(self.update_cart_with_payment_mode_shipping_address_data), headers=headers)
 	# 	self.assertEqual(r._status_code, 200)
 	# 	response = json.loads(r.data)
-	# 	printTest("View Cart", url_for(cart_end_point), response)
+	# 	printTest("Update Cart payment mode and shipping address", url_for(cart_end_point), response)
 	# 	self.assertTrue(response['status'])
 	# 	self.assertEquals(response['data']['cart_items_count'], 2)
 	#
@@ -175,13 +165,4 @@ class TestCartCreationUpdation(unittest.TestCase):
 	# 	printTest("Update Cart payment mode and shipping address", url_for(cart_end_point), response)
 	# 	self.assertTrue(response['status'])
 	# 	self.assertEquals(response['data']['cart_items_count'], 1)
-	#
-	# def test_view_cart(self):
-	# 	headers = {'Content-Type': 'application/json'}
-	# 	url = url_for(cart_end_point)
-	# 	r = self.app.post(url, data=json.dumps(self.view_cart), headers=headers)
-	# 	self.assertEqual(r._status_code, 200)
-	# 	response = json.loads(r.data)
-	# 	printTest("View Cart", url_for(cart_end_point), response)
-	# 	self.assertTrue(response['status'])
-	# 	self.assertEquals(response['data']['cart_items_count'], 1)
+

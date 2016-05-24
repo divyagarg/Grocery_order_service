@@ -251,7 +251,7 @@ class OrderService:
 
 	def initialize_order_with_request_data(self, data):
 		self.user_id = data.get('user_id')
-		self.geo_id = data.get('geo_id')
+		self.geo_id = int(data.get('geo_id'))
 		self.order_type = order_types[data.get('order_type')]
 		self.order_source_reference = data.get('order_source_reference')
 		self.promo_codes = data.get('promo_codes')

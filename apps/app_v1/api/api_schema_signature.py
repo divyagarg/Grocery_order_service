@@ -63,7 +63,7 @@ CREATE_CART_SCHEMA = {
 		SCHEMA: {
 			"geo_id": {
 				FUNCTIONS: [
-					{String: {}}
+					{Integer: {}}
 				]
 			},
 			"user_id": {
@@ -288,7 +288,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 				}
 			},
 			"geo_id": {
-				FUNCTIONS: [{String: {}}]
+				FUNCTIONS: [{Integer: {}}]
 			},
 			"user_id": {
 				FUNCTIONS: [{String: {}}]
@@ -432,7 +432,7 @@ GET_COUNT_OF_CART_ITEMS = {
 		SCHEMA: {
 			"geo_id": {
 				FUNCTIONS: [
-					{String: {}}
+					{Integer: {}}
 				]
 			},
 			"user_id": {

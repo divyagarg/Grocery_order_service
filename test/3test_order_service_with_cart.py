@@ -22,7 +22,7 @@ class TestOrderService(unittest.TestCase):
 
 	create_order_data_with_cart_ref = {
 		"data": {
-			"cart_reference_uuid": "576fa7f0218311e69a7ef45c899d26fb",
+			"cart_reference_uuid": "a3d64e4021bb11e6985cf45c899d26fb",
 			"billing_address": {
 				"name": "Divya Garg",
 				"mobile": "1234567890",
@@ -33,7 +33,7 @@ class TestOrderService(unittest.TestCase):
 				"state": "Haryana",
 				"landmark": "Near Qutub plaza"
 			},
-			"delivery_type": "NORMAL",
+			"delivery_type": 0,
 			"order_source_reference": 0
 		}
 	}
@@ -58,7 +58,7 @@ class TestOrderService(unittest.TestCase):
 				"state": "Haryana",
 				"landmark": "Near Qutub plaza"
 			},
-			"delivery_type": "NORMAL",
+			"delivery_type": 0,
 			"order_source_reference": 0
 		}
 	}
@@ -66,21 +66,21 @@ class TestOrderService(unittest.TestCase):
 	create_order_data_wrong_delivery_type = {
 		"data": {
 			"cart_reference_uuid": "263a055c219111e6a44ff45c899d26fb",
-			"delivery_type": "0",
+			"delivery_type": "acb",
 			"order_source_reference": 0
 		}
 	}
 
 
-	# def test_create_order_with_cart_reference(self):
-	# 	headers = {'Content-Type': 'application/json'}
-	# 	url = url_for(order_end_point)
-	# 	r = self.app.post(url, data=json.dumps(self.create_order_data_with_cart_ref), headers=headers)
-	# 	self.assertEqual(r._status_code, 200)
-	# 	response = json.loads(r.data)
-	# 	printTest("Create Order without cart reference", url_for(order_end_point), response)
-	# 	self.assertTrue(response['status'])
-	# 	self.assertIsNotNone(response['data'])
+	def test_create_order_with_cart_reference(self):
+		headers = {'Content-Type': 'application/json'}
+		url = url_for(order_end_point)
+		r = self.app.post(url, data=json.dumps(self.create_order_data_with_cart_ref), headers=headers)
+		self.assertEqual(r._status_code, 200)
+		response = json.loads(r.data)
+		printTest("Create Order without cart reference", url_for(order_end_point), response)
+		self.assertTrue(response['status'])
+		self.assertIsNotNone(response['data'])
 
 	# def test_create_order_required_field_missing(self):
 	# 	headers = {'Content-Type': 'application/json'}
@@ -102,13 +102,13 @@ class TestOrderService(unittest.TestCase):
 	# 	printTest("Create Order without cart reference", url_for(order_end_point), response)
 	# 	self.assertFalse(response['status'])
 	# 	self.assertEquals(response['error']['message'], ERROR.NO_SUCH_CART_EXIST.message)
-
-	def test_crate_order_wrong_delivery_type_given(self):
-		headers = {'Content-Type': 'application/json'}
-		url = url_for(order_end_point)
-		r = self.app.post(url, data=json.dumps(self.create_order_data_wrong_delivery_type), headers=headers)
-		self.assertEqual(r._status_code, 200)
-		print(r.data)
-		response = json.loads(r.data)
-		printTest("Create Order without cart reference", url_for(order_end_point), response)
-		self.assertTrue(response['status'])
+	#
+	# def test_crate_order_wrong_delivery_type_given(self):
+	# 	headers = {'Content-Type': 'application/json'}
+	# 	url = url_for(order_end_point)
+	# 	r = self.app.post(url, data=json.dumps(self.create_order_data_wrong_delivery_type), headers=headers)
+	# 	self.assertEqual(r._status_code, 1009)
+	# 	print(r.data)
+	# 	response = json.loads(r.data)
+	# 	printTest("Create Order without cart reference", url_for(order_end_point), response)
+	# 	self.assertFalse(response['status'])

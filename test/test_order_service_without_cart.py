@@ -22,7 +22,7 @@ class OrderWithoutCart(unittest.TestCase):
 
 	create_order_data_without_cart_reference = {
 		"data": {
-			"geo_id": "29557",
+			"geo_id": 29557,
 			"user_id": "8088275032",
 			"order_type": 0,
 			"order_source_reference": 0,
@@ -70,7 +70,7 @@ class OrderWithoutCart(unittest.TestCase):
 				"landmark": "Near Madhuban"
 			},
 			"selected_free_bees_code": [{"coupon_code": "CODE123", "subscription_id": "6789"}],
-			"delivery_type": "Slotted",
+			"delivery_type": 1,
 			"delivery_slot": [
 				{"sdd_slot": "21-05-2016 09:12"},
 				{"ndd_slot": "22-05-1016 15:18"}

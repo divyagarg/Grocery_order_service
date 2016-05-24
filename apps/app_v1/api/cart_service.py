@@ -67,7 +67,7 @@ class CartService:
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
 	def get_cart_for_geo_user_id(self, data):
-		return Cart().query.filter_by(geo_id=data['geo_id'], user_id=data['user_id']).first()
+		return Cart().query.filter_by(geo_id=int(data['geo_id']), user_id=data['user_id']).first()
 
 	def update_cart(self, cart, data):
 		error = True
@@ -323,7 +323,7 @@ class CartService:
 
 	def populate_cart_object(self, data, cart):
 
-		cart.geo_id = data['geo_id']
+		cart.geo_id = int(data['geo_id'])
 		cart.user_id = data['user_id']
 		cart.cart_reference_uuid = self.cart_reference_uuid
 		cart.order_type = order_types[0]
@@ -469,7 +469,7 @@ class CartService:
 
 	def get_response_from_check_coupons_api(self, cart_items, data):
 		req_data = {
-			"area_id": data['geo_id'],
+			"area_id": int(data['geo_id']),
 			"customer_id": data['user_id'],
 			'channel': data['order_source_reference'],
 			"products": [
@@ -700,7 +700,7 @@ class CartService:
 
 	def prepare_cart_object(self, data, cart):
 
-		cart.geo_id = data['geo_id']
+		cart.geo_id = int(data['geo_id'])
 		cart.user_id = data['user_id']
 		cart.cart_reference_uuid = self.cart_reference_uuid
 		cart.order_type = order_types[0]
