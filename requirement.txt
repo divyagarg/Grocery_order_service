@@ -17,8 +17,10 @@ ipython-genutils==0.1.0
 itsdangerous==0.24
 Jinja2==2.7.3
 jsonschema==2.5.1
+kafka==1.1.1
 Mako==1.0.4
 MarkupSafe==0.23
+marshmallow==2.7.3
 newrelic==2.56.0.42
 pathlib2==2.1.0
 pexpect==4.0.1
