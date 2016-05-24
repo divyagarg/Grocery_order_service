@@ -332,7 +332,8 @@ class CartService:
 		cart.order_source_reference = data['order_source_reference']
 		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
 			cart.promo_codes = data.get('promo_codes')
-		cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
+		if data.get('payment_mode') is not None:
+			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
 			cart.selected_freebee_items = data.get('selected_freebee_code')
 

@@ -58,8 +58,8 @@ class TestingConfig(Config):
 	DATABASE_NAME = 'grocery_order_service'
 	DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
 	SECRET_KEY = 'hard to guess string'
-	# KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
-	# KAFKA_TOPIC = 'fulfillment_staging'
+	KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
+	KAFKA_TOPIC = 'grocery_orderservice_staging'
 	# KAKFA_GROUP = 'fulfillmentservice_group'
 	SQLALCHEMY_DATABASE_URI = DATABASE_URI + DATABASE_NAME
 	SQLALCHEMY_TRACK_MODIFICATIONS = False
