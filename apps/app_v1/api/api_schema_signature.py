@@ -269,7 +269,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 				}
 			},
 			"delivery_type": {
-				FUNCTIONS: [{String: {}, Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
+				FUNCTIONS: [{Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
 			},
 			"delivery_slot": {
 				REQUIRED: False,
@@ -406,7 +406,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 				}
 			},
 			"delivery_type": {
-				FUNCTIONS: [{String: {}, Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
+				FUNCTIONS: [{Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
 			},
 			"delivery_date": {
 				REQUIRED: False,
