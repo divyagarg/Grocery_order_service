@@ -14,9 +14,12 @@ def initialize_db(app):
 
 
 class DELIVERY_TYPE(Enum):
-    NORMAL_DELIVERY = 'NORMAL'
-    SLOT_DELIVERY = 'SLOTTED'
+    NORMAL = 0
+    SLOTTED = 1
 
+delivery_types ={}
+delivery_types[0] = 'NORMAL'
+delivery_types[1] = 'SLOTTED'
 
 class ORDER_STATUS(Enum):
     PENDING_STATUS = 'PENDING'

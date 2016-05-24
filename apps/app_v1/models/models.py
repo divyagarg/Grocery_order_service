@@ -14,6 +14,11 @@ class Base(db.Model):
     updated_on = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
 
+class Status(db.Model):
+     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+     status_code = db.Column(db.String(255), unique=True, nullable=False)
+     status_description = db.Column(db.String(255))
+
 class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(255), nullable=False)
@@ -128,7 +133,3 @@ class Payment(db.Model):
     payment_transaction_id = db.Column(db.String(255))
     order_id = db.Column(db.String(255), db.ForeignKey('order.parent_order_id'), nullable=False)
 
-class Status(db.Model):
-     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-     status_code = db.Column(db.String(255), unique=True, nullable=False)
-     status_description = db.Column(db.String(255))

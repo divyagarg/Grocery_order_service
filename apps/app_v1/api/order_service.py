@@ -7,7 +7,7 @@ from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
 from apps.app_v1.api.status_service import StatusService
-from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict
+from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict, delivery_types
 from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item, Status, Payment
 from config import APP_NAME
 import requests
@@ -38,7 +38,7 @@ class OrderService:
 		self.promo_codes = None
 		self.shipping_address = None
 		self.billing_address = None
-		self.delivery_type = DELIVERY_TYPE.NORMAL_DELIVERY.value
+		self.delivery_type = DELIVERY_TYPE.NORMAL.value
 		self.delivery_due_date = None
 		self.delivery_slot = None
 		self.selected_freebies = None
@@ -244,7 +244,7 @@ class OrderService:
 		self.order_source_reference = data['order_source_reference']
 		if 'billing_address' in data:
 			self.billing_address = data.get('billing_address')
-		self.delivery_type = data.get('delivery_type').upper()
+		self.delivery_type = delivery_types[int(data.get('delivery_type'))]
 		self.delivery_due_date = data.get('delivery_due_date')
 		self.delivery_slot = data.get('delivery_slot')
 
@@ -266,7 +266,7 @@ class OrderService:
 		if 'billing_address' in data:
 			self.billing_address = data.get('billing_address')
 		self.selected_freebies = data.get('selected_free_bees_code')
-		self.delivery_type = data.get('delivery_type').upper() if data.get('delivery_type') is not None else None
+		self.delivery_type = delivery_types[int(data.get('delivery_type'))] if data.get('delivery_type') is not None else None
 		self.delivery_slot = json.dumps(data.get('delivery_slot'))
 
 	def fetch_items_price(self, list_of_item_ids):

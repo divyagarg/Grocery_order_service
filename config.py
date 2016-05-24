@@ -55,7 +55,7 @@ class TestingConfig(Config):
 	ENV = 'testing'
 	TESTING = True
 	DEBUG = True
-	DATABASE_NAME = 'grocery_order_service'
+	DATABASE_NAME = 'test_grocery_order_service'
 	DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
 	SECRET_KEY = 'hard to guess string'
 	KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']

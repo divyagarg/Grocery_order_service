@@ -73,7 +73,7 @@ def get_count_of_orders_of_a_user(user_id):
 @app_v1.route('/order', methods=['POST'])
 @jsonify
 @logrequest
-def createOrder():
+def order():
     logger.info(
 
         '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
