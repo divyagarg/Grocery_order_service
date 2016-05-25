@@ -110,8 +110,8 @@ class CartService:
 			# 3 Coupon Update (Cart Level or Item level)
 			if self.is_cart_empty == False:
 				try:
-
-					cart.promo_codes = map(str, data.get('promo_codes')) if 'promo_codes' in data else None
+					if 'promo_codes' in data and data['promo_codes'] != []:
+						cart.promo_codes = map(str, data.get('promo_codes'))
 					self.check_for_coupons_applicable(data)
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
@@ -417,6 +417,7 @@ class CartService:
 				order_item_dict["offer_price"] = item.offer_price
 				order_item_dict["quantity"] = item.quantity
 				order_item_dict["item_discount"] = item.item_discount
+				order_item_dict["title"] = item.title
 				items.append(order_item_dict)
 			response_json["orderitems"].append(items)
 
@@ -429,6 +430,7 @@ class CartService:
 				order_item_dict["offer_price"] = str(item.offer_price)
 				order_item_dict["quantity"] = item.quantity
 				order_item_dict["item_discount"] = str(item.item_discount)
+				order_item_dict["title"] = item.title
 				items.append(order_item_dict)
 			response_json["orderitems"].append(items)
 
@@ -516,6 +518,7 @@ class CartService:
 			cart_item.promo_codes = item.get('promocodes')
 			cart_item.same_day_delivery = 'SDD' if json_order_item.get('deliveryDays') == 0 else 'NDD'
 			cart_item.transfer_price = float(json_order_item['offerPrice'])
+			cart_item.title = json_order_item['title']
 			cart_item_list.append(cart_item)
 
 			self.total_price += float(json_order_item['offerPrice']) * int(item['quantity'])
@@ -569,7 +572,7 @@ class CartService:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					existing_cart_item.quantity = data_item['quantity']
 					existing_cart_item.promo_codes = data_item.get('promo_codes')
-					updated_cart_items[data_item['item_uuid']] = existing_cart_item
+					# updated_cart_items[data_item['item_uuid']] = existing_cart_item
 				elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity'] > 0:
 					new_cart_item = Cart_Item()
 					new_cart_item.cart_id = cart.cart_reference_uuid
@@ -577,7 +580,7 @@ class CartService:
 					new_cart_item.quantity = data_item['quantity']
 					new_cart_item.promo_codes = data_item.get('promo_codes')
 					new_cart_item.item_discount = 0.0
-					newly_added_cart_items[data_item['item_uuid']] = new_cart_item
+					# newly_added_cart_items[data_item['item_uuid']] = new_cart_item
 					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 
@@ -602,6 +605,7 @@ class CartService:
 					existing_cart_item.display_price = cart_item.get('basePrice')
 					existing_cart_item.offer_price = cart_item.get('offerPrice')
 					existing_cart_item.transfer_price = cart_item.get('transferPrice')
+					existing_cart_item.title = cart_item.get('title')
 
 	def check_for_coupons_applicable(self, data):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data)

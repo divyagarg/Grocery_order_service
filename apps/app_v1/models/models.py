@@ -85,6 +85,7 @@ class Cart_Item(db.Model):
     item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
     transfer_price = db.Column(db.Float(precision= '10,2'), default =0.0)
     same_day_delivery = db.Column(db.String(255))
+    title = db.Column(db.String(255))
 
 
 class Order(Base):
