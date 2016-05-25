@@ -210,8 +210,8 @@ class OrderService:
 			# 	err = ERROR.INTERNAL_ERROR
 			# 	break
 			#
-			# error = False
-			# break
+			error = False
+			break
 
 
 		if error:

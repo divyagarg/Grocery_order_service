@@ -109,7 +109,8 @@ class CartService:
 			# 3 Coupon Update (Cart Level or Item level)
 			if self.is_cart_empty == False:
 				try:
-					cart.promo_codes = map(str, data.get('promo_codes'))
+
+					cart.promo_codes = map(str, data.get('promo_codes')) if 'promo_codes' in data else None
 					self.check_for_coupons_applicable(data)
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
@@ -475,10 +476,11 @@ class CartService:
 			"products": [
 				{"item_id": each_cart_item.cart_item_id, "quantity": each_cart_item.quantity,
 				 "coupon_code": each_cart_item.promo_codes}
-				for each_cart_item in cart_items],
-			"payment_mode": payment_modes_dict[data.get('payment_mode')]
+				for each_cart_item in cart_items]
 		}
-		if hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
+		if 'payment_mode' in data :
+			req_data['payment_mode'] = payment_modes_dict[data.get('payment_mode')]
+		if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 			coupon_codes = map(str, data.get('promo_codes'))
 			req_data["coupon_codes"] = coupon_codes
 
