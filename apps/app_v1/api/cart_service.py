@@ -189,6 +189,12 @@ class CartService:
 			# 0. Validation
 			try:
 				self.validate_create_new_cart(data)
+			except EmptyCartException as ece:
+				Logger.error(
+					'[%s] Cart can not be created without an item [%s]' % (g.UUID, str(ece)),
+					exc_info=True)
+				err = ERROR.CART_EMPTY
+				break
 			except RequiredFieldMissing as rfm:
 				Logger.error(
 					'{%s} Required field is missing in creating cart API call{%s}' % (g.UUID, str(rfm)),
@@ -340,8 +346,8 @@ class CartService:
 			cart.selected_freebee_items = data.get('selected_freebee_code')
 
 	def validate_create_new_cart(self, data):
-		if data['orderitems'].__len__() == 0:
-			raise RequiredFieldMissing(ERROR.CART_ITEM_MISSING)
+		if 'orderitems' not in data or ('orderitems' in data and data['orderitems'].__len__() == 0):
+			raise EmptyCartException(ERROR.CART_EMPTY)
 		else:
 			for each_cart_item in data['orderitems']:
 				if each_cart_item['quantity'] == 0:
