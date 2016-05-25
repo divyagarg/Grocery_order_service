@@ -195,23 +195,23 @@ class OrderService:
 		#8 Order History
 
 		#9 Save in old system/ publish on kafka
-			try:
-				if not self.split_order:
-					message = self.create_publisher_message(self.order)
-					Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
-				else:
-					message1 = self.create_publisher_message(self.sdd_order)
-					Publisher.publish_message(self.order.order_reference_id, json.dumps(message1, default=json_serial))
-					message2 = self.create_publisher_message(self.ndd_order)
-					Publisher.publish_message(self.order.order_reference_id, json.dumps(message2, default=json_serial))
-			except Exception as e:
-				Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(e)))
-				ERROR.INTERNAL_ERROR.message = str(e)
-				err = ERROR.INTERNAL_ERROR
-				break
-
-			error = False
-			break
+			# try:
+			# 	if not self.split_order:
+			# 		message = self.create_publisher_message(self.order)
+			# 		Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
+			# 	else:
+			# 		message1 = self.create_publisher_message(self.sdd_order)
+			# 		Publisher.publish_message(self.order.order_reference_id, json.dumps(message1, default=json_serial))
+			# 		message2 = self.create_publisher_message(self.ndd_order)
+			# 		Publisher.publish_message(self.order.order_reference_id, json.dumps(message2, default=json_serial))
+			# except Exception as e:
+			# 	Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(e)))
+			# 	ERROR.INTERNAL_ERROR.message = str(e)
+			# 	err = ERROR.INTERNAL_ERROR
+			# 	break
+			#
+			# error = False
+			# break
 
 
 		if error:
