@@ -47,6 +47,7 @@ class ERROR(object):
 	INVALID_STATUS = ERROR_DETAIL(code=1026, message="No Such status Exist")
 	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=1027, message="Shipping charges changed")
 	PAYMENT_CAN_NOT_NULL = ERROR_DETAIL(code= 1028, message= "Payment can not be null for an order")
+	COUPON_APPLY_FAILED = ERROR_DETAIL(code=1029, message="Coupon application Failed")
 
 def parse_request_data(body):
 	Logger.info('{%s} Received request to create cart for request {%s}' % (g.UUID, body))

@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 import uuid
 import datetime
 from apps.app_v1.api.cart_service import CartService
@@ -8,7 +9,7 @@ from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_R
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
 from apps.app_v1.api.status_service import StatusService
 from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict, delivery_types
-from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item, Status, Payment
+from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item, Status, Payment, Cart_Item
 from config import APP_NAME
 import requests
 from flask import g, current_app
@@ -110,6 +111,7 @@ class OrderService:
 					self.initialize_order_from_cart_db_data(request_data['data'])
 				else:
 					self.initialize_order_with_request_data(request_data['data'])
+				self.parent_reference_id = generate_reference_order_id()
 			except RequiredFieldMissing as rfm:
 				Logger.error("[%s] cart is empty [%s]" %(g.UUID, rfm.message))
 				err = rfm
@@ -140,28 +142,31 @@ class OrderService:
 				err = ERROR.INTERNAL_ERROR
 				break
 
-		#4. check and apply coupons and freebie
-			# try:
-			# 	response_data = self.get_response_from_check_coupons_api()
-			# 	self.compare_discounts_and_freebies(response_data)
-			#
-			# except DiscountHasChangedException as dce:
-			# 	Logger.error("[%s] Discount has changed  [%s]" % (g.UUID, str(dce.message)))
-			# 	err = ERROR.DISCOUNT_CHANGED
-			# 	break
-			# except FreebieNotApplicableException as fnae:
-			# 	Logger.error("[%s] Freebie not applicable  [%s]" % (g.UUID, str(fnae.message)))
-			# 	err = ERROR.FREEBIE_NOT_ALLOWED
-			# 	break
-			# except CouponInvalidException as cie:
-			# 	Logger.error("[%s]Coupon Not valid  [%s]" % (g.UUID, str(cie.message)))
-			# 	err = cie
-			# 	break
-			# except Exception as e:
-			# 	Logger.error("[%s] Exception occurred in checking discounts [%s]" %(g.UUID, str(e)), exc_info = True)
-			# 	ERROR.INTERNAL_ERROR.message = str(e)
-			# 	err = ERROR.INTERNAL_ERROR
-			# 	break
+		# 4. check and apply coupons and freebie
+
+			try:
+				response_data = self.get_response_from_check_coupons_api()
+				self.compare_discounts_and_freebies(response_data)
+				if self.promo_codes is not None:
+					self.apply_coupon()
+
+			except DiscountHasChangedException as dce:
+				Logger.error("[%s] Discount has changed  [%s]" % (g.UUID, str(dce.message)))
+				err = ERROR.DISCOUNT_CHANGED
+				break
+			except FreebieNotApplicableException as fnae:
+				Logger.error("[%s] Freebie not applicable  [%s]" % (g.UUID, str(fnae.message)))
+				err = ERROR.FREEBIE_NOT_ALLOWED
+				break
+			except CouponInvalidException as cie:
+				Logger.error("[%s]Coupon Not valid  [%s]" % (g.UUID, str(cie.message)))
+				err = cie
+				break
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in checking discounts [%s]" %(g.UUID, str(e)), exc_info = True)
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
 
 		#5. Segregate order items based on sdd and ndd, and add freebies with ndd
 			self.segregate_order_based_on_ndd_sdd()
@@ -182,6 +187,7 @@ class OrderService:
 					cart_service = CartService()
 					cart_service.remove_cart(self.cart_reference_id)
 			except Exception as e:
+				traceback.format_exc()
 				Logger.error("[%s] Exception occurred in saving order [%s]" %(g.UUID, str(e)), exc_info = True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
@@ -246,7 +252,7 @@ class OrderService:
 			self.billing_address = data.get('billing_address')
 		self.delivery_type = delivery_types[int(data.get('delivery_type'))]
 		self.delivery_due_date = data.get('delivery_due_date')
-		self.delivery_slot = data.get('delivery_slot')
+		self.delivery_slot = json.dumps(data.get('delivery_slot'))
 
 
 	def initialize_order_with_request_data(self, data):
@@ -254,7 +260,8 @@ class OrderService:
 		self.geo_id = int(data.get('geo_id'))
 		self.order_type = order_types[data.get('order_type')]
 		self.order_source_reference = data.get('order_source_reference')
-		self.promo_codes = data.get('promo_codes')
+		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
+			self.promo_codes = data.get('promo_codes')
 		if data.get('payment_mode') is not None:
 			self.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		self.total_display_price = float(data.get('total_display_price')) if data.get('total_display_price') is not None else 0.0
@@ -355,27 +362,30 @@ class OrderService:
 		if self.cart_reference_given:
 			for key in self.item_id_to_item_obj_dict:
 				product = {}
-				product["item_id"] = key
+				product["item_id"] = str(key)
 				product["quantity"] = self.item_id_to_item_obj_dict[key].quantity
 				product["coupon_code"] = self.item_id_to_item_obj_dict[key].promo_codes
 				product_list.append(product)
 		else:
 			for key in self.item_id_to_item_json_dict:
 				product = {}
-				product["item_id"] = key
-				product["quantity"] = self.item_id_to_item_obj_dict[key].get('quantity')
-				product["coupon_code"] = self.item_id_to_item_obj_dict[key].get('promo_codes')
+				product["item_id"] = str(key)
+				product["quantity"] = self.item_id_to_item_json_dict[key].get('quantity')
+				product["coupon_code"] = self.item_id_to_item_json_dict[key].get('promo_codes')
 				product_list.append(product)
 		req_data = {
-			"area_id": self.geo_id,
+			"area_id": str(self.geo_id),
 			"customer_id": self.user_id,
 			'channel': self.order_source_reference,
 			"products": product_list,
 			"payment_mode": self.payment_mode
 		}
 		if self.promo_codes is not None and self.promo_codes != []:
-			coupon_codes = map(str, self.promo_codes)
-			req_data["coupon_codes"] = coupon_codes
+			if self.cart_reference_given:
+				req_data["coupon_codes"] = self.promo_codes
+			else:
+				coupon_codes = map(str, self.promo_codes)
+				req_data["coupon_codes"] = coupon_codes
 
 		header = {
 			'X-API-USER': current_app.config['X_API_USER'],
@@ -401,16 +411,15 @@ class OrderService:
 
 			item_discount_dict = {}
 			for item in response_data['products']:
-				item_discount_dict[item['itemid']] = item
+				item_discount_dict[int(item['itemid'])] = item
 
 			if self.cart_reference_given:
 				for key in self.item_id_to_item_obj_dict:
-					if self.item_id_to_item_obj_dict[key].item_discount != item_discount_dict[key].get('item_discount'):
+					if self.item_id_to_item_obj_dict[key].item_discount != item_discount_dict[key].get('discount'):
 						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 			else:
 				for key in self.item_id_to_item_json_dict:
-					if self.item_id_to_item_obj_dict[key].get('item_discount') != item_discount_dict[key].get(
-							'item_discount'):
+					if float(self.item_id_to_item_json_dict[key].get('item_discount')) != item_discount_dict[key].get('discount'):
 						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 		else:
 			error_msg = response_data['error'].get('error')
@@ -442,7 +451,6 @@ class OrderService:
 
 
 	def create_and_save_order(self):
-		self.parent_reference_id = generate_reference_order_id()
 		if not self.split_order:
 			order = Order()
 			order.parent_order_id = self.parent_reference_id
@@ -699,4 +707,56 @@ class OrderService:
 		shipping_address['email'] = address.email
 		shipping_address['landmark'] = address.landmark
 		return shipping_address
+
+	def apply_coupon(self):
+		product_list = list()
+		if self.cart_reference_given:
+			for key in self.item_id_to_item_obj_dict:
+				product = {}
+				product["item_id"] = str(key)
+				product["quantity"] = self.item_id_to_item_obj_dict[key].quantity
+				product_list.append(product)
+		else:
+			for key in self.item_id_to_item_json_dict:
+				product = {}
+				product["item_id"] = str(key)
+				product["quantity"] = self.item_id_to_item_json_dict[key].get('quantity')
+				product_list.append(product)
+		req_data = {
+			"area_id": str(self.geo_id),
+			"customer_id": self.user_id,
+			'channel': self.order_source_reference,
+			"products": product_list,
+			"payment_mode": self.payment_mode,
+			"order_id":self.parent_reference_id
+		}
+		if self.promo_codes is not None and self.promo_codes != []:
+			if self.cart_reference_given:
+				req_data["coupon_codes"] = self.promo_codes
+			else:
+				coupon_codes = map(str, self.promo_codes)
+				req_data["coupon_codes"] = coupon_codes
+
+		header = {
+			'X-API-USER': current_app.config['X_API_USER'],
+			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
+			'Content-type': 'application/json'
+		}
+
+		response = requests.post(url=current_app.config['COUPOUN_APPLY_URL'], data=json.dumps(req_data),
+								 headers=header)
+		json_data = json.loads(response.text)
+		Logger.info(
+			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
+				g.UUID, json.dumps(req_data), json_data))
+		if not json_data['success']:
+			error_msg = json_data['error'].get('error')
+			ERROR.COUPON_APPLY_FAILED.message = error_msg
+			raise CouponInvalidException(ERROR.ERROR.COUPON_APPLY_FAILED)
+
+
+
+
+
+
 

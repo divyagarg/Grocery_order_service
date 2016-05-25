@@ -107,14 +107,14 @@ class CartService:
 				cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 
 			# 3 Coupon Update (Cart Level or Item level)
-			# if self.is_cart_empty == False:
-			# 	try:
-			# 		cart.promo_codes = map(str, data.get('promo_codes'))
-			# 		self.check_for_coupons_applicable(data)
-			# 	except CouponInvalidException as cie:
-			# 		Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
-			# 		err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
-			# 		break
+			if self.is_cart_empty == False:
+				try:
+					cart.promo_codes = map(str, data.get('promo_codes'))
+					self.check_for_coupons_applicable(data)
+				except CouponInvalidException as cie:
+					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
+					err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
+					break
 
 			# 4 Shipping address
 			try:
@@ -233,18 +233,18 @@ class CartService:
 
 
 			# 3. check coupons
-			# try:
-			# 	response_data = self.get_response_from_check_coupons_api(self.cart_items, data)
-			# 	self.update_discounts_item_level(response_data, self.cart_items)
-			# except CouponInvalidException as cie:
-			# 	Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(cie)))
-			# 	err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
-			# 	break
-			# except Exception as e:
-			# 	Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(e)))
-			# 	ERROR.INTERNAL_ERROR.message = str(e)
-			# 	err = ERROR.INTERNAL_ERROR
-			# 	break
+			try:
+				response_data = self.get_response_from_check_coupons_api(self.cart_items, data)
+				self.update_discounts_item_level(response_data, self.cart_items)
+			except CouponInvalidException as cie:
+				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(cie)))
+				err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
+				break
+			except Exception as e:
+				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(e)))
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
 
 			# 4. apply shipping charges
 			try:
@@ -439,7 +439,7 @@ class CartService:
 				item_discount_dict[item['itemid']] = item
 
 			for each_cart_item in cart_items:
-				each_cart_item.item_discount = float(item_discount_dict[int(each_cart_item.cart_item_id)]['discount'])
+				each_cart_item.item_discount = float(item_discount_dict[each_cart_item.cart_item_id]['discount'])
 		else:
 			error_msg = response_data['error'].get('error')
 			ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
@@ -469,7 +469,7 @@ class CartService:
 
 	def get_response_from_check_coupons_api(self, cart_items, data):
 		req_data = {
-			"area_id": int(data['geo_id']),
+			"area_id": str(data['geo_id']),
 			"customer_id": data['user_id'],
 			'channel': data['order_source_reference'],
 			"products": [
@@ -612,6 +612,8 @@ class CartService:
 			raise Exception(ERROR.INTERNAL_ERROR)
 		db.session.query(Cart_Item).filter(Cart_Item.cart_id == cart_reference_id).delete()
 		db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()
+
+
 
 	def get_count_of_items(self, new_items):
 		if new_items is not None:

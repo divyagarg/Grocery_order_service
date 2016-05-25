@@ -42,8 +42,8 @@ class DevelopmentConfig(Config):
 	SQLALCHEMY_POOL_SIZE = 10
 	SQLALCHEMY_POOL_TIMEOUT = 20
 	PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
-	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1.1/check"
-	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
+	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/apply"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 	KAFKA_TOPIC = 'grocery_orderservice_staging'
@@ -66,8 +66,8 @@ class TestingConfig(Config):
 	SQLALCHEMY_POOL_SIZE = 10
 	SQLALCHEMY_POOL_TIMEOUT = 20
 	PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
-	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
-	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
+	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/apply"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 
@@ -85,8 +85,8 @@ class StagingConfig(Config):
 	SQLALCHEMY_POOL_TIMEOUT = 20
 
 	PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
-	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
-	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
+	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/apply"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 	KAFKA_TOPIC = 'grocery_orderservice_staging'
@@ -108,8 +108,8 @@ class ProductionConfig(Config):
 	SQLALCHEMY_POOL_SIZE = 10
 	SQLALCHEMY_POOL_TIMEOUT = 20
 	PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9056/catalog/v1/calculate_price"
-	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:9933/vouchers/v1/check"
-	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:9933/vouchers/"
+	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
+	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/apply"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 
