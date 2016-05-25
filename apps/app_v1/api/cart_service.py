@@ -48,6 +48,7 @@ class CartService:
 		self.is_cart_empty = False
 		self.item_id_to_existing_item_dict = None
 		self.deleted_cart_items = None
+		self.shipping_address = None
 
 	def create_or_update_cart(self, body):
 		try:
@@ -402,8 +403,10 @@ class CartService:
 			"total_shipping_charges": self.total_shipping_charges,
 			"cart_reference_uuid": cart.cart_reference_uuid,
 			"benefits": self.benefits,
-			"cart_items_count": self.get_count_of_items(new_items)
+			"cart_items_count": self.get_count_of_items(new_items),
 		}
+		if self.shipping_address is not None:
+			response_json['shipping_address'] = self.shipping_address
 
 		if new_items is not None:
 			items = list()
@@ -440,7 +443,7 @@ class CartService:
 				item_discount_dict[item['itemid']] = item
 
 			for each_cart_item in cart_items:
-				each_cart_item.item_discount = float(item_discount_dict[each_cart_item.cart_item_id]['discount'])
+				each_cart_item.item_discount = float(item_discount_dict[str(each_cart_item.cart_item_id)]['discount'])
 		else:
 			error_msg = response_data['error'].get('error')
 			ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
@@ -474,7 +477,7 @@ class CartService:
 			"customer_id": data['user_id'],
 			'channel': data['order_source_reference'],
 			"products": [
-				{"item_id": each_cart_item.cart_item_id, "quantity": each_cart_item.quantity,
+				{"item_id": str(each_cart_item.cart_item_id), "quantity": each_cart_item.quantity,
 				 "coupon_code": each_cart_item.promo_codes}
 				for each_cart_item in cart_items]
 		}
@@ -505,7 +508,7 @@ class CartService:
 			json_order_item = order_item_dict.get(int(item['item_uuid']))
 			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item)
 			cart_item = Cart_Item()
-			cart_item.cart_item_id = item['item_uuid']
+			cart_item.cart_item_id = int(item['item_uuid'])
 			cart_item.cart_id = self.cart_reference_uuid
 			cart_item.quantity = item['quantity']
 			cart_item.display_price = float(json_order_item['basePrice'])
@@ -522,6 +525,7 @@ class CartService:
 
 	def save_address_and_get_hash(self, data):
 		addr1 = data.get('shipping_address')
+		self.shipping_address = data.get('shipping_address')
 		address = Address.get_address(name=addr1["name"], mobile=addr1["mobile"], address=addr1["address"],
 									  city=addr1["city"], pincode=addr1["pincode"], state=addr1["state"],
 									  email=addr1.get('email'), landmark=addr1.get('landmark'))
