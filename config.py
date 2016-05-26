@@ -7,6 +7,7 @@ LOG_DIR = 'grocery_order_service'
 LOG_FILE = 'grocery_order_service.log'
 DEBUG_LOG_FILE = 'grocery_order_service_debug.log'
 ERROR_LOG_FILE = 'grocery_order_service_error.log'
+DB_FILE = 'grocery_order_service_db.log'
 
 PORT = 9000
 APP_NAME = 'grocery_order_service'

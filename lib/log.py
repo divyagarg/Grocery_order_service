@@ -1,7 +1,7 @@
 import os
 import logging
 import logging.config
-from config import LOG_DIR, LOG_FILE, ERROR_LOG_FILE, APP_NAME
+from config import LOG_DIR, LOG_FILE, ERROR_LOG_FILE, APP_NAME, DB_FILE
 
 
 def setup_logging(config):
@@ -28,3 +28,12 @@ def setup_logging(config):
 
     logger.addHandler(errorhandler)
     logger.addHandler(handler)
+
+    orm_logger = logging.getLogger('sqlalchemy.engine')
+    orm_logger.setLevel(logging.INFO)
+
+    orm_handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, DB_FILE), 'midnight')
+    orm_handler.setLevel(logging.INFO)
+    orm_handler.setFormatter(formatter)
+
+    orm_logger.addHandler(orm_handler)
