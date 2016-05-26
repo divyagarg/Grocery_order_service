@@ -32,8 +32,8 @@ class DeliveryService:
 			self.get_shipment_preview(request_data)
 			self.parse_response()
 			for each_shipment in self.order_shipment_detail_list:
-				db.session.autoflush = True
 				db.session.add(each_shipment)
+				db.session.commit()
 			for each_item in self.cart.cartItem:
 				db.session.add(each_item)
 			db.session.commit()
@@ -41,6 +41,9 @@ class DeliveryService:
 		except Exception as e:
 			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
 			db.session.rollback()
+			for each_shipment in self.order_shipment_detail_list:
+				db.session.delete(each_shipment)
+				db.session.commit()
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
