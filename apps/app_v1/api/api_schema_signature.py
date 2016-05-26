@@ -475,3 +475,16 @@ GET_COUNT_OF_CART_ITEMS = {
 		}
 	}
 }
+
+GET_DELIVERY_DETAILS = {
+	"geo_id": {
+		FUNCTIONS: [
+			{Integer: {}}
+		]
+	},
+	"user_id": {
+		FUNCTIONS: [
+			{String: {}}
+		]
+	}
+}

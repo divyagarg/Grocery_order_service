@@ -70,11 +70,15 @@ class Cart(Base):
     shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'))
     payment_mode = db.Column(db.String(255))
     Index('cart_geo_user_idx',  geo_id, user_id)
-    cartItem = db.relationship('Cart_Item', backref='Cart')
+    cartItem = db.relationship('CartItem', backref='Cart')
 
+class OrderShipmentDetail(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    shipment_id = db.Column(db.String(255), unique= True)
+    cart_id = db.Column(db.String(255), nullable=False, index= True)
+    delivery_slot = db.Column(db.String(255))
 
-
-class Cart_Item(db.Model):
+class CartItem(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable=False)
     cart_item_id = db.Column(db.String(255), nullable=False, index= True)
@@ -86,7 +90,7 @@ class Cart_Item(db.Model):
     transfer_price = db.Column(db.Float(precision= '10,2'), default =0.0)
     same_day_delivery = db.Column(db.String(255))
     title = db.Column(db.String(255))
-
+    shipment_id = db.Column(db.String(255), db.ForeignKey('order_shipment_detail.shipment_id'))
 
 class Order(Base):
 
@@ -109,13 +113,13 @@ class Order(Base):
     total_shipping = db.Column(db.Float(precision='10,2'), default=0.0)
     total_payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
     payment = db.relationship('Payment', backref='Order')
-    orderItem = db.relationship('Order_Item', backref='Order')
+    orderItem = db.relationship('OrderItem', backref='Order')
     Index('order_user_idx',  user_id)
     status_id = db.Column(db.Integer, db.ForeignKey('status.id'), nullable = False)
 
 
 
-class Order_Item(db.Model):
+class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     item_id = db.Column(db.String(255), nullable=False, index =True)
     quantity = db.Column(db.Integer, nullable=False)
@@ -124,7 +128,7 @@ class Order_Item(db.Model):
     shipping_charge = db.Column(db.Float(precision='10,2'), default=0.0)
     item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
     transfer_price = db.Column(db.Float(precision= '10,2'), default =0.0)
-    order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
+    order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'),nullable=False)
 
 
 class Payment(db.Model):

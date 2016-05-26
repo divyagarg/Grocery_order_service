@@ -1,5 +1,6 @@
 
 from apps.app_v1.api.cart_service import CartService
+from apps.app_v1.api.delivery_service import DeliveryService
 from apps.app_v1.api.order_service import OrderService
 from flask import request, g
 from config import APP_NAME
@@ -32,7 +33,7 @@ def createOrUpdateCart():
         cartservice = CartService()
         return cartservice.create_or_update_cart(request.data)
     except Exception as e:
-        logger.error("{%s} Exception occured in cart service {%s}" % (g.UUID, str(e)), exc_info=True)
+        logger.error("[%s] Exception occured in cart service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
         return create_error_response(ERROR.INTERNAL_ERROR)
 
@@ -48,10 +49,9 @@ def add_item_to_cart_and_get_count_of_items():
         cartservice = CartService()
         return cartservice.add_item_to_cart(request.data)
     except Exception as e:
-        logger.error("{%s} Exception occured in getting count of cart items {%s}" % (g.UUID, str(e)), exc_info=True)
+        logger.error("[%s] Exception occured in getting count of cart items [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
         return create_error_response(ERROR.INTERNAL_ERROR)
-
 
 
 @app_v1.route('/user/<user_id>', methods = ['GET'])
@@ -65,7 +65,7 @@ def get_count_of_orders_of_a_user(user_id):
         order_service = OrderService()
         return order_service.get_count_of_orders_of_user(user_id)
     except Exception as e:
-        logger.error("{%s} Exception occured in getting count of orders of a user {%s}" % (g.UUID, str(e)), exc_info=True)
+        logger.error("[%s] Exception occured in getting count of orders of a user [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
         return create_error_response(ERROR.INTERNAL_ERROR)
 
@@ -75,13 +75,28 @@ def get_count_of_orders_of_a_user(user_id):
 @logrequest
 def order():
     logger.info(
-
         '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
     try:
         order_service = OrderService()
         return order_service.createorder(request.data)
     except Exception as e:
-        logger.error("{%s} Exception occured in order service {%s}" % (g.UUID, str(e)), exc_info=True)
+        logger.error("[%s] Exception occured in order service [%s]" % (g.UUID, str(e)), exc_info=True)
+        ERROR.INTERNAL_ERROR.message = str(e)
+        return create_error_response(ERROR.INTERNAL_ERROR)
+
+
+@app_v1.route('/delivery', methods =['POST'])
+@jsonify
+@logrequest
+def delivery_info():
+    logger.info(
+        '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
+    g.UUID = uuid.uuid4()
+    try:
+        delivery_service = DeliveryService()
+        return delivery_service.get_delivery_info(request.data)
+    except Exception as e:
+        logger.error("[%s] Exception occured in delivery service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
         return create_error_response(ERROR.INTERNAL_ERROR)

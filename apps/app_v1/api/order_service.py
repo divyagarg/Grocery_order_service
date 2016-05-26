@@ -3,6 +3,7 @@ import logging
 import traceback
 import uuid
 import datetime
+
 from apps.app_v1.api.cart_service import CartService
 import config
 from sqlalchemy import func, distinct
@@ -10,18 +11,17 @@ from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_R
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
 from apps.app_v1.api.status_service import StatusService
 from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict, delivery_types
-from apps.app_v1.models.models import Order, db, Cart, Address, Order_Item, Status, Payment, Cart_Item
+from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, Payment
 from config import APP_NAME
 import requests
 from flask import g, current_app
-from utils.jsonutils.json_utility import json_serial
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
-	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, get_address, \
+	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, \
+	get_address, \
 	get_payment, PaymentCanNotBeNullException
 from utils.jsonutils.json_schema_validator import validate
-from utils.kafka_utils.kafka_publisher import Publisher
 
 __author__ = 'divyagarg'
 
@@ -29,14 +29,13 @@ Logger = logging.getLogger(APP_NAME)
 
 
 class OrderService:
-
 	def __init__(self):
 		self.cart_reference_id = None
 		self.order_reference_id = None
 		self.geo_id = None
 		self.user_id = None
 		self.order_type = None
-		self.order_source_reference =None
+		self.order_source_reference = None
 		self.promo_codes = None
 		self.shipping_address = None
 		self.billing_address = None
@@ -53,7 +52,7 @@ class OrderService:
 		self.total_shipping_charges = 0.0
 		self.total_discount = 0.0
 		self.total_display_price = 0.0
-		self.total_payble_amount =0.0
+		self.total_payble_amount = 0.0
 		self.order_items = None
 
 		self.item_id_to_item_obj_dict = None
@@ -69,15 +68,15 @@ class OrderService:
 		try:
 			if user_id is None or not isinstance(user_id, (unicode, str)):
 				return create_error_response(ERROR.VALIDATION_ERROR)
-			count = db.session.query(func.count(distinct(Order.parent_order_id))).filter(Order.user_id == user_id).filter(Order.status_id == Status.id).filter(Status.status_code != ORDER_STATUS.CANCELLED.value).group_by(Order.parent_order_id).count()
+			count = db.session.query(func.count(distinct(Order.parent_order_id))).filter(
+				Order.user_id == user_id).filter(Order.status_id == Status.id).filter(
+				Status.status_code != ORDER_STATUS.CANCELLED.value).group_by(Order.parent_order_id).count()
 		except Exception as e:
-			Logger.error('{%s} Exception occured while fetching data from db {%s}' % (g.UUID, str(e)), exc_info=True)
+			Logger.error('[%s] Exception occured while fetching data from db [%s]' % (g.UUID, str(e)), exc_info=True)
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
 		return create_data_response({"count": count})
-
-
 
 	def createorder(self, body):
 		error = True
@@ -85,28 +84,29 @@ class OrderService:
 
 		while True:
 
-		#1 Parse request
+			# 1 Parse request
 			request_data = parse_request_data(body)
 			if "cart_reference_uuid" in request_data.get('data'):
 				self.cart_reference_given = True
 			else:
 				self.cart_reference_given = False
-		#2. validate request data fields
+			# 2. validate request data fields
 			try:
 				if self.cart_reference_given:
 					validate(request_data, CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE)
 				else:
 					validate(request_data, CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE)
 			except RequiredFieldMissing as rfm:
-				Logger.error("[%s] Required field is missing [%s]" %(g.UUID, rfm.message))
-				err=rfm
+				Logger.error("[%s] Required field is missing [%s]" % (g.UUID, rfm.message))
+				err = rfm
 				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in validating order creation request [%s]" %(g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in validating order creation request [%s]" % (g.UUID, str(e)),
+							 exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
-		#3. Initialize order Object
+			# 3. Initialize order Object
 			try:
 				if self.cart_reference_given:
 					self.initialize_order_from_cart_db_data(request_data['data'])
@@ -114,19 +114,19 @@ class OrderService:
 					self.initialize_order_with_request_data(request_data['data'])
 				self.parent_reference_id = generate_reference_order_id()
 			except RequiredFieldMissing as rfm:
-				Logger.error("[%s] cart is empty [%s]" %(g.UUID, rfm.message))
+				Logger.error("[%s] cart is empty [%s]" % (g.UUID, rfm.message))
 				err = rfm
 				break
 			except NoSuchCartExistException as ncee:
-				Logger.error("[%s] Cart does not Exist [%s]" %(g.UUID, ncee.message))
-				err=ncee
+				Logger.error("[%s] Cart does not Exist [%s]" % (g.UUID, ncee.message))
+				err = ncee
 				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in initializing order [%s]" %(g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in initializing order [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
-		#3. calculate and validate price
+			# 3. calculate and validate price
 			try:
 				self.calculate_and_validate_prices()
 			except SubscriptionNotFoundException:
@@ -134,16 +134,17 @@ class OrderService:
 				err = ERROR.SUBSCRIPTION_NOT_FOUND
 				break
 			except  PriceChangedException as pce:
-				Logger.error("[%s] Data was stale, price has changed [%s]" %(g.UUID, json.dumps(request_data['data'])))
+				Logger.error("[%s] Data was stale, price has changed [%s]" % (g.UUID, json.dumps(request_data['data'])))
 				err = pce
 				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in calculating and validating prices of subscriptions [%s]" %(g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in calculating and validating prices of subscriptions [%s]" % (
+				g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
 
-		# 4. check and apply coupons and freebie
+			# 4. check and apply coupons and freebie
 
 			try:
 				response_data = self.get_response_from_check_coupons_api()
@@ -164,38 +165,38 @@ class OrderService:
 				err = cie
 				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in checking discounts [%s]" %(g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in checking discounts [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
 
-		#5. Segregate order items based on sdd and ndd, and add freebies with ndd
+			# 5. Segregate order items based on sdd and ndd, and add freebies with ndd
 			self.segregate_order_based_on_ndd_sdd()
 
-		#6 Create two orders based on ndd and sdd and create a master order id
+			# 6 Create two orders based on ndd and sdd and create a master order id
 			try:
 				self.create_and_save_order()
 				self.save_payment()
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in saving order [%s]" %(g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in saving order [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
 
-		#7 Delete cart of reference id is given
+			# 7 Delete cart of reference id is given
 			try:
 				if self.cart_reference_given:
 					cart_service = CartService()
 					cart_service.remove_cart(self.cart_reference_id)
 			except Exception as e:
 				traceback.format_exc()
-				Logger.error("[%s] Exception occurred in saving order [%s]" %(g.UUID, str(e)), exc_info = True)
+				Logger.error("[%s] Exception occurred in saving order [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
-		#8 Order History
+			# 8 Order History
 
-		#9 Save in old system/ publish on kafka
+			# 9 Save in old system/ publish on kafka
 			# try:
 			# 	if not self.split_order:
 			# 		message = self.create_publisher_message(self.order)
@@ -214,7 +215,6 @@ class OrderService:
 			error = False
 			break
 
-
 		if error:
 			db.session.rollback()
 			return create_error_response(err)
@@ -223,13 +223,13 @@ class OrderService:
 				db.session.commit()
 				return create_data_response(self.parent_reference_id)
 			except Exception as e:
-				Logger.error("[%s] Exception occured in committing db changes [%s]" %(g.UUID, str(e)))
+				Logger.error("[%s] Exception occured in committing db changes [%s]" % (g.UUID, str(e)))
 				ERROR.INTERNAL_ERROR.message = str(e)
 				return create_error_response(ERROR.INTERNAL_ERROR)
 
 	def initialize_order_from_cart_db_data(self, data):
 		self.cart_reference_id = data['cart_reference_uuid']
-		cart = Cart.query.filter_by(cart_reference_uuid = self.cart_reference_id).first()
+		cart = Cart.query.filter_by(cart_reference_uuid=self.cart_reference_id).first()
 		if cart is None:
 			raise NoSuchCartExistException(ERROR.NO_SUCH_CART_EXIST)
 		self.user_id = cart.user_id
@@ -255,7 +255,6 @@ class OrderService:
 		self.delivery_due_date = data.get('delivery_due_date')
 		self.delivery_slot = json.dumps(data.get('delivery_slot'))
 
-
 	def initialize_order_with_request_data(self, data):
 		self.user_id = data.get('user_id')
 		self.geo_id = int(data.get('geo_id'))
@@ -265,16 +264,20 @@ class OrderService:
 			self.promo_codes = data.get('promo_codes')
 		if data.get('payment_mode') is not None:
 			self.payment_mode = payment_modes_dict[data.get('payment_mode')]
-		self.total_display_price = float(data.get('total_display_price')) if data.get('total_display_price') is not None else 0.0
-		self.total_offer_price = float(data.get('total_offer_price')) if data.get('total_offer_price') is not None else 0.0
-		self.total_shipping_charges = float(data.get('total_shipping_charges')) if data.get('total_shipping_charges') is not None else 0.0
+		self.total_display_price = float(data.get('total_display_price')) if data.get(
+			'total_display_price') is not None else 0.0
+		self.total_offer_price = float(data.get('total_offer_price')) if data.get(
+			'total_offer_price') is not None else 0.0
+		self.total_shipping_charges = float(data.get('total_shipping_charges')) if data.get(
+			'total_shipping_charges') is not None else 0.0
 		self.total_discount = float(data.get('total_discount')) if data.get('total_discount') is not None else 0.0
 		self.order_items = data.get('orderitems')
 		self.shipping_address = data.get('shipping_address')
 		if 'billing_address' in data:
 			self.billing_address = data.get('billing_address')
 		self.selected_freebies = data.get('selected_free_bees_code')
-		self.delivery_type = delivery_types[int(data.get('delivery_type'))] if data.get('delivery_type') is not None else None
+		self.delivery_type = delivery_types[int(data.get('delivery_type'))] if data.get(
+			'delivery_type') is not None else None
 		self.delivery_slot = json.dumps(data.get('delivery_slot'))
 
 	def fetch_items_price(self, list_of_item_ids):
@@ -289,12 +292,13 @@ class OrderService:
 			"count": list_of_item_ids.__len__(),
 			"offset": 0
 		}
-		Logger.info("[%s] Request data for calculate price while creating order is [%s]" %(g.UUID, req_data))
+		Logger.info("[%s] Request data for calculate price while creating order is [%s]" % (g.UUID, req_data))
 		response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'],
-								 data= json.dumps(req_data),
+								 data=json.dumps(req_data),
 								 headers={'Content-type': 'application/json'})
 		json_data = json.loads(response.text)
-		Logger.info("{%s} Calculate Price API Request [%s], Response [%s]" % (g.UUID, json.dumps(req_data), json.dumps(json_data)))
+		Logger.info("[%s] Calculate Price API Request [%s], Response [%s]" % (
+		g.UUID, json.dumps(req_data), json.dumps(json_data)))
 		return json_data['results']
 
 	def calculate_and_validate_prices(self):
@@ -325,7 +329,7 @@ class OrderService:
 		else:
 			self.compare_prices_of_items_json(item_id_to_item_json_dict, order_item_dict)
 
-	def compare_prices_of_items_objects(self,item_id_to_item_obj_dict,  order_item_dict):
+	def compare_prices_of_items_objects(self, item_id_to_item_obj_dict, order_item_dict):
 		for key in item_id_to_item_obj_dict:
 			src = order_item_dict.get(key)
 			if src is None:
@@ -335,11 +339,11 @@ class OrderService:
 				raise PriceChangedException(ERROR.PRODUCT_DISPLAY_PRICE_CHANGED)
 			if src.get('offerPrice') != tar.offer_price:
 				raise PriceChangedException(ERROR.PRODUCT_OFFER_PRICE_CHANGED)
-			if (src.get('deliveryDays') == 0 and tar.same_day_delivery == 'NDD') or (src.get('deliveryDays') == 1 and tar.same_day_delivery == 'SDD'):
-				tar.same_day_delivery = 'SDD' if src.get('deliveryDays') ==0 else 'NDD'
+			if (src.get('deliveryDays') == 0 and tar.same_day_delivery == 'NDD') or (
+					src.get('deliveryDays') == 1 and tar.same_day_delivery == 'SDD'):
+				tar.same_day_delivery = 'SDD' if src.get('deliveryDays') == 0 else 'NDD'
 			if src.get('transferPrice') != tar.transfer_price:
 				tar.transfer_price = src.get('transferPrice')
-
 
 	def compare_prices_of_items_json(self, item_id_to_item_json_dict, order_item_dict):
 		for key in item_id_to_item_json_dict:
@@ -351,12 +355,12 @@ class OrderService:
 				raise PriceChangedException(ERROR.PRODUCT_DISPLAY_PRICE_CHANGED)
 			if src.get('offerPrice') != float(tar.get('offer_price')):
 				raise PriceChangedException(ERROR.PRODUCT_OFFER_PRICE_CHANGED)
-			if (src.get('deliveryDays') == 0 and tar.get('same_day_delivery') == False) or (src.get('deliveryDays') == 1 and tar.get('same_day_delivery') == str(True)):
+			if (src.get('deliveryDays') == 0 and tar.get('same_day_delivery') == False) or (
+					src.get('deliveryDays') == 1 and tar.get('same_day_delivery') == str(True)):
 				tar["same_day_delivery"] = 'SDD' if src.get('deliveryDays') == 0 else 'NDD'
 			else:
-				tar["same_day_delivery"] ='SDD' if tar["same_day_delivery"] == 'True' else 'NDD'
+				tar["same_day_delivery"] = 'SDD' if tar["same_day_delivery"] == 'True' else 'NDD'
 			tar["transfer_price"] = src.get('transferPrice')
-
 
 	def get_response_from_check_coupons_api(self):
 		product_list = list()
@@ -402,7 +406,7 @@ class OrderService:
 				g.UUID, json.dumps(req_data), json_data))
 		return json_data
 
-	def compare_discounts_and_freebies(self , response_data):
+	def compare_discounts_and_freebies(self, response_data):
 		if response_data['success']:
 			if self.total_discount != float(response_data['totalDiscount']):
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
@@ -420,7 +424,8 @@ class OrderService:
 						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 			else:
 				for key in self.item_id_to_item_json_dict:
-					if float(self.item_id_to_item_json_dict[key].get('item_discount')) != item_discount_dict[key].get('discount'):
+					if float(self.item_id_to_item_json_dict[key].get('item_discount')) != item_discount_dict[key].get(
+							'discount'):
 						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 		else:
 			error_msg = response_data['error'].get('error')
@@ -450,17 +455,17 @@ class OrderService:
 			else:
 				self.split_order = True
 
-
 	def create_and_save_order(self):
 		if not self.split_order:
 			order = Order()
 			order.parent_order_id = self.parent_reference_id
 			order.order_reference_id = order.parent_order_id
 
-			order_items = self.create_order_items(parent_order_id=order.order_reference_id, sdd_order_id=None, ndd_order_id=None)
+			order_items = self.create_order_items(parent_order_id=order.order_reference_id, sdd_order_id=None,
+												  ndd_order_id=None)
 			order.orderItem = order_items
 
-			self.create_order(master_order = order, sdd_order = None, ndd_order =None)
+			self.create_order(master_order=order, sdd_order=None, ndd_order=None)
 			self.order = order
 			db.session.add(order)
 			db.session.add_all(order_items)
@@ -468,26 +473,26 @@ class OrderService:
 		else:
 			sdd_order = Order()
 			sdd_order.order_reference_id = uuid.uuid1().hex
-			sdd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=sdd_order.order_reference_id, ndd_order_id=None)
+			sdd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=sdd_order.order_reference_id,
+													  ndd_order_id=None)
 			sdd_order.orderItem = sdd_order_items
 
 			ndd_order = Order()
 			ndd_order.order_reference_id = uuid.uuid1().hex
-			ndd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=None, ndd_order_id=ndd_order.order_reference_id)
+			ndd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=None,
+													  ndd_order_id=ndd_order.order_reference_id)
 			ndd_order.orderItem = ndd_order_items
 
 			sdd_order.parent_order_id = self.parent_reference_id
 			ndd_order.parent_order_id = self.parent_reference_id
 
-			self.create_order(master_order=None, sdd_order = sdd_order, ndd_order = ndd_order)
+			self.create_order(master_order=None, sdd_order=sdd_order, ndd_order=ndd_order)
 			self.sdd_order = sdd_order
 			self.ndd_order = ndd_order
 			all_items = sdd_order_items + ndd_order_items
 			db.session.add_all(all_items)
 			db.session.add(sdd_order)
 			db.session.add(ndd_order)
-
-
 
 	def create_order(self, master_order, sdd_order, ndd_order):
 		if not self.split_order:
@@ -506,12 +511,15 @@ class OrderService:
 		order.promo_codes = self.promo_codes
 		order.delivery_type = self.delivery_type
 		order.delivery_slot = self.delivery_slot
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == payment_modes_dict[0] else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
-		order.total_discount =0.0
-		order.total_offer_price =0.0
-		order.total_display_price =0.0
-		order.total_payble_amount =0.0
-		order.total_shipping =0.0
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == \
+																							 payment_modes_dict[
+																								 0] else StatusService.get_status_id(
+			ORDER_STATUS.PENDING_STATUS.value)
+		order.total_discount = 0.0
+		order.total_offer_price = 0.0
+		order.total_display_price = 0.0
+		order.total_payble_amount = 0.0
+		order.total_shipping = 0.0
 		if self.cart_reference_given:
 			order.shipping_address_ref = self.shipping_address
 		else:
@@ -530,7 +538,6 @@ class OrderService:
 										  billing_address.get('email'), billing_address.get('landmark'))
 			order.billing_address_ref = address.address_hash
 
-
 	def save_specific_order_data(self, order, sdd_order, ndd_order):
 		if not self.split_order:
 			order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
@@ -538,7 +545,8 @@ class OrderService:
 			order.total_display_price = self.total_display_price
 			order.total_offer_price = self.total_offer_price
 			order.total_shipping = get_shipping_charges(order.total_offer_price, order.total_discount)
-			Logger.info("[%s] Total offer price is [%s], Total shipping cost is [%s]" %(g.UUID, order.total_offer_price, order.total_shipping))
+			Logger.info("[%s] Total offer price is [%s], Total shipping cost is [%s]" % (
+			g.UUID, order.total_offer_price, order.total_shipping))
 			if order.total_shipping != self.total_shipping_charges:
 				raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
 			order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
@@ -549,7 +557,8 @@ class OrderService:
 					sdd_order.total_display_price += sdd_order_item.display_price * sdd_order_item.quantity
 					sdd_order.total_offer_price += sdd_order_item.offer_price * sdd_order_item.quantity
 				sdd_order.total_shipping = self.total_shipping_charges
-				Logger.info("[%s] SDD Order: Total offer price is [%s], Total shipping cost is [%s]" %(g.UUID, sdd_order.total_offer_price, sdd_order.total_shipping))
+				Logger.info("[%s] SDD Order: Total offer price is [%s], Total shipping cost is [%s]" % (
+				g.UUID, sdd_order.total_offer_price, sdd_order.total_shipping))
 				if sdd_order.total_shipping != self.total_shipping_charges:
 					raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
 				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
@@ -559,15 +568,18 @@ class OrderService:
 					ndd_order.total_display_price += ndd_order_item.display_price * ndd_order_item.quantity
 					ndd_order.total_offer_price += ndd_order_item.offer_price * ndd_order_item.quantity
 				ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
-				Logger.info("[%s] SDD Order: Total offer price is [%s]" %(g.UUID, ndd_order.total_offer_price))
+				Logger.info("[%s] SDD Order: Total offer price is [%s]" % (g.UUID, ndd_order.total_offer_price))
 				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
 			else:
 				for sdd_order_item in self.sdd_items_dict.values():
-					item_discount = float(sdd_order_item["item_discount"]) if sdd_order_item["item_discount"] is not None else 0.0
-					display_price = float(sdd_order_item["display_price"]) if sdd_order_item["display_price"] is not None else 0.0
-					offer_price = float(sdd_order_item["offer_price"]) if sdd_order_item["offer_price"] is not None else 0.0
+					item_discount = float(sdd_order_item["item_discount"]) if sdd_order_item[
+																				  "item_discount"] is not None else 0.0
+					display_price = float(sdd_order_item["display_price"]) if sdd_order_item[
+																				  "display_price"] is not None else 0.0
+					offer_price = float(sdd_order_item["offer_price"]) if sdd_order_item[
+																			  "offer_price"] is not None else 0.0
 
-					sdd_order.total_discount +=item_discount
+					sdd_order.total_discount += item_discount
 					sdd_order.total_display_price += display_price * sdd_order_item["quantity"]
 					sdd_order.total_offer_price += offer_price * sdd_order_item["quantity"]
 
@@ -575,17 +587,18 @@ class OrderService:
 				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
 
 				for ndd_order_item in self.ndd_items_dict.values():
-					item_discount = float(ndd_order_item["item_discount"]) if ndd_order_item["item_discount"] is not None else 0.0
-					display_price = float(ndd_order_item["display_price"]) if ndd_order_item["display_price"] is not None else 0.0
-					offer_price = float(ndd_order_item["offer_price"]) if ndd_order_item["offer_price"] is not None else 0.0
+					item_discount = float(ndd_order_item["item_discount"]) if ndd_order_item[
+																				  "item_discount"] is not None else 0.0
+					display_price = float(ndd_order_item["display_price"]) if ndd_order_item[
+																				  "display_price"] is not None else 0.0
+					offer_price = float(ndd_order_item["offer_price"]) if ndd_order_item[
+																			  "offer_price"] is not None else 0.0
 
 					ndd_order.total_discount += item_discount
 					ndd_order.total_display_price += display_price * ndd_order_item["quantity"]
 					ndd_order.total_offer_price += offer_price * ndd_order_item["quantity"]
 				ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
 				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
-
-
 
 	def create_order_items(self, parent_order_id, sdd_order_id, ndd_order_id):
 		order_item_list = list()
@@ -609,10 +622,9 @@ class OrderService:
 
 		return order_item_list
 
-
 	def create_order_item_obj(self, order_id, src_dict, list_of_items):
 		for src_item in src_dict.values():
-			order_item = Order_Item()
+			order_item = OrderItem()
 			order_item.item_id = src_item.cart_item_id
 			order_item.quantity = src_item.quantity
 			order_item.item_discount = src_item.item_discount
@@ -625,13 +637,16 @@ class OrderService:
 
 	def create_order_item_json(self, order_id, src_dict, list_of_items):
 		for src_item in src_dict.values():
-			order_item = Order_Item()
+			order_item = OrderItem()
 			order_item.item_id = src_item["item_uuid"]
 			order_item.quantity = src_item["quantity"]
-			order_item.item_discount = float(src_item["item_discount"]) if src_item.get('item_discount') is not None else 0.0
+			order_item.item_discount = float(src_item["item_discount"]) if src_item.get(
+				'item_discount') is not None else 0.0
 			order_item.offer_price = float(src_item["offer_price"]) if src_item.get('offer_price') is not None else 0.0
-			order_item.display_price = float(src_item["display_price"]) if src_item.get('display_price') is not None else 0.0
-			order_item.transfer_price = float(src_item.get('transfer_price')) if src_item.get('transfer_price') is not None else 0.0
+			order_item.display_price = float(src_item["display_price"]) if src_item.get(
+				'display_price') is not None else 0.0
+			order_item.transfer_price = float(src_item.get('transfer_price')) if src_item.get(
+				'transfer_price') is not None else 0.0
 			order_item.order_id = order_id
 			list_of_items.append(order_item)
 
@@ -642,7 +657,7 @@ class OrderService:
 		db.session.add(payment)
 
 	def create_publisher_message(self, order):
-		data ={}
+		data = {}
 		data['parent_order_id'] = order.parent_order_id
 		data['order_id'] = order.order_reference_id
 		data['status_code'] = StatusService.get_status_code(order.status_id)
@@ -668,7 +683,7 @@ class OrderService:
 		address = get_address(order.shipping_address_ref)
 		if address is None:
 			raise NoShippingAddressFoundException(ERROR.NO_SHIPPING_ADDRESS_FOUND)
-		data['shipping_address'] =  self.create_address_dict(address)
+		data['shipping_address'] = self.create_address_dict(address)
 
 		if order.shipping_address_ref == order.billing_address_ref:
 			data['billing_address'] = data['shipping_address']
@@ -729,7 +744,7 @@ class OrderService:
 			'channel': self.order_source_reference,
 			"products": product_list,
 			"payment_mode": self.payment_mode,
-			"order_id":self.parent_reference_id
+			"order_id": self.parent_reference_id
 		}
 		if self.promo_codes is not None and self.promo_codes != []:
 			if self.cart_reference_given:
@@ -754,10 +769,3 @@ class OrderService:
 			error_msg = json_data['error'].get('error')
 			ERROR.COUPON_APPLY_FAILED.message = error_msg
 			raise CouponInvalidException(ERROR.ERROR.COUPON_APPLY_FAILED)
-
-
-
-
-
-
-

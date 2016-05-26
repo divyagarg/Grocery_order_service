@@ -10,7 +10,7 @@ from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartE
 	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException, get_shipping_charges
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models import order_types, payment_modes_dict
-from apps.app_v1.models.models import Cart, Cart_Item, Address
+from apps.app_v1.models.models import Cart, CartItem, Address
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from utils.jsonutils.json_schema_validator import validate
 from config import APP_NAME
@@ -490,6 +490,7 @@ class CartService:
 		cart.total_shipping_charges = self.total_shipping_charges
 
 	def get_response_from_check_coupons_api(self, cart_items, data):
+		url=current_app.config['COUPON_CHECK_URL']
 		req_data = {
 			"area_id": str(data['geo_id']),
 			"customer_id": data['user_id'],
@@ -501,6 +502,7 @@ class CartService:
 		}
 		if 'payment_mode' in data :
 			req_data['payment_mode'] = payment_modes_dict[data.get('payment_mode')]
+			url+config.COUPON_QUERY_PARAM
 		if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 			coupon_codes = map(str, data.get('promo_codes'))
 			req_data["coupon_codes"] = coupon_codes
@@ -511,7 +513,7 @@ class CartService:
 			'Content-type': 'application/json'
 		}
 
-		response = requests.post(url=current_app.config['COUPON_CHECK_URL'], data=json.dumps(req_data),
+		response = requests.post(url=url, data=json.dumps(req_data),
 								 headers=header)
 		json_data = json.loads(response.text)
 		Logger.info(
@@ -526,7 +528,7 @@ class CartService:
 			item_id = int(item['item_uuid'])
 			json_order_item = order_item_dict.get(item_id)
 			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item)
-			cart_item = Cart_Item()
+			cart_item = CartItem()
 			cart_item.cart_item_id = item_id
 			cart_item.cart_id = self.cart_reference_uuid
 			cart_item.quantity = item['quantity']
@@ -594,7 +596,7 @@ class CartService:
 					existing_cart_item.promo_codes = data_item.get('promo_codes')
 					# updated_cart_items[data_item['item_uuid']] = existing_cart_item
 				elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity'] > 0:
-					new_cart_item = Cart_Item()
+					new_cart_item = CartItem()
 					new_cart_item.cart_id = cart.cart_reference_uuid
 					new_cart_item.cart_item_id = data_item['item_uuid']
 					new_cart_item.quantity = data_item['quantity']
@@ -643,7 +645,7 @@ class CartService:
 		if cart_reference_id is None:
 			ERROR.INTERNAL_ERROR.message = "Cart reference id can not be Null"
 			raise Exception(ERROR.INTERNAL_ERROR)
-		db.session.query(Cart_Item).filter(Cart_Item.cart_id == cart_reference_id).delete()
+		db.session.query(CartItem).filter(CartItem.cart_id == cart_reference_id).delete()
 		db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()
 
 
@@ -744,7 +746,7 @@ class CartService:
 		cart.order_source_reference = data['order_source_reference']
 		cart_item_list = list()
 		for item in data['orderitems']:
-			cart_item = Cart_Item()
+			cart_item = CartItem()
 			cart_item.cart_item_id = item['item_uuid']
 			cart_item.cart_id = self.cart_reference_uuid
 			cart_item.quantity = 1 if item.get('quantity') is None else item.get('quantity')
@@ -851,7 +853,7 @@ class CartService:
 						'quantity') is None else data_item.get('quantity')
 
 				elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity'] > 0:
-					new_cart_item = Cart_Item()
+					new_cart_item = CartItem()
 					new_cart_item.cart_id = cart.cart_reference_uuid
 					new_cart_item.cart_item_id = data_item['item_uuid']
 					new_cart_item.quantity = 1 if data_item.get('quantity') is None else data_item.get('quantity')
