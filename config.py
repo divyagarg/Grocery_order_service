@@ -15,6 +15,7 @@ APP_NAME = 'grocery_order_service'
 SHIPPING_COST = 20.0
 SHIPPING_COST_THRESHOLD = 1000
 PUBLISH_TO_KAFKA = True
+SEARCH_API_SELECT_CLAUSE = ["deliveryDays", "transferPrice", "maxQuantity"]
 
 class Config:
 	DEBUG = False

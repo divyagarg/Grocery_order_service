@@ -1,3 +1,5 @@
+import config
+
 __author__ = 'divyagarg'
 import datetime
 import logging
@@ -25,9 +27,13 @@ Logger = logging.getLogger(APP_NAME)
 def check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item):
 	if json_order_item is None:
 		Logger.error(
-			"{%s} No item is found in calculate price API response for the item {%s}" % (g.UUID, item['item_uuid']),
+			"[%s] No item is found in calculate price API response for the item [%s]" %(g.UUID, item['item_uuid']),
 			exc_info=True)
 		raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
+	if json_order_item['maxQuantity'] is not None and json_order_item['maxQuantity']< item['quantity']:
+		Logger.error("[%s] Quantity requested can not be fulfilled for the item [%s]" %(g.UUID, item['item_uuid']),
+			exc_info=True)
+		raise QuantityNotAvailableException(ERROR.PRODUCT_AVAILABILITY_CHANGED)
 
 
 class CartService:
@@ -63,7 +69,7 @@ class CartService:
 			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)
 		except Exception as e:
-			Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
+			Logger.error('[%s] Exception occured while creating/updating cart [%s]' % (g.UUID, str(e)), exc_info=True)
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
@@ -85,6 +91,10 @@ class CartService:
 			except SubscriptionNotFoundException:
 				Logger.error("[%s] Subscription is not valid" % g.UUID)
 				err = ERROR.SUBSCRIPTION_NOT_FOUND
+				break
+			except QuantityNotAvailableException as qnae:
+				Logger.error("[%s] Quantity is not available [%s]" % (g.UUID, str(qnae)))
+				err = ERROR.PRODUCT_AVAILABILITY_CHANGED
 				break
 			except EmptyCartException:
 				Logger.error("[%s] Cart has become empty" % g.UUID)
@@ -197,12 +207,12 @@ class CartService:
 				break
 			except RequiredFieldMissing as rfm:
 				Logger.error(
-					'{%s} Required field is missing in creating cart API call{%s}' % (g.UUID, str(rfm)),
+					'[%s] Required field is missing in creating cart API call[%s]' % (g.UUID, str(rfm)),
 					exc_info=True)
 				err = ERROR.CART_ITEM_MISSING
 				break
 			except IncorrectDataException as ide:
-				Logger.error('{%s} Zero quantity can not be added{%s}' % (g.UUID, str(ide)),
+				Logger.error('[%s] Zero quantity can not be added[%s]' % (g.UUID, str(ide)),
 							 exc_info=True)
 				err = ERROR.INCORRECT_DATA
 				break
@@ -225,12 +235,12 @@ class CartService:
 				self.get_price_and_update_in_cart_item(data)
 
 			except SubscriptionNotFoundException as snfe:
-				Logger.error("[%s] Subscript not found for data  [%s] [%s]" % (g.UUID, str(snfe), json.dumps(data)))
+				Logger.error("[%s] Subscript not found for data  [%s] [%s]" % (g.UUID, str(snfe)))
 				err = ERROR.SUBSCRIPTION_NOT_FOUND
 				break
 			except QuantityNotAvailableException as qnae:
-				Logger.error("[%s] Quantity is not available [%s]" % (g.UUID, str(qnae), json.dumps(data)))
-				err = ERROR.NOT_AVAILABLE_ERROR
+				Logger.error("[%s] Quantity is not available [%s]" % (g.UUID, str(qnae)))
+				err = ERROR.PRODUCT_AVAILABILITY_CHANGED
 				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in getting price and update in cart item [%s]" % (g.UUID, str(e)),
@@ -379,7 +389,7 @@ class CartService:
 				"filters": {
 					"id": request_items_ids
 				},
-				"select": ["deliveryDays", "transferPrice"]
+				"select": config.SEARCH_API_SELECT_CLAUSE
 			},
 			"count": request_items_ids.__len__(),
 			"offset": 0
@@ -390,11 +400,11 @@ class CartService:
 	def call_calculate_price_api(self, req_data):
 
 		request_data = json.dumps(req_data)
-		Logger.info("{%s} Request data for calculate price API is {%s}" % (g.UUID, request_data))
+		Logger.info("[%s] Request data for calculate price API is [%s]" % (g.UUID, request_data))
 		response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data,
 								 headers={'Content-type': 'application/json'})
 		json_data = json.loads(response.text)
-		Logger.info("{%s} Response got from calculate Price API is {%s}" % (g.UUID, json.dumps(json_data)))
+		Logger.info("[%s] Response got from calculate Price API is [%s]" % (g.UUID, json.dumps(json_data)))
 		if 'status' in json_data and json_data.get('status') != 200:
 			ERROR.INTERNAL_ERROR.message = json_data['msg']
 			raise Exception(ERROR.INTERNAL_ERROR)
@@ -513,10 +523,11 @@ class CartService:
 		order_item_dict = self.fetch_items_price_return_dict(data)
 		cart_item_list = list()
 		for item in data['orderitems']:
-			json_order_item = order_item_dict.get(int(item['item_uuid']))
+			item_id = int(item['item_uuid'])
+			json_order_item = order_item_dict.get(item_id)
 			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item)
 			cart_item = Cart_Item()
-			cart_item.cart_item_id = int(item['item_uuid'])
+			cart_item.cart_item_id = item_id
 			cart_item.cart_id = self.cart_reference_uuid
 			cart_item.quantity = item['quantity']
 			cart_item.display_price = float(json_order_item['basePrice'])
@@ -547,9 +558,12 @@ class CartService:
 		if response_data is None or response_data.__len__() == 0:
 			raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
 		order_item_price_dict = {}
+
 		for response in response_data[0].get('items')[0].get('items'):
-			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(response.get('id'), response)
 			order_item_price_dict[response.get('id')] = response
+		for each_item in request_items:
+			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(each_item, order_item_price_dict[int(each_item['item_uuid'])])
+
 		return order_item_price_dict
 
 	def update_cart_items(self, data, cart):
@@ -653,7 +667,7 @@ class CartService:
 			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)
 		except Exception as e:
-			Logger.error('{%s} Exception occured while creating/updating cart {%s}' % (g.UUID, str(e)), exc_info=True)
+			Logger.error('[%s] Exception occured while creating/updating cart [%s]' % (g.UUID, str(e)), exc_info=True)
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
@@ -667,12 +681,12 @@ class CartService:
 				self.validate_create_new_cart(data)
 			except RequiredFieldMissing as rfm:
 				Logger.error(
-					'{%s} Required field is missing in creating cart API call{%s}' % (g.UUID, str(rfm)),
+					'[%s] Required field is missing in creating cart API call[%s]' % (g.UUID, str(rfm)),
 					exc_info=True)
 				err = ERROR.CART_ITEM_MISSING
 				break
 			except IncorrectDataException as ide:
-				Logger.error('{%s} Zero quantity can not be added{%s}' % (g.UUID, str(ide)),
+				Logger.error('[%s] Zero quantity can not be added[%s]' % (g.UUID, str(ide)),
 							 exc_info=True)
 				err = ERROR.INCORRECT_DATA
 				break

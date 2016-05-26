@@ -4,6 +4,7 @@ import traceback
 import uuid
 import datetime
 from apps.app_v1.api.cart_service import CartService
+import config
 from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
@@ -283,7 +284,7 @@ class OrderService:
 				"filters": {
 					"id": list_of_item_ids
 				},
-				"select": ["deliveryDays", "transferPrice"]
+				"select": config.SEARCH_API_SELECT_CLAUSE
 			},
 			"count": list_of_item_ids.__len__(),
 			"offset": 0
