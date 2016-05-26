@@ -108,6 +108,7 @@ CREATE_CART_SCHEMA = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
+						REQUIRED: False,
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
@@ -193,6 +194,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
+						REQUIRED: False,
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
@@ -228,6 +230,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
+						REQUIRED: False,
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
@@ -387,6 +390,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
+						REQUIRED: False,
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {

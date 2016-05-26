@@ -25,7 +25,7 @@ class Address(db.Model):
     mobile = db.Column(db.String(512), nullable=False)
     address = db.Column(db.String(512), nullable=False)
     city = db.Column(db.String(512), nullable=False)
-    pincode = db.Column(db.String(512), nullable=False)
+    pincode = db.Column(db.String(512))
     state = db.Column(db.String(512), nullable=False)
     email = db.Column(db.String(512))
     landmark = db.Column(db.String(512))
@@ -34,7 +34,7 @@ class Address(db.Model):
     address_hash = db.Column(db.String(255), nullable=False, unique=True)
 
     def __hash__(self):
-        raw_string = self.name+ self.mobile + self.city + self.pincode + self.state
+        raw_string = self.name+ self.mobile + self.city + self.state
         return hashlib.sha1(raw_string).hexdigest()
 
 

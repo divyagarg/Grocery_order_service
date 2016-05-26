@@ -313,9 +313,9 @@ class CartService:
 		self.shipping_address = data.get('shipping_address')
 		if self.shipping_address is not None:
 			address = Address.get_address(self.shipping_address['name'], self.shipping_address['mobile'],
-										  self.shipping_address['address'], self.shipping_address['city'],
-										  self.shipping_address['pincode'], self.shipping_address['state'],
-										  self.shipping_address['email'], self.shipping_address['landmark'])
+										  self.shipping_address['address'], self.shipping_address.get('city'),
+										  self.shipping_address.get('pincode'), self.shipping_address.get('state'),
+										  self.shipping_address.get('email'), self.shipping_address.get('landmark'))
 			cart.shipping_address_ref = address.address_hash
 
 		db.session.add(cart)
