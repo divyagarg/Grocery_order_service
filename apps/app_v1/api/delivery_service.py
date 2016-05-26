@@ -23,14 +23,18 @@ class DeliveryService:
 	def __init__(self):
 		self.shipment_preview = None
 		self.cart = None
+		self.order_shipment_detail_list = None
 
 	def get_delivery_info(self, body):
-		pass
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, GET_DELIVERY_DETAILS)
 			self.get_shipment_preview(request_data)
 			self.parse_response()
+			for each_shipment in self.order_shipment_detail_list:
+				db.session.add(each_shipment)
+			for each_item in self.cart.cartItem:
+				db.session.add(each_item)
 			db.session.commit()
 			return create_data_response(data=self.shipment_preview)
 		except Exception as e:
@@ -58,19 +62,20 @@ class DeliveryService:
 		item_dict = {}
 		for each_item in self.cart.cartItem:
 			item_dict[each_item.cart_item_id] = each_item
-
+		self.order_shipment_detail_list = list()
 		for i in range(shipment_list.__len__()):
 			order_shipment_detail = OrderShipmentDetail()
 			order_shipment_detail.cart_id = self.cart.cart_reference_uuid
 			order_shipment_detail.shipment_id = create_shipment_id()
-			db.session.add(order_shipment_detail)
+			self.order_shipment_detail_list.append(order_shipment_detail)
+
 
 			shipment_items_list = shipment_list[i].get('shipment_items')
 			shipment_list[i]["shipment_id"] = order_shipment_detail.shipment_id
 			for each_item in shipment_items_list:
 				item = item_dict[each_item.get('subscription_id')]
 				item.shipment_id = order_shipment_detail.shipment_id
-				db.session.add(item)
+
 
 	def create_shipment_preview_request_data(self, data):
 		cart = Cart.query.filter_by(geo_id=int(data['geo_id']), user_id=data['user_id']).first()
