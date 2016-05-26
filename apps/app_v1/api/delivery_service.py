@@ -33,6 +33,7 @@ class DeliveryService:
 			self.parse_response()
 			for each_shipment in self.order_shipment_detail_list:
 				db.session.add(each_shipment)
+				db.session.commit()
 			for each_item in self.cart.cartItem:
 				db.session.add(each_item)
 			db.session.commit()
