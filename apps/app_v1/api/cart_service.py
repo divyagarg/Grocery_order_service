@@ -300,12 +300,12 @@ class CartService:
 		cart.total_discount = self.total_discount
 		cart.total_shipping_charges = self.total_shipping_charges
 
-		shipping_address = data.get('shipping_address')
-		if shipping_address is not None:
-			address = Address.get_address(shipping_address['name'], shipping_address['mobile'],
-										  shipping_address['address'], shipping_address['city'],
-										  shipping_address['pincode'], shipping_address['state'],
-										  shipping_address['email'], shipping_address['landmark'])
+		self.shipping_address = data.get('shipping_address')
+		if self.shipping_address is not None:
+			address = Address.get_address(self.shipping_address['name'], self.shipping_address['mobile'],
+										  self.shipping_address['address'], self.shipping_address['city'],
+										  self.shipping_address['pincode'], self.shipping_address['state'],
+										  self.shipping_address['email'], self.shipping_address['landmark'])
 			cart.shipping_address_ref = address.address_hash
 
 		db.session.add(cart)
@@ -621,6 +621,9 @@ class CartService:
 		if data.get('shipping_address') is not None:
 			address = self.save_address_and_get_hash(data)
 			cart.shipping_address_ref = address.address_hash
+		elif cart.shipping_address_ref is not None:
+			shipping_address = Address.query.filter_by(address_hash = cart.shipping_address_ref).first()
+			self.shipping_address = self.create_address_json(shipping_address)
 
 	def remove_cart(self, cart_reference_id):
 		if cart_reference_id is None:
@@ -844,3 +847,15 @@ class CartService:
 				if data_item['quantity'] == 0 and no_of_left_items_in_cart == 0:
 					Logger.info("[%s] Cart is empty" % g.UUID)
 					raise EmptyCartException(ERROR.CART_EMPTY)
+
+	def create_address_json(self, shipping_address):
+		shipping_add = {}
+		shipping_add["name"] = shipping_address.name
+		shipping_add["mobile"] = shipping_address.mobile
+		shipping_add["address"] = shipping_address.address
+		shipping_add["city"] = shipping_address.city
+		shipping_add["pincode"] = shipping_address.pincode
+		shipping_add["state"] = shipping_address.state
+		shipping_add["email"] = shipping_address.email
+		shipping_add["landmark"] = shipping_address.landmark
+		return shipping_add
