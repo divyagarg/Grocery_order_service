@@ -69,7 +69,6 @@ class DeliveryService:
 		self.order_shipment_detail_list = list()
 		for i in range(shipment_list.__len__()):
 			order_shipment_detail = OrderShipmentDetail()
-			order_shipment_detail.cart_id = self.cart.cart_reference_uuid
 			order_shipment_detail.shipment_id = create_shipment_id()
 			self.order_shipment_detail_list.append(order_shipment_detail)
 
