@@ -3,15 +3,16 @@ import logging
 import traceback
 import uuid
 import datetime
-
+import time
 from apps.app_v1.api.cart_service import CartService
 import config
 from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
 from apps.app_v1.api.status_service import StatusService
-from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict, delivery_types
-from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, Payment
+from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict
+from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, Payment, OrderShipmentDetail, \
+	CartItem
 from config import APP_NAME
 import requests
 from flask import g, current_app
@@ -20,13 +21,40 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
 	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, \
 	get_address, \
-	get_payment, PaymentCanNotBeNullException
+	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException
 from utils.jsonutils.json_schema_validator import validate
-
+from dateutil.tz import tzlocal
 __author__ = 'divyagarg'
 
 Logger = logging.getLogger(APP_NAME)
 
+
+def get_cart(cart_reference_id):
+	return Cart.query.filter_by(cart_reference_uuid = cart_reference_id).first()
+
+
+def get_shipment_count(cart_reference_id):
+	return db.session.query(func.count(distinct(OrderShipmentDetail.shipment_id))).filter(
+				OrderShipmentDetail.cart_id == cart_reference_id).group_by(OrderShipmentDetail.cart_id).count()
+
+def validate_delivery_slot(delivery_slot):
+	delivery_slot_json = json.loads(delivery_slot)
+	start_time = delivery_slot_json.get('start_datetime')
+	end_time = delivery_slot_json.get('end_datetime')
+	now = datetime.datetime.now(tzlocal())
+	t_start_time = time.strptime(start_time, '%Y-%m-%dT%H:%M:%S+00:00')
+	t_end_time = time.strptime(end_time, '%Y-%m-%dT%H:%M:%S+00:00')
+	if now.day > t_start_time.tm_mday:
+		raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+	elif now.day > t_end_time.tm_mday:
+		raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+	return delivery_slot
+
+def get_delivery_slot(cart_reference_id):
+	shipment = OrderShipmentDetail.query.filter_by(cart_id = cart_reference_id).first()
+	if shipment is None:
+		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
+	return validate_delivery_slot(shipment.delivery_slot)
 
 class OrderService:
 	def __init__(self):
@@ -63,6 +91,7 @@ class OrderService:
 		self.ndd_items_dict = {}
 		self.split_order = False
 		self.parent_reference_id = None
+		self.shipment_items_dict = None
 
 	def get_count_of_orders_of_user(self, user_id):
 		try:
@@ -171,12 +200,20 @@ class OrderService:
 				break
 
 			# 5. Segregate order items based on sdd and ndd, and add freebies with ndd
-			self.segregate_order_based_on_ndd_sdd()
+			self.segregate_order_based_on_shipments()
 
 			# 6 Create two orders based on ndd and sdd and create a master order id
 			try:
 				self.create_and_save_order()
 				self.save_payment()
+			except NoDeliverySlotException as nse:
+				Logger.error("[%s] For placing Order Delivery slot is needed [%s]" %(g.UUID, str(nse)))
+				err= ERROR.NO_DELIVERY_SLOT_ERROR
+				break
+			except OlderDeliverySlotException as odse:
+				Logger.error("[%s] Older delivery slot found [%s]" %(g.UUID, str(odse)))
+				err= ERROR.OLDER_DELIVERY_SLOT_ERROR
+				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in saving order [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
@@ -229,7 +266,7 @@ class OrderService:
 
 	def initialize_order_from_cart_db_data(self, data):
 		self.cart_reference_id = data['cart_reference_uuid']
-		cart = Cart.query.filter_by(cart_reference_uuid=self.cart_reference_id).first()
+		cart = get_cart(self.cart_reference_id)
 		if cart is None:
 			raise NoSuchCartExistException(ERROR.NO_SUCH_CART_EXIST)
 		self.user_id = cart.user_id
@@ -251,9 +288,9 @@ class OrderService:
 		self.order_source_reference = data['order_source_reference']
 		if 'billing_address' in data:
 			self.billing_address = data.get('billing_address')
-		self.delivery_type = delivery_types[int(data.get('delivery_type'))]
-		self.delivery_due_date = data.get('delivery_due_date')
-		self.delivery_slot = json.dumps(data.get('delivery_slot'))
+		# self.delivery_type = delivery_types[int(data.get('delivery_type'))]
+		# self.delivery_due_date = data.get('delivery_due_date')
+		# self.delivery_slot = json.dumps(data.get('delivery_slot'))
 
 	def initialize_order_with_request_data(self, data):
 		self.user_id = data.get('user_id')
@@ -276,9 +313,9 @@ class OrderService:
 		if 'billing_address' in data:
 			self.billing_address = data.get('billing_address')
 		self.selected_freebies = data.get('selected_free_bees_code')
-		self.delivery_type = delivery_types[int(data.get('delivery_type'))] if data.get(
-			'delivery_type') is not None else None
-		self.delivery_slot = json.dumps(data.get('delivery_slot'))
+		# self.delivery_type = delivery_types[int(data.get('delivery_type'))] if data.get(
+		# 	'delivery_type') is not None else None
+		# self.delivery_slot = json.dumps(data.get('delivery_slot'))
 
 	def fetch_items_price(self, list_of_item_ids):
 		req_data = {
@@ -432,76 +469,107 @@ class OrderService:
 			ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
 			raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
 
-	def segregate_order_based_on_ndd_sdd(self):
-		if self.cart_reference_given:
-			for item_obj in self.item_id_to_item_obj_dict.values():
-				if item_obj.same_day_delivery == 'SDD':
-					self.sdd_items_dict[item_obj.cart_item_id] = item_obj
-				else:
-					self.ndd_items_dict[item_obj.cart_item_id] = item_obj
-			if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
-				self.split_order = False
-			else:
-				self.split_order = True
-
+	def segregate_order_based_on_shipments(self):
+		no_of_shipments = get_shipment_count(self.cart_reference_id)
+		if no_of_shipments>1:
+			self.split_order = True
+			shipments = OrderShipmentDetail.query.filter_by(cart_id = self.cart_reference_id).all()
+			self.shipment_items_dict ={}
+			self.shipment_id_slot_dict = {}
+			for each_shipment in shipments:
+				self.shipment_id_slot_dict[each_shipment.shipment_id] = each_shipment
+				items = CartItem.query.filter_by(shipment_id = each_shipment.shipment_id).all()
+				item_dict = {}
+				for each_item in items:
+					item_dict[each_item.cart_item_id] = each_item
+				self.shipment_items_dict[each_shipment.shipment_id] = item_dict
 		else:
-			for item_json in self.item_id_to_item_json_dict.values():
-				if item_json.get('same_day_delivery') == 'SDD':
-					self.sdd_items_dict[item_json['item_uuid']] = item_json
-				else:
-					self.ndd_items_dict[item_json['item_uuid']] = item_json
-			if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
-				self.split_order = False
-			else:
-				self.split_order = True
+			self.split_order = False
+
+		# if self.cart_reference_given:
+		# 	for item_obj in self.item_id_to_item_obj_dict.values():
+		# 		if item_obj.same_day_delivery == 'SDD':
+		# 			self.sdd_items_dict[item_obj.cart_item_id] = item_obj
+		# 		else:
+		# 			self.ndd_items_dict[item_obj.cart_item_id] = item_obj
+		# 	if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
+		# 		self.split_order = False
+		# 	else:
+		# 		self.split_order = True
+		#
+		# else:
+		# 	for item_json in self.item_id_to_item_json_dict.values():
+		# 		if item_json.get('same_day_delivery') == 'SDD':
+		# 			self.sdd_items_dict[item_json['item_uuid']] = item_json
+		# 		else:
+		# 			self.ndd_items_dict[item_json['item_uuid']] = item_json
+		# 	if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
+		# 		self.split_order = False
+		# 	else:
+		# 		self.split_order = True
 
 	def create_and_save_order(self):
 		if not self.split_order:
 			order = Order()
 			order.parent_order_id = self.parent_reference_id
 			order.order_reference_id = order.parent_order_id
+			order_item_list = list()
+			self.create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict, order_item_list)
+			order.orderItem = order_item_list
 
-			order_items = self.create_order_items(parent_order_id=order.order_reference_id, sdd_order_id=None,
-												  ndd_order_id=None)
-			order.orderItem = order_items
+			order.delivery_slot = get_delivery_slot(self.cart_reference_id)
+			self.save_common_order_data(order)
+			if self.selected_freebies is not None:
+				order.freebie = json.dumps(self.selected_freebies)
+			order.total_discount = self.total_discount
+			order.total_display_price = self.total_display_price
+			order.total_offer_price = self.total_offer_price
+			order.total_shipping = get_shipping_charges(order.total_offer_price, order.total_discount)
+			if order.total_shipping != self.total_shipping_charges:
+				raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
+			order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
 
-			self.create_order(master_order=order, sdd_order=None, ndd_order=None)
 			self.order = order
 			db.session.add(order)
-			db.session.add_all(order_items)
+			db.session.add_all(order_item_list)
 			return order.order_reference_id
 		else:
-			sdd_order = Order()
-			sdd_order.order_reference_id = uuid.uuid1().hex
-			sdd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=sdd_order.order_reference_id,
-													  ndd_order_id=None)
-			sdd_order.orderItem = sdd_order_items
+			freebee_given = False
+			for each_shipment in self.shipment_id_slot_dict.values():
+				sub_order = Order()
+				sub_order.parent_order_id = self.parent_reference_id
+				sub_order.order_reference_id = uuid.uuid1().hex
+				sub_order.delivery_slot = validate_delivery_slot(each_shipment.delivery_slot)
+				self.save_common_order_data(sub_order)
+				items = self.shipment_items_dict[each_shipment.shipment_id]
+				order_item_list = list()
+				self.create_order_item_obj(sub_order.order_reference_id, items, order_item_list)
+				for each_item in items.value():
+					sub_order.total_discount += each_item.item_discount
+					sub_order.total_display_price += each_item.display_price * each_item.quantity
+					sub_order.total_offer_price += each_item.offer_price * each_item.quantity
 
-			ndd_order = Order()
-			ndd_order.order_reference_id = uuid.uuid1().hex
-			ndd_order_items = self.create_order_items(parent_order_id=None, sdd_order_id=None,
-													  ndd_order_id=ndd_order.order_reference_id)
-			ndd_order.orderItem = ndd_order_items
+				sub_order.total_shipping = self.total_shipping_charges / self.shipment_id_slot_dict.__len__()
+				sub_order.total_payble_amount = sub_order.total_offer_price - sub_order.total_discount + sub_order.total_shipping
 
-			sdd_order.parent_order_id = self.parent_reference_id
-			ndd_order.parent_order_id = self.parent_reference_id
+				if self.selected_freebies is not None and sub_order.delivery_slot is not None and freebee_given is False:
+					sub_order.freebie = json.dumps(self.selected_freebies)
+					freebee_given = True
 
-			self.create_order(master_order=None, sdd_order=sdd_order, ndd_order=ndd_order)
-			self.sdd_order = sdd_order
-			self.ndd_order = ndd_order
-			all_items = sdd_order_items + ndd_order_items
-			db.session.add_all(all_items)
-			db.session.add(sdd_order)
-			db.session.add(ndd_order)
+				sub_order.orderItem = order_item_list
+				db.session.add(sub_order)
+				db.session.add_all(order_item_list)
 
-	def create_order(self, master_order, sdd_order, ndd_order):
-		if not self.split_order:
-			self.save_common_order_data(master_order)
-			self.save_specific_order_data(order=master_order, sdd_order=None, ndd_order=None)
-		else:
-			self.save_common_order_data(sdd_order)
-			self.save_common_order_data(ndd_order)
-			self.save_specific_order_data(order=None, sdd_order=sdd_order, ndd_order=ndd_order)
+
+	# def create_order(self, master_order, sdd_order, ndd_order):
+	# 	if not self.split_order:
+	# 		master_order.delivery_slot = get_delivery_slot(self.cart_reference_id)
+	# 		self.save_common_order_data(master_order)
+	# 		self.save_specific_order_data(order=master_order, sdd_order=None, ndd_order=None)
+	# 	else:
+	# 		self.save_common_order_data(sdd_order)
+	# 		self.save_common_order_data(ndd_order)
+	# 		self.save_specific_order_data(order=None, sdd_order=sdd_order, ndd_order=ndd_order)
 
 	def save_common_order_data(self, order):
 		order.user_id = self.user_id
@@ -509,8 +577,7 @@ class OrderService:
 		order.order_type = self.order_type
 		order.order_source_reference = self.order_source_reference
 		order.promo_codes = self.promo_codes
-		order.delivery_type = self.delivery_type
-		order.delivery_slot = self.delivery_slot
+		order.delivery_slot = order.delivery_slot
 		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == \
 																							 payment_modes_dict[
 																								 0] else StatusService.get_status_id(
@@ -538,89 +605,89 @@ class OrderService:
 										  billing_address.get('email'), billing_address.get('landmark'))
 			order.billing_address_ref = address.address_hash
 
-	def save_specific_order_data(self, order, sdd_order, ndd_order):
-		if not self.split_order:
-			order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
-			order.total_discount = self.total_discount
-			order.total_display_price = self.total_display_price
-			order.total_offer_price = self.total_offer_price
-			order.total_shipping = get_shipping_charges(order.total_offer_price, order.total_discount)
-			Logger.info("[%s] Total offer price is [%s], Total shipping cost is [%s]" % (
-			g.UUID, order.total_offer_price, order.total_shipping))
-			if order.total_shipping != self.total_shipping_charges:
-				raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
-			order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
-		elif sdd_order is not None and ndd_order is not None:
-			if self.cart_reference_given:
-				for sdd_order_item in self.sdd_items_dict.values():
-					sdd_order.total_discount += sdd_order_item.item_discount
-					sdd_order.total_display_price += sdd_order_item.display_price * sdd_order_item.quantity
-					sdd_order.total_offer_price += sdd_order_item.offer_price * sdd_order_item.quantity
-				sdd_order.total_shipping = self.total_shipping_charges
-				Logger.info("[%s] SDD Order: Total offer price is [%s], Total shipping cost is [%s]" % (
-				g.UUID, sdd_order.total_offer_price, sdd_order.total_shipping))
-				if sdd_order.total_shipping != self.total_shipping_charges:
-					raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
-				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
+	# def save_specific_order_data(self, order, sdd_order, ndd_order):
+	# 	if not self.split_order:
+	# 		order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
+	# 		order.total_discount = self.total_discount
+	# 		order.total_display_price = self.total_display_price
+	# 		order.total_offer_price = self.total_offer_price
+	# 		order.total_shipping = get_shipping_charges(order.total_offer_price, order.total_discount)
+	# 		Logger.info("[%s] Total offer price is [%s], Total shipping cost is [%s]" % (
+	# 		g.UUID, order.total_offer_price, order.total_shipping))
+	# 		if order.total_shipping != self.total_shipping_charges:
+	# 			raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
+	# 		order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
+	# 	elif sdd_order is not None and ndd_order is not None:
+	# 		if self.cart_reference_given:
+	# 			for sdd_order_item in self.sdd_items_dict.values():
+	# 				sdd_order.total_discount += sdd_order_item.item_discount
+	# 				sdd_order.total_display_price += sdd_order_item.display_price * sdd_order_item.quantity
+	# 				sdd_order.total_offer_price += sdd_order_item.offer_price * sdd_order_item.quantity
+	# 			sdd_order.total_shipping = self.total_shipping_charges
+	# 			Logger.info("[%s] SDD Order: Total offer price is [%s], Total shipping cost is [%s]" % (
+	# 			g.UUID, sdd_order.total_offer_price, sdd_order.total_shipping))
+	# 			if sdd_order.total_shipping != self.total_shipping_charges:
+	# 				raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
+	# 			sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
+	#
+	# 			for ndd_order_item in self.ndd_items_dict.values():
+	# 				ndd_order.total_discount += ndd_order_item.item_discount
+	# 				ndd_order.total_display_price += ndd_order_item.display_price * ndd_order_item.quantity
+	# 				ndd_order.total_offer_price += ndd_order_item.offer_price * ndd_order_item.quantity
+	# 			ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
+	# 			Logger.info("[%s] SDD Order: Total offer price is [%s]" % (g.UUID, ndd_order.total_offer_price))
+	# 			ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
+	# 		else:
+	# 			for sdd_order_item in self.sdd_items_dict.values():
+	# 				item_discount = float(sdd_order_item["item_discount"]) if sdd_order_item[
+	# 																			  "item_discount"] is not None else 0.0
+	# 				display_price = float(sdd_order_item["display_price"]) if sdd_order_item[
+	# 																			  "display_price"] is not None else 0.0
+	# 				offer_price = float(sdd_order_item["offer_price"]) if sdd_order_item[
+	# 																		  "offer_price"] is not None else 0.0
+	#
+	# 				sdd_order.total_discount += item_discount
+	# 				sdd_order.total_display_price += display_price * sdd_order_item["quantity"]
+	# 				sdd_order.total_offer_price += offer_price * sdd_order_item["quantity"]
+	#
+	# 			sdd_order.total_shipping = get_shipping_charges(self.total_offer_price, self.total_discount)
+	# 			sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
+	#
+	# 			for ndd_order_item in self.ndd_items_dict.values():
+	# 				item_discount = float(ndd_order_item["item_discount"]) if ndd_order_item[
+	# 																			  "item_discount"] is not None else 0.0
+	# 				display_price = float(ndd_order_item["display_price"]) if ndd_order_item[
+	# 																			  "display_price"] is not None else 0.0
+	# 				offer_price = float(ndd_order_item["offer_price"]) if ndd_order_item[
+	# 																		  "offer_price"] is not None else 0.0
+	#
+	# 				ndd_order.total_discount += item_discount
+	# 				ndd_order.total_display_price += display_price * ndd_order_item["quantity"]
+	# 				ndd_order.total_offer_price += offer_price * ndd_order_item["quantity"]
+	# 			ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
+	# 			ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
 
-				for ndd_order_item in self.ndd_items_dict.values():
-					ndd_order.total_discount += ndd_order_item.item_discount
-					ndd_order.total_display_price += ndd_order_item.display_price * ndd_order_item.quantity
-					ndd_order.total_offer_price += ndd_order_item.offer_price * ndd_order_item.quantity
-				ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
-				Logger.info("[%s] SDD Order: Total offer price is [%s]" % (g.UUID, ndd_order.total_offer_price))
-				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
-			else:
-				for sdd_order_item in self.sdd_items_dict.values():
-					item_discount = float(sdd_order_item["item_discount"]) if sdd_order_item[
-																				  "item_discount"] is not None else 0.0
-					display_price = float(sdd_order_item["display_price"]) if sdd_order_item[
-																				  "display_price"] is not None else 0.0
-					offer_price = float(sdd_order_item["offer_price"]) if sdd_order_item[
-																			  "offer_price"] is not None else 0.0
-
-					sdd_order.total_discount += item_discount
-					sdd_order.total_display_price += display_price * sdd_order_item["quantity"]
-					sdd_order.total_offer_price += offer_price * sdd_order_item["quantity"]
-
-				sdd_order.total_shipping = get_shipping_charges(self.total_offer_price, self.total_discount)
-				sdd_order.total_payble_amount = sdd_order.total_offer_price - sdd_order.total_discount + sdd_order.total_shipping
-
-				for ndd_order_item in self.ndd_items_dict.values():
-					item_discount = float(ndd_order_item["item_discount"]) if ndd_order_item[
-																				  "item_discount"] is not None else 0.0
-					display_price = float(ndd_order_item["display_price"]) if ndd_order_item[
-																				  "display_price"] is not None else 0.0
-					offer_price = float(ndd_order_item["offer_price"]) if ndd_order_item[
-																			  "offer_price"] is not None else 0.0
-
-					ndd_order.total_discount += item_discount
-					ndd_order.total_display_price += display_price * ndd_order_item["quantity"]
-					ndd_order.total_offer_price += offer_price * ndd_order_item["quantity"]
-				ndd_order.freebie = json.dumps(self.selected_freebies) if self.selected_freebies is not None else None
-				ndd_order.total_payble_amount = ndd_order.total_offer_price - ndd_order.total_discount
-
-	def create_order_items(self, parent_order_id, sdd_order_id, ndd_order_id):
-		order_item_list = list()
-		if self.cart_reference_given and self.split_order == False:
-			self.create_order_item_obj(parent_order_id, self.item_id_to_item_obj_dict, order_item_list)
-
-		elif self.cart_reference_given and self.split_order and sdd_order_id is not None:
-			self.create_order_item_obj(sdd_order_id, self.sdd_items_dict, order_item_list)
-
-		elif self.cart_reference_given and self.split_order and ndd_order_id is not None:
-			self.create_order_item_obj(ndd_order_id, self.ndd_items_dict, order_item_list)
-
-		elif self.cart_reference_given == False and self.split_order == False:
-			self.create_order_item_json(parent_order_id, self.item_id_to_item_json_dict, order_item_list)
-
-		elif self.cart_reference_given == False and self.split_order and sdd_order_id is not None:
-			self.create_order_item_json(sdd_order_id, self.sdd_items_dict, order_item_list)
-
-		elif self.cart_reference_given == False and self.split_order and ndd_order_id is not None:
-			self.create_order_item_json(ndd_order_id, self.ndd_items_dict, order_item_list)
-
-		return order_item_list
+	# def create_order_items(self, parent_order_id, sdd_order_id, ndd_order_id):
+	# 	order_item_list = list()
+	# 	if self.cart_reference_given and self.split_order == False:
+	# 		self.create_order_item_obj(parent_order_id, self.item_id_to_item_obj_dict, order_item_list)
+	#
+	# 	elif self.cart_reference_given and self.split_order and sdd_order_id is not None:
+	# 		self.create_order_item_obj(sdd_order_id, self.sdd_items_dict, order_item_list)
+	#
+	# 	elif self.cart_reference_given and self.split_order and ndd_order_id is not None:
+	# 		self.create_order_item_obj(ndd_order_id, self.ndd_items_dict, order_item_list)
+	#
+	# 	elif self.cart_reference_given == False and self.split_order == False:
+	# 		self.create_order_item_json(parent_order_id, self.item_id_to_item_json_dict, order_item_list)
+	#
+	# 	elif self.cart_reference_given == False and self.split_order and sdd_order_id is not None:
+	# 		self.create_order_item_json(sdd_order_id, self.sdd_items_dict, order_item_list)
+	#
+	# 	elif self.cart_reference_given == False and self.split_order and ndd_order_id is not None:
+	# 		self.create_order_item_json(ndd_order_id, self.ndd_items_dict, order_item_list)
+	#
+	# 	return order_item_list
 
 	def create_order_item_obj(self, order_id, src_dict, list_of_items):
 		for src_item in src_dict.values():
@@ -631,6 +698,8 @@ class OrderService:
 			order_item.offer_price = src_item.offer_price
 			order_item.display_price = src_item.display_price
 			order_item.transfer_price = src_item.transfer_price
+			order_item.title = src_item.title
+			# order_item.image_url = src_item.image_url
 
 			order_item.order_id = order_id
 			list_of_items.append(order_item)
@@ -665,7 +734,7 @@ class OrderService:
 		data['user_id'] = order.user_id
 		data['order_type'] = order.order_type
 		data['order_source_reference'] = order.order_reference_id
-		data['delivery_type'] = order.delivery_type
+		# data['delivery_type'] = order.delivery_type
 		data['delivery_slot'] = order.delivery_slot
 		data['freebie'] = order.freebie
 		data['total_offer_price'] = order.total_offer_price
@@ -701,6 +770,7 @@ class OrderService:
 			order_item['shipping_charge'] = item.shipping_charge
 			order_item['item_discount'] = item.item_discount
 			order_item['transfer_price'] = item.transfer_price
+			order_item['title'] = item.title
 			order_item_list.append(order_item)
 
 		data['order_items'] = order_item_list

@@ -10,7 +10,7 @@ from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartE
 	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException, get_shipping_charges
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models import order_types, payment_modes_dict
-from apps.app_v1.models.models import Cart, CartItem, Address
+from apps.app_v1.models.models import Cart, CartItem, Address, OrderShipmentDetail
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from utils.jsonutils.json_schema_validator import validate
 from config import APP_NAME
@@ -646,6 +646,7 @@ class CartService:
 			ERROR.INTERNAL_ERROR.message = "Cart reference id can not be Null"
 			raise Exception(ERROR.INTERNAL_ERROR)
 		db.session.query(CartItem).filter(CartItem.cart_id == cart_reference_id).delete()
+		db.session.query(OrderShipmentDetail).filter(OrderShipmentDetail.cart_id == cart_reference_id).delete()
 		db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()
 
 

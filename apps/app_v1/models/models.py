@@ -35,7 +35,7 @@ class Address(db.Model):
 	address_hash = db.Column(db.String(255), nullable=False, unique=True)
 
 	def __hash__(self):
-		raw_string = self.name + self.mobile + self.city + self.state
+		raw_string = self.name + self.mobile + self.address
 		return hashlib.sha1(raw_string).hexdigest()
 
 	@classmethod
@@ -105,7 +105,6 @@ class Order(Base):
 	promo_codes = db.Column(db.String(255))
 	shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'), nullable=False)
 	billing_address_ref = db.Column(db.String(255))
-	delivery_type = db.Column(Enum('NORMAL', 'SLOTTED'), nullable=False)
 	delivery_slot = db.Column(db.String(512))
 	freebie = db.Column(db.String(255))
 	total_offer_price = db.Column(db.Float(precision='10,2'), nullable=False)
@@ -128,6 +127,7 @@ class OrderItem(db.Model):
 	shipping_charge = db.Column(db.Float(precision='10,2'), default=0.0)
 	item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
 	transfer_price = db.Column(db.Float(precision='10,2'), default=0.0)
+	title = db.Column(db.String(255))
 	order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
 
 

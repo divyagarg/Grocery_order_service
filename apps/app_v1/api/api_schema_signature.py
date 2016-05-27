@@ -105,6 +105,7 @@ CREATE_CART_SCHEMA = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
@@ -112,6 +113,7 @@ CREATE_CART_SCHEMA = {
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
@@ -191,6 +193,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
@@ -198,6 +201,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
@@ -227,6 +231,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
@@ -234,6 +239,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
@@ -268,25 +274,6 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [
 							{String: {}}
 						]
-					}
-				}
-			},
-			"delivery_type": {
-				FUNCTIONS: [{Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
-			},
-			"delivery_slot": {
-				REQUIRED: False,
-				FUNCTIONS: [
-					{List: {}}
-				],
-				SCHEMA: {
-					"sdd_slot": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
-					},
-					"ndd_slot": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
 					}
 				}
 			},
@@ -387,6 +374,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
@@ -394,6 +382,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
+						REQUIRED: False,
 						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
@@ -408,17 +397,6 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					}
 				}
-			},
-			"delivery_type": {
-				FUNCTIONS: [{Contained: {"contained_in": [d.value for d in DELIVERY_TYPE]}}]
-			},
-			"delivery_date": {
-				REQUIRED: False,
-				FUNCTIONS: [{String: {}}]
-			},
-			"delivery_slot_time": {
-				REQUIRED: False,
-				FUNCTIONS: [{String: {}}]
 			},
 			"order_source_reference": {
 				FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
