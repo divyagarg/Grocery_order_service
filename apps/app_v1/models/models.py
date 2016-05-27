@@ -1,6 +1,7 @@
-from . import db
 import hashlib
-from sqlalchemy import func, Enum, Index
+
+from . import db
+from sqlalchemy import func, Enum, Index, UniqueConstraint
 
 __author__ = 'divyagarg'
 
@@ -72,10 +73,11 @@ class Cart(Base):
 
 
 class OrderShipmentDetail(db.Model):
-	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	shipment_id = db.Column(db.String(255), nullable=False, unique=True)
-	delivery_slot = db.Column(db.String(255))
-
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    shipment_id = db.Column(db.String(255), nullable=False, unique=True)
+    cart_id = db.Column(db.String(255), nullable=False)
+    delivery_slot = db.Column(db.String(255))
+    UniqueConstraint(shipment_id, cart_id)
 
 class CartItem(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)

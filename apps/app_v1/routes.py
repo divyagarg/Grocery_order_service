@@ -100,3 +100,19 @@ def delivery_info():
         logger.error("[%s] Exception occured in delivery service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
         return create_error_response(ERROR.INTERNAL_ERROR)
+
+
+@app_v1.route('/slot', methods =['POST'])
+@jsonify
+@logrequest
+def slot():
+    logger.info(
+        '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
+    g.UUID = uuid.uuid4()
+    try:
+        delivery_service = DeliveryService()
+        return delivery_service.update_slot(request.data)
+    except Exception as e:
+        logger.error("[%s] Exception occured in delivery service [%s]" % (g.UUID, str(e)), exc_info=True)
+        ERROR.INTERNAL_ERROR.message = str(e)
+        return create_error_response(ERROR.INTERNAL_ERROR)

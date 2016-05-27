@@ -492,3 +492,27 @@ GET_DELIVERY_DETAILS = {
 		]
 	}
 }
+
+UPDATE_DELIVERY_SLOT = {
+	"delivery_slots": {
+		FUNCTIONS: [
+			{List: {}}
+		],
+		SCHEMA: {
+			"shipment_id": {
+				FUNCTIONS: [{String: {}}]
+			},
+			"start_datetime": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			},
+			"end_datetime": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			}
+		}
+	}
+
+}

@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS
+from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS, UPDATE_DELIVERY_SLOT
 from apps.app_v1.models import db
 from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail
 from config import APP_NAME
@@ -41,9 +41,10 @@ class DeliveryService:
 		except Exception as e:
 			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
 			db.session.rollback()
-			for each_shipment in self.order_shipment_detail_list:
-				db.session.delete(each_shipment)
-				db.session.commit()
+			# if self.order_shipment_detail_list is not None:
+			# 	for each_shipment in self.order_shipment_detail_list:
+			# 		db.session.delete(each_shipment)
+			# 	db.session.commit()
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
@@ -69,6 +70,7 @@ class DeliveryService:
 		self.order_shipment_detail_list = list()
 		for i in range(shipment_list.__len__()):
 			order_shipment_detail = OrderShipmentDetail()
+			order_shipment_detail.cart_id = self.cart.cart_reference_uuid
 			order_shipment_detail.shipment_id = create_shipment_id()
 			self.order_shipment_detail_list.append(order_shipment_detail)
 
@@ -92,7 +94,8 @@ class DeliveryService:
 		address["address_line_1"] = shipping_address.address
 		address["city"] = shipping_address.city
 		address["state"] = shipping_address.state
-		address["pincode"] = shipping_address.pincode
+		if shipping_address.pincode is not None:
+			address["pincode"] = shipping_address.pincode
 		address_detail = {}
 		address_detail["address"] = address
 		deliver_to = {}
@@ -117,3 +120,27 @@ class DeliveryService:
 		request_data["order_data"] = order_data
 		Logger.info("[%s] Request data for shipment preview is [%s]" % (g.UUID, json.dumps(request_data)))
 		return request_data
+
+	def update_slot(self, body):
+		try:
+			request_data = parse_request_data(body)
+			validate(request_data, UPDATE_DELIVERY_SLOT)
+			self.update_delivery_slot(request_data)
+			db.session.commit()
+			return create_data_response(data="success")
+		except Exception as e:
+			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
+			db.session.rollback()
+			ERROR.INTERNAL_ERROR.message = str(e)
+			return create_error_response(ERROR.INTERNAL_ERROR)
+
+	def update_delivery_slot(self, request_data):
+		delivery_slots_list = request_data.get('delivery_slots')
+		for each_slot in delivery_slots_list:
+			shipment_id = each_slot.get('shipment_id')
+			timerange = {}
+			timerange["start_datetime"] = each_slot.get('start_datetime')
+			timerange["end_datetime"] = each_slot.get('end_datetime')
+			order_shipment = OrderShipmentDetail.query.filter_by(shipment_id = shipment_id).first()
+			order_shipment.delivery_slot= json.dumps(timerange)
+			db.session.add(order_shipment)
