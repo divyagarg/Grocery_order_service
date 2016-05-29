@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import time
 from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS, UPDATE_DELIVERY_SLOT
 from apps.app_v1.models import db
@@ -17,7 +18,11 @@ Logger = logging.getLogger(APP_NAME)
 
 
 def create_shipment_id():
-	return str(int(time.time()))
+	longtime = str(int(time.time()))
+	longtime = 'SH'+ longtime[7:] + longtime[:3]
+	shipment_id = longtime + str(random.randint(1000,10000))
+	return shipment_id
+
 
 
 class DeliveryService:
@@ -33,12 +38,18 @@ class DeliveryService:
 			self.get_shipment_preview(request_data)
 			self.parse_response()
 			for each_shipment in self.order_shipment_detail_list:
-				db.session.add(each_shipment)
+				shipment = OrderShipmentDetail.query.filter_by(shipment_id = each_shipment.shipment_id).first()
+				if shipment is None:
+					db.session.add(each_shipment)
 				# db.session.commit()
 			for each_item in self.cart.cartItem:
 				db.session.add(each_item)
 			db.session.commit()
 			return create_data_response(data=self.shipment_preview)
+		except NoSuchCartExistException as nsce:
+			Logger.error("[%s] No such cart Exist [%s]" %(g.UUID, str(nsce)))
+			db.session.rollback()
+			return create_error_response(ERROR.NO_SUCH_CART_EXIST)
 		except Exception as e:
 			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
 			db.session.rollback()

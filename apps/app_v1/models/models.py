@@ -1,7 +1,7 @@
 import hashlib
 
 from . import db
-from sqlalchemy import func, Enum, Index, UniqueConstraint
+from sqlalchemy import func, Index
 
 __author__ = 'divyagarg'
 
@@ -77,7 +77,7 @@ class OrderShipmentDetail(db.Model):
     shipment_id = db.Column(db.String(255), nullable=False, unique=True)
     cart_id = db.Column(db.String(255), nullable=False)
     delivery_slot = db.Column(db.String(255))
-    UniqueConstraint(shipment_id, cart_id)
+    # UniqueConstraint(shipment_id, cart_id)
 
 class CartItem(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
