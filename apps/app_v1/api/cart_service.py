@@ -496,7 +496,7 @@ class CartService:
 			"customer_id": data['user_id'],
 			'channel': data['order_source_reference'],
 			"products": [
-				{"item_id": str(each_cart_item.cart_item_id), "quantity": each_cart_item.quantity,
+				{"item_id": str(each_cart_item.cart_item_id), "subscription_id": str(each_cart_item.cart_item_id), "quantity": each_cart_item.quantity,
 				 "coupon_code": each_cart_item.promo_codes}
 				for each_cart_item in cart_items]
 		}

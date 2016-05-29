@@ -16,6 +16,7 @@ from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Statu
 from config import APP_NAME
 import requests
 from flask import g, current_app
+from utils.jsonutils.json_utility import json_serial
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
@@ -24,6 +25,8 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException
 from utils.jsonutils.json_schema_validator import validate
 from dateutil.tz import tzlocal
+from utils.kafka_utils.kafka_publisher import Publisher
+
 __author__ = 'divyagarg'
 
 Logger = logging.getLogger(APP_NAME)
@@ -73,8 +76,8 @@ class OrderService:
 		self.selected_freebies = None
 		self.payment_mode = None
 		self.order = None
-		self.sdd_order = None
-		self.ndd_order = None
+		# self.sdd_order = None
+		# self.ndd_order = None
 		# self.now = datetime.datetime.utcnow()
 		self.total_offer_price = 0.0
 		self.total_shipping_charges = 0.0
@@ -87,8 +90,9 @@ class OrderService:
 		self.item_id_to_item_json_dict = None
 
 		self.cart_reference_given = None
-		self.sdd_items_dict = {}
-		self.ndd_items_dict = {}
+		# self.sdd_items_dict = {}
+		# self.ndd_items_dict = {}
+		self.order_list = list()
 		self.split_order = False
 		self.parent_reference_id = None
 		self.shipment_items_dict = None
@@ -234,21 +238,21 @@ class OrderService:
 			# 8 Order History
 
 			# 9 Save in old system/ publish on kafka
-			# try:
-			# 	if not self.split_order:
-			# 		message = self.create_publisher_message(self.order)
-			# 		Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
-			# 	else:
-			# 		message1 = self.create_publisher_message(self.sdd_order)
-			# 		Publisher.publish_message(self.order.order_reference_id, json.dumps(message1, default=json_serial))
-			# 		message2 = self.create_publisher_message(self.ndd_order)
-			# 		Publisher.publish_message(self.order.order_reference_id, json.dumps(message2, default=json_serial))
-			# except Exception as e:
-			# 	Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(e)))
-			# 	ERROR.INTERNAL_ERROR.message = str(e)
-			# 	err = ERROR.INTERNAL_ERROR
-			# 	break
-			#
+			try:
+				if not self.split_order:
+					message = self.create_publisher_message(self.order)
+					Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
+				else:
+					for each_order in self.order_list:
+						message = self.create_publisher_message(each_order)
+						Publisher.publish_message(each_order.order_reference_id, json.dumps(message, default=json_serial))
+
+			except Exception as e:
+				Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(e)))
+				ERROR.INTERNAL_ERROR.message = str(e)
+				err = ERROR.INTERNAL_ERROR
+				break
+
 			error = False
 			break
 
@@ -405,6 +409,7 @@ class OrderService:
 			for key in self.item_id_to_item_obj_dict:
 				product = {}
 				product["item_id"] = str(key)
+				product["subscription_id"]= str(key)
 				product["quantity"] = self.item_id_to_item_obj_dict[key].quantity
 				product["coupon_code"] = self.item_id_to_item_obj_dict[key].promo_codes
 				product_list.append(product)
@@ -412,6 +417,7 @@ class OrderService:
 			for key in self.item_id_to_item_json_dict:
 				product = {}
 				product["item_id"] = str(key)
+				product["subscription_id"]= str(key)
 				product["quantity"] = self.item_id_to_item_json_dict[key].get('quantity')
 				product["coupon_code"] = self.item_id_to_item_json_dict[key].get('promo_codes')
 				product_list.append(product)
@@ -559,6 +565,7 @@ class OrderService:
 				sub_order.orderItem = order_item_list
 				db.session.add(sub_order)
 				db.session.add_all(order_item_list)
+				self.order_list.append(sub_order)
 
 
 	# def create_order(self, master_order, sdd_order, ndd_order):
