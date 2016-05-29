@@ -8,7 +8,8 @@ from config import APP_NAME
 from flask import g, current_app
 import requests
 from utils.jsonutils.output_formatter import create_data_response, create_error_response
-from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, NoShippingAddressFoundException
+from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, NoShippingAddressFoundException, \
+	NoDeliverySlotException
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
@@ -54,8 +55,8 @@ class DeliveryService:
 		Logger.info("request data for shipment preview API is [%s]" %(json.dumps(req_data)))
 		response = requests.post(url=url, data=json.dumps(req_data), headers={'Content-type': 'application/json'})
 		json_data = json.loads(response.text)
-		Logger.info("[%s] Shipment Preview Request: [%s] and Response: [%s]" % (
-			g.UUID, json.dumps(req_data), json_data))
+		Logger.info("[%s] Shipment Preview Response: [%s]" % (
+			g.UUID, json_data))
 		if not json_data['success']:
 			ERROR.INTERNAL_ERROR.message = "Shipment preview API returning failure as response"
 			raise Exception(ERROR.INTERNAL_ERROR)
@@ -123,6 +124,7 @@ class DeliveryService:
 
 	def update_slot(self, body):
 		try:
+			Logger.info("[%s] Update Slot API request body [%s]" %(g.UUID, body))
 			request_data = parse_request_data(body)
 			validate(request_data, UPDATE_DELIVERY_SLOT)
 			self.update_delivery_slot(request_data)
@@ -141,6 +143,9 @@ class DeliveryService:
 			timerange = {}
 			timerange["start_datetime"] = each_slot.get('start_datetime')
 			timerange["end_datetime"] = each_slot.get('end_datetime')
+			Logger.info("[%s] Shipment Id [%s], timerange = [%s]" %(g.UUID, shipment_id, timerange))
 			order_shipment = OrderShipmentDetail.query.filter_by(shipment_id = shipment_id).first()
+			if order_shipment is None:
+				raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
 			order_shipment.delivery_slot= json.dumps(timerange)
 			db.session.add(order_shipment)

@@ -57,6 +57,8 @@ def get_delivery_slot(cart_reference_id):
 	shipment = OrderShipmentDetail.query.filter_by(cart_id = cart_reference_id).first()
 	if shipment is None:
 		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
+	if shipment.delivery_slot is None:
+		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
 	return validate_delivery_slot(shipment.delivery_slot)
 
 class OrderService:
