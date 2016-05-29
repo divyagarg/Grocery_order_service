@@ -8,6 +8,7 @@ from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail
 from config import APP_NAME
 from flask import g, current_app
 import requests
+from sqlalchemy import func, distinct
 from utils.jsonutils.output_formatter import create_data_response, create_error_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, NoShippingAddressFoundException, \
 	NoDeliverySlotException
@@ -35,6 +36,15 @@ class DeliveryService:
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, GET_DELIVERY_DETAILS)
+			cart = Cart.query.filter_by(geo_id=int(request_data['geo_id']), user_id=request_data['user_id']).first()
+			if cart is not None:
+				Logger.info("Cart is not none in get delivery info [%s]" %cart.cart_reference_uuid)
+				count = db.session.query(func.count(distinct(OrderShipmentDetail.shipment_id))).filter(
+				OrderShipmentDetail.cart_id == cart.cart_reference_uuid).group_by(OrderShipmentDetail.cart_id).count()
+				if count > 0:
+					Logger.info("Count is not zero in get delivery info [%s]" %count)
+					OrderShipmentDetail.query.filter_by(cart_id = cart.cart_reference_uuid).delete()
+
 			self.get_shipment_preview(request_data)
 			self.parse_response()
 			for each_shipment in self.order_shipment_detail_list:
