@@ -121,8 +121,10 @@ class CartService:
 			if self.is_cart_empty == False:
 				try:
 					if 'promo_codes' in data and data['promo_codes'] != []:
-						cart.promo_codes = map(str, data.get('promo_codes'))
-					self.check_for_coupons_applicable(data)
+						cart.promo_codes = json.dumps(map(str, data.get('promo_codes')))
+					elif 'promo_codes' in data and data['promo_codes'] == []:
+						cart.promo_codes = None
+					self.check_for_coupons_applicable(data, cart)
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
 					err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
@@ -252,7 +254,7 @@ class CartService:
 
 			# 3. check coupons
 			try:
-				response_data = self.get_response_from_check_coupons_api(self.cart_items, data)
+				response_data = self.get_response_from_check_coupons_api(self.cart_items, data, None)
 				self.update_discounts_item_level(response_data, self.cart_items)
 			except CouponInvalidException as cie:
 				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(cie)))
@@ -489,7 +491,7 @@ class CartService:
 		self.total_shipping_charges = get_shipping_charges(self.total_price, self.total_discount)
 		cart.total_shipping_charges = self.total_shipping_charges
 
-	def get_response_from_check_coupons_api(self, cart_items, data):
+	def get_response_from_check_coupons_api(self, cart_items, data, cart):
 		url=current_app.config['COUPON_CHECK_URL']
 		req_data = {
 			"area_id": str(data['geo_id']),
@@ -506,6 +508,9 @@ class CartService:
 		if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 			coupon_codes = map(str, data.get('promo_codes'))
 			req_data["coupon_codes"] = coupon_codes
+
+		elif cart is not None and cart.promo_codes is not None:
+			req_data["coupon_codes"] = json.loads(cart.promo_codes)
 
 		header = {
 			'X-API-USER': current_app.config['X_API_USER'],
@@ -629,8 +634,8 @@ class CartService:
 					existing_cart_item.transfer_price = cart_item.get('transferPrice')
 					existing_cart_item.title = cart_item.get('title')
 
-	def check_for_coupons_applicable(self, data):
-		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data)
+	def check_for_coupons_applicable(self, data, cart):
+		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data, cart)
 		self.update_discounts_item_level(response_data, self.item_id_to_existing_item_dict.values())
 
 	def update_address(self, data, cart):
