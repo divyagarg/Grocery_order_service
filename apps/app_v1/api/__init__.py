@@ -50,6 +50,7 @@ class ERROR(object):
 	COUPON_APPLY_FAILED = ERROR_DETAIL(code=1029, message="Coupon application Failed")
 	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 1030, message="Delivery slot not found")
 	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 1031, message="Older Delivery slot found")
+	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=1032, message="Shipment Preview Failed")
 
 def parse_request_data(body):
 	Logger.info('{%s} Received request to create cart for request {%s}' % (g.UUID, body))
@@ -168,10 +169,15 @@ class NoDeliverySlotException(Exception):
 
 class OlderDeliverySlotException(Exception):
 	code = None
-
 	def __init__(self, error_detail):
 		self.code = error_detail.code
 		super(OlderDeliverySlotException, self).__init__(error_detail.message)
+
+class ShipmentPreviewException(Exception):
+	code = None
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(ShipmentPreviewException, self).__init__(error_detail.message)
 
 def get_shipping_charges(total_price, total_discount):
 		total_shipping_charges =0.0

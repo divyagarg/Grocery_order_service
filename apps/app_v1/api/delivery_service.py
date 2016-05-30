@@ -11,7 +11,7 @@ import requests
 from sqlalchemy import func, distinct
 from utils.jsonutils.output_formatter import create_data_response, create_error_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, NoShippingAddressFoundException, \
-	NoDeliverySlotException
+	NoDeliverySlotException, ShipmentPreviewException
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
@@ -60,6 +60,10 @@ class DeliveryService:
 			Logger.error("[%s] No such cart Exist [%s]" %(g.UUID, str(nsce)))
 			db.session.rollback()
 			return create_error_response(ERROR.NO_SUCH_CART_EXIST)
+		except ShipmentPreviewException as spe:
+			Logger.error("[%s] hipment preview responded with Error [%s]" %(g.UUID, str(spe)))
+			db.session.rollback()
+			return create_error_response(ERROR.SHIPMENT_PREVIEW_FAILED)
 		except Exception as e:
 			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
 			db.session.rollback()
@@ -76,6 +80,8 @@ class DeliveryService:
 		Logger.info("request data for shipment preview API is [%s]" %(json.dumps(req_data)))
 		response = requests.post(url=url, data=json.dumps(req_data), headers={'Content-type': 'application/json'})
 		Logger.info("[%s] Response got from get shipment preview API is [%s]" %(g.UUID, response))
+		if response.status_code != 200:
+			raise ShipmentPreviewException(ERROR.SHIPMENT_PREVIEW_FAILED)
 		json_data = json.loads(response.text)
 		Logger.info("[%s] Shipment Preview Response: [%s]" % (
 			g.UUID, json_data))
