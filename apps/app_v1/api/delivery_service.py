@@ -45,15 +45,10 @@ class DeliveryService:
 					Logger.info("Count is not zero in get delivery info [%s]" %count)
 					OrderShipmentDetail.query.filter_by(cart_id = cart.cart_reference_uuid).delete()
 
+
 			self.get_shipment_preview(request_data)
-			self.parse_response()
-			for each_shipment in self.order_shipment_detail_list:
-				shipment = OrderShipmentDetail.query.filter_by(shipment_id = each_shipment.shipment_id).first()
-				if shipment is None:
-					db.session.add(each_shipment)
-				# db.session.commit()
-			for each_item in self.cart.cartItem:
-				db.session.add(each_item)
+			self.parse_response_and_update_db()
+
 			db.session.commit()
 			return create_data_response(data=self.shipment_preview)
 		except NoSuchCartExistException as nsce:
@@ -67,10 +62,6 @@ class DeliveryService:
 		except Exception as e:
 			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
 			db.session.rollback()
-			# if self.order_shipment_detail_list is not None:
-			# 	for each_shipment in self.order_shipment_detail_list:
-			# 		db.session.delete(each_shipment)
-			# 	db.session.commit()
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
@@ -90,7 +81,7 @@ class DeliveryService:
 			raise Exception(ERROR.INTERNAL_ERROR)
 		self.shipment_preview = json_data['data']
 
-	def parse_response(self):
+	def parse_response_and_update_db(self):
 		response_json = self.shipment_preview
 		shipment_list = response_json.get('fulfilment_estimates')[0].get('shipments')
 		item_dict = {}
@@ -101,6 +92,7 @@ class DeliveryService:
 			order_shipment_detail = OrderShipmentDetail()
 			order_shipment_detail.cart_id = self.cart.cart_reference_uuid
 			order_shipment_detail.shipment_id = create_shipment_id()
+			db.session.add(order_shipment_detail)
 			self.order_shipment_detail_list.append(order_shipment_detail)
 
 
@@ -109,6 +101,7 @@ class DeliveryService:
 			for each_item in shipment_items_list:
 				item = item_dict[each_item.get('subscription_id')]
 				item.shipment_id = order_shipment_detail.shipment_id
+				db.session().add(item)
 
 
 	def create_shipment_preview_request_data(self, data):

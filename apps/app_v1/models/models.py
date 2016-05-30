@@ -91,6 +91,7 @@ class CartItem(db.Model):
 	transfer_price = db.Column(db.Float(precision='10,2'), default=0.0)
 	same_day_delivery = db.Column(db.String(255))
 	title = db.Column(db.String(255))
+	image_url = db.Column(db.String(255))
 	shipment_id = db.Column(db.String(255), db.ForeignKey('order_shipment_detail.shipment_id'))
 
 
@@ -128,6 +129,7 @@ class OrderItem(db.Model):
 	item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
 	transfer_price = db.Column(db.Float(precision='10,2'), default=0.0)
 	title = db.Column(db.String(255))
+	image_url = db.Column(db.String(255))
 	order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
 
 

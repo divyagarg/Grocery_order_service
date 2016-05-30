@@ -351,7 +351,7 @@ class CartService:
 			cart.order_type = order_types[data.get('order_type')]
 		cart.order_source_reference = data['order_source_reference']
 		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
-			cart.promo_codes = data.get('promo_codes')
+			cart.promo_codes = json.dumps(map(str, data.get('promo_codes')))
 		if data.get('payment_mode') is not None:
 			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
@@ -436,6 +436,7 @@ class CartService:
 				order_item_dict["quantity"] = item.quantity
 				order_item_dict["item_discount"] = item.item_discount
 				order_item_dict["title"] = item.title
+				order_item_dict["image_url"] = item.image_url
 				items.append(order_item_dict)
 			response_json["orderitems"].append(items)
 
@@ -449,6 +450,7 @@ class CartService:
 				order_item_dict["quantity"] = item.quantity
 				order_item_dict["item_discount"] = str(item.item_discount)
 				order_item_dict["title"] = item.title
+				order_item_dict["image_url"] = item.image_url
 				items.append(order_item_dict)
 			response_json["orderitems"].append(items)
 
@@ -506,8 +508,7 @@ class CartService:
 			req_data['payment_mode'] = payment_modes_dict[data.get('payment_mode')]
 			url+config.COUPON_QUERY_PARAM
 		if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
-			coupon_codes = map(str, data.get('promo_codes'))
-			req_data["coupon_codes"] = coupon_codes
+			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
 
 		elif cart is not None and cart.promo_codes is not None:
 			req_data["coupon_codes"] = json.loads(cart.promo_codes)
@@ -543,6 +544,7 @@ class CartService:
 			cart_item.same_day_delivery = 'SDD' if json_order_item.get('deliveryDays') == 0 else 'NDD'
 			cart_item.transfer_price = float(json_order_item['offerPrice'])
 			cart_item.title = json_order_item['title']
+			cart_item.image_url = json_order_item['imageURL']
 			cart_item_list.append(cart_item)
 
 			self.total_price += float(json_order_item['offerPrice']) * int(item['quantity'])
@@ -633,6 +635,7 @@ class CartService:
 					existing_cart_item.offer_price = cart_item.get('offerPrice')
 					existing_cart_item.transfer_price = cart_item.get('transferPrice')
 					existing_cart_item.title = cart_item.get('title')
+					existing_cart_item.image_url = cart_item.get('imageURL')
 
 	def check_for_coupons_applicable(self, data, cart):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data, cart)

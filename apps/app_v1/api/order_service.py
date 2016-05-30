@@ -99,6 +99,7 @@ class OrderService:
 		self.split_order = False
 		self.parent_reference_id = None
 		self.shipment_items_dict = None
+		self.apply_coupon_code_list = None
 
 	def get_count_of_orders_of_user(self, user_id):
 		try:
@@ -185,7 +186,7 @@ class OrderService:
 			try:
 				response_data = self.get_response_from_check_coupons_api()
 				self.compare_discounts_and_freebies(response_data)
-				if self.promo_codes is not None:
+				if self.apply_coupon_code_list is not None:
 					self.apply_coupon()
 
 			except DiscountHasChangedException as dce:
@@ -279,7 +280,7 @@ class OrderService:
 		self.user_id = cart.user_id
 		self.geo_id = cart.geo_id
 		self.order_type = cart.order_type
-		self.promo_codes = cart.promo_codes
+		self.promo_codes = json.loads(cart.promo_codes) if cart.promo_codes is not None else None
 		self.selected_freebies = json.loads(cart.selected_freebee_items) if cart.selected_freebee_items is not None else None
 		self.total_display_price = cart.total_display_price
 		self.total_offer_price = cart.total_offer_price
@@ -305,7 +306,7 @@ class OrderService:
 		self.order_type = order_types[data.get('order_type')]
 		self.order_source_reference = data.get('order_source_reference')
 		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
-			self.promo_codes = data.get('promo_codes')
+			self.promo_codes = json.dumps(map(str, data.get('promo_codes')))
 		if data.get('payment_mode') is not None:
 			self.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		self.total_display_price = float(data.get('total_display_price')) if data.get(
@@ -456,16 +457,16 @@ class OrderService:
 		if response_data['success']:
 			if self.total_discount != float(response_data['totalDiscount']):
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
-
+			freebie_coupon_code_list = list()
 			if self.selected_freebies is not None:
-				freebie_coupon_code_list = list()
+
 				for each_selected_freebie in self.selected_freebies:
 					freebie_coupon_code_list.append(each_selected_freebie.get('coupon_code'))
 				benefit_list = list()
 				for each_benefit in response_data['benefits']:
 					benefit_list.append(each_benefit.get('couponCode'))
 			if freebie_coupon_code_list.__len__()>0:
-				self.promo_codes.append(freebie_coupon_code_list)
+				self.apply_coupon_code_list = self.promo_codes + freebie_coupon_code_list
 				if not all(x in benefit_list for x in freebie_coupon_code_list):
 					raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_ALLOWED)
 
@@ -596,7 +597,7 @@ class OrderService:
 		order.geo_id = self.geo_id
 		order.order_type = self.order_type
 		order.order_source_reference = self.order_source_reference
-		order.promo_codes = self.promo_codes
+		order.promo_codes = json.dumps(self.promo_codes)
 		order.delivery_slot = order.delivery_slot
 		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == \
 																							 payment_modes_dict[
@@ -719,6 +720,7 @@ class OrderService:
 			order_item.display_price = src_item.display_price
 			order_item.transfer_price = src_item.transfer_price
 			order_item.title = src_item.title
+			order_item.image_url = src_item.image_url
 			# order_item.image_url = src_item.image_url
 
 			order_item.order_id = order_id
@@ -791,6 +793,7 @@ class OrderService:
 			order_item['item_discount'] = item.item_discount
 			order_item['transfer_price'] = item.transfer_price
 			order_item['title'] = item.title
+			order_item['image_url'] = item.image_url
 			order_item_list.append(order_item)
 
 		data['order_items'] = order_item_list
@@ -836,9 +839,9 @@ class OrderService:
 			"payment_mode": self.payment_mode,
 			"order_id": self.parent_reference_id
 		}
-		if self.promo_codes is not None and self.promo_codes != []:
+		if self.apply_coupon_code_list is not None and self.apply_coupon_code_list != []:
 			if self.cart_reference_given:
-				req_data["coupon_codes"] = self.promo_codes
+				req_data["coupon_codes"] = self.apply_coupon_code_list
 
 			else:
 				coupon_codes = map(str, self.promo_codes)
