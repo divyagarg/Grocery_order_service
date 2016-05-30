@@ -4,6 +4,7 @@ import traceback
 import uuid
 import datetime
 import time
+
 from apps.app_v1.api.cart_service import CartService
 import config
 from sqlalchemy import func, distinct
@@ -279,7 +280,7 @@ class OrderService:
 		self.geo_id = cart.geo_id
 		self.order_type = cart.order_type
 		self.promo_codes = cart.promo_codes
-		self.selected_freebies = cart.selected_freebee_items
+		self.selected_freebies = json.loads(cart.selected_freebee_items) if cart.selected_freebee_items is not None else None
 		self.total_display_price = cart.total_display_price
 		self.total_offer_price = cart.total_offer_price
 		self.total_shipping_charges = cart.total_shipping_charges
@@ -456,8 +457,18 @@ class OrderService:
 			if self.total_discount != float(response_data['totalDiscount']):
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 
-			if self.selected_freebies is not None and self.selected_freebies not in response_data['benefits']:
-				raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_ALLOWED)
+			if self.selected_freebies is not None:
+				freebie_coupon_code_list = list()
+				for each_selected_freebie in self.selected_freebies:
+					freebie_coupon_code_list.append(each_selected_freebie.get('coupon_code'))
+				benefit_list = list()
+				for each_benefit in response_data['benefits']:
+					benefit_list.append(each_benefit.get('couponCode'))
+			if freebie_coupon_code_list.__len__()>0:
+				self.promo_codes.append(freebie_coupon_code_list)
+				if not all(x in benefit_list for x in freebie_coupon_code_list):
+					raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_ALLOWED)
+
 
 			item_discount_dict = {}
 			for item in response_data['products']:
@@ -828,6 +839,7 @@ class OrderService:
 		if self.promo_codes is not None and self.promo_codes != []:
 			if self.cart_reference_given:
 				req_data["coupon_codes"] = self.promo_codes
+
 			else:
 				coupon_codes = map(str, self.promo_codes)
 				req_data["coupon_codes"] = coupon_codes

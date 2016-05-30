@@ -75,6 +75,7 @@ class DeliveryService:
 		url = current_app.config['SHIPMENT_PREVIEW_URL']
 		Logger.info("request data for shipment preview API is [%s]" %(json.dumps(req_data)))
 		response = requests.post(url=url, data=json.dumps(req_data), headers={'Content-type': 'application/json'})
+		Logger.info("[%s] Response got from get shipment preview API is [%s]" %(g.UUID, response))
 		json_data = json.loads(response.text)
 		Logger.info("[%s] Shipment Preview Response: [%s]" % (
 			g.UUID, json_data))
