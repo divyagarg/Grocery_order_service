@@ -456,6 +456,11 @@ class CartService:
 
 		return response_json
 
+	def remove_discounts(self, cart_items, cart):
+		for each_cart_item in cart_items:
+				each_cart_item.item_discount = 0.0
+		cart.total_discount =0.0
+		cart.promo_codes = None
 	def update_discounts_item_level(self, response_data, cart_items):
 		item_discount_dict = {}
 		if response_data['success']:
@@ -590,12 +595,17 @@ class CartService:
 			for data_item in data['orderitems']:
 
 				if data_item['quantity'] == 0 and no_of_left_items_in_cart > 0:
+
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					if existing_cart_item is None:
 						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
 					del self.item_id_to_existing_item_dict[data_item['item_uuid']]
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 					self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
+
+				elif data_item['quantity'] == 0 and no_of_left_items_in_cart == 0:
+					Logger.info("[%s] Cart is empty" % g.UUID)
+					raise EmptyCartException(ERROR.CART_EMPTY)
 
 				elif data_item['item_uuid'] in self.item_id_to_existing_item_dict:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
@@ -613,9 +623,7 @@ class CartService:
 					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 
-				if data_item['quantity'] == 0 and no_of_left_items_in_cart == 0:
-					Logger.info("[%s] Cart is empty" % g.UUID)
-					raise EmptyCartException(ERROR.CART_EMPTY)
+
 
 		request_items = list()
 		for cart_item in self.item_id_to_existing_item_dict.values():
@@ -639,7 +647,11 @@ class CartService:
 
 	def check_for_coupons_applicable(self, data, cart):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data, cart)
-		self.update_discounts_item_level(response_data, self.item_id_to_existing_item_dict.values())
+		if "error" in response_data:
+			Logger.info("[%s] Updating discount to 0 because of coupon error [%s]" %(g.UUID, response_data.get('error')))
+			self.remove_discounts(self.item_id_to_existing_item_dict.values(), cart)
+		else:
+			self.update_discounts_item_level(response_data, self.item_id_to_existing_item_dict.values())
 
 	def update_address(self, data, cart):
 		if data.get('shipping_address') is not None:
