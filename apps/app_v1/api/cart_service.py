@@ -120,10 +120,6 @@ class CartService:
 			# 3 Coupon Update (Cart Level or Item level)
 			if self.is_cart_empty == False:
 				try:
-					if 'promo_codes' in data and data['promo_codes'] != []:
-						cart.promo_codes = json.dumps(map(str, data.get('promo_codes')))
-					elif 'promo_codes' in data and data['promo_codes'] == []:
-						cart.promo_codes = None
 					self.check_for_coupons_applicable(data, cart)
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
@@ -461,6 +457,7 @@ class CartService:
 				each_cart_item.item_discount = 0.0
 		cart.total_discount =0.0
 		cart.promo_codes = None
+
 	def update_discounts_item_level(self, response_data, cart_items):
 		item_discount_dict = {}
 		if response_data['success']:
@@ -471,10 +468,7 @@ class CartService:
 
 			for each_cart_item in cart_items:
 				each_cart_item.item_discount = float(item_discount_dict[str(each_cart_item.cart_item_id)]['discount'])
-		else:
-			error_msg = response_data['error'].get('error')
-			ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
-			raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
+
 
 	def update_cart_total_amounts(self, cart):
 		cart.total_display_price = 0.0
@@ -514,6 +508,8 @@ class CartService:
 			url+config.COUPON_QUERY_PARAM
 		if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
+			if cart.promo_codes is not None:
+				req_data["coupon_codes"] = req_data["coupon_codes"] + json.loads(cart.promo_codes)
 
 		elif cart is not None and cart.promo_codes is not None:
 			req_data["coupon_codes"] = json.loads(cart.promo_codes)
@@ -526,6 +522,8 @@ class CartService:
 
 		response = requests.post(url=url, data=json.dumps(req_data),
 								 headers=header)
+		if response.status_code == 200 and "coupon_codes" in req_data:
+			cart.promo_codes = json.dumps(req_data["coupon_codes"])
 		json_data = json.loads(response.text)
 		Logger.info(
 			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
@@ -648,8 +646,18 @@ class CartService:
 	def check_for_coupons_applicable(self, data, cart):
 		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data, cart)
 		if "error" in response_data:
-			Logger.info("[%s] Updating discount to 0 because of coupon error [%s]" %(g.UUID, response_data.get('error')))
-			self.remove_discounts(self.item_id_to_existing_item_dict.values(), cart)
+			if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
+				self.remove_discounts(self.item_id_to_existing_item_dict.values(), cart)
+
+				db.session.add(cart)
+				db.session.add_all(self.item_id_to_existing_item_dict.values())
+				db.session.commit()
+				error_msg = response_data['error'].get('error')
+				ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
+				raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
+			else:
+				Logger.info("[%s] Updating discount to 0 because of coupon error [%s]" %(g.UUID, response_data.get('error')))
+				self.remove_discounts(self.item_id_to_existing_item_dict.values(), cart)
 		else:
 			self.update_discounts_item_level(response_data, self.item_id_to_existing_item_dict.values())
 
