@@ -42,7 +42,7 @@ class DevelopmentConfig(Config):
 	# KAKFA_GROUP = 'fulfillmentservice_group'
 	SQLALCHEMY_DATABASE_URI = DATABASE_URI + DATABASE_NAME
 	SQLALCHEMY_TRACK_MODIFICATIONS = False
-	SQLALCHEMY_POOL_SIZE = 10
+	SQLALCHEMY_POOL_SIZE = 100
 	SQLALCHEMY_POOL_TIMEOUT = 20
 	PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
 	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
