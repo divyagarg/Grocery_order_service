@@ -508,7 +508,7 @@ class CartService:
 			url+config.COUPON_QUERY_PARAM
 		if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
-			if cart.promo_codes is not None:
+			if cart is not None and cart.promo_codes is not None:
 				req_data["coupon_codes"] = req_data["coupon_codes"] + json.loads(cart.promo_codes)
 
 		elif cart is not None and cart.promo_codes is not None:
