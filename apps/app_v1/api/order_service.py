@@ -246,11 +246,11 @@ class OrderService:
 			try:
 				if not self.split_order:
 					message = self.create_publisher_message(self.order)
-					Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
+					# Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
 				else:
 					for each_order in self.order_list:
 						message = self.create_publisher_message(each_order)
-						Publisher.publish_message(each_order.order_reference_id, json.dumps(message, default=json_serial))
+						# Publisher.publish_message(each_order.order_reference_id, json.dumps(message, default=json_serial))
 
 			except Exception as e:
 				Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(e)))
