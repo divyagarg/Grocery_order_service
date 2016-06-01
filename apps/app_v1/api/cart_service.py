@@ -36,6 +36,13 @@ def check_if_calculate_price_api_response_is_correct_or_quantity_is_available(it
 		raise QuantityNotAvailableException(ERROR.PRODUCT_AVAILABILITY_CHANGED)
 
 
+def convert_list_type_from_int_to_str(freebies_id_list):
+	str_list = list()
+	for item in freebies_id_list:
+		str_list.append(str(item))
+	return str_list
+
+
 class CartService:
 	def __init__(self):
 		"""
@@ -123,6 +130,11 @@ class CartService:
 			if self.is_cart_empty == False:
 				try:
 					self.check_for_coupons_applicable(data, cart)
+
+				except SubscriptionNotFoundException as snfe:
+					Logger.error("[%s] Exception occured in fetching catalog info [%s]" %(g.UUID, str(snfe)))
+					err= ERROR.SUBSCRIPTION_NOT_FOUND
+					break
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
 					err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
@@ -256,6 +268,11 @@ class CartService:
 			try:
 				response_data = self.get_response_from_check_coupons_api(self.cart_items, data, cart)
 				self.update_discounts_item_level(response_data, self.cart_items)
+				self.fetch_freebie_details_and_update(response_data.get('benefits'), order_types.get(data['order_type']))
+			except SubscriptionNotFoundException as snfe:
+				Logger.error("[%s] Exception occured in fetching catalog info [%s]" %(g.UUID, str(snfe)))
+				err= ERROR.SUBSCRIPTION_NOT_FOUND
+				break
 			except CouponInvalidException as cie:
 				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(cie)))
 				err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
@@ -351,8 +368,6 @@ class CartService:
 		if data.get('order_type') is not None:
 			cart.order_type = order_types[data.get('order_type')]
 		cart.order_source_reference = data['order_source_reference']
-		# if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
-		# 	cart.promo_codes = json.dumps(map(str, data.get('promo_codes')))
 		if data.get('payment_mode') is not None:
 			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
@@ -398,9 +413,9 @@ class CartService:
 			"offset": 0
 		}
 
-		return self.call_calculate_price_api(req_data)
+		return self.calculate_price_api(req_data)
 
-	def call_calculate_price_api(self, req_data):
+	def calculate_price_api(self, req_data):
 
 		request_data = json.dumps(req_data)
 		Logger.info("[%s] Request data for calculate price API is [%s]" % (g.UUID, request_data))
@@ -408,7 +423,7 @@ class CartService:
 								 headers={'Content-type': 'application/json'})
 		json_data = json.loads(response.text)
 		Logger.info("[%s] Response got from calculate Price API is [%s]" % (g.UUID, json.dumps(json_data)))
-		if 'status' in json_data and json_data.get('status') != 200:
+		if response.status_code != 200:
 			ERROR.INTERNAL_ERROR.message = json_data['msg']
 			raise Exception(ERROR.INTERNAL_ERROR)
 		return json_data['results']
@@ -467,7 +482,6 @@ class CartService:
 		item_discount_dict = {}
 		if response_data['success']:
 			self.total_discount = float(response_data['totalDiscount'])
-			self.benefits = response_data['benefits']
 			for item in response_data['products']:
 				item_discount_dict[item['itemid']] = item
 
@@ -591,8 +605,6 @@ class CartService:
 
 		no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 		self.deleted_cart_items = {}
-		updated_cart_items = {}
-		newly_added_cart_items = {}
 		if 'orderitems' in data and data['orderitems'].__len__() > 0:
 
 			for data_item in data['orderitems']:
@@ -614,7 +626,7 @@ class CartService:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					existing_cart_item.quantity = data_item['quantity']
 					existing_cart_item.promo_codes = data_item.get('promo_codes')
-					# updated_cart_items[data_item['item_uuid']] = existing_cart_item
+
 				elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity'] > 0:
 					new_cart_item = CartItem()
 					new_cart_item.cart_id = cart.cart_reference_uuid
@@ -622,7 +634,6 @@ class CartService:
 					new_cart_item.quantity = data_item['quantity']
 					new_cart_item.promo_codes = data_item.get('promo_codes')
 					new_cart_item.item_discount = 0.0
-					# newly_added_cart_items[data_item['item_uuid']] = new_cart_item
 					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 
@@ -664,6 +675,8 @@ class CartService:
 				Logger.info("[%s] Updating discount to 0 because of coupon error [%s]" %(g.UUID, response_data.get('error')))
 				self.remove_discounts(self.item_id_to_existing_item_dict.values(), cart)
 		else:
+
+			self.fetch_freebie_details_and_update(response_data['benefits'],  order_types[data.get('order_type')])
 			self.update_discounts_item_level(response_data, self.item_id_to_existing_item_dict.values())
 
 	def update_address(self, data, cart):
@@ -678,14 +691,8 @@ class CartService:
 		if cart_reference_id is None:
 			ERROR.INTERNAL_ERROR.message = "Cart reference id can not be Null"
 			raise Exception(ERROR.INTERNAL_ERROR)
-
-		# db.session.query(CartItem).filter(CartItem.cart_id == cart_reference_id).delete()
-		# db.session.query(OrderShipmentDetail).filter(OrderShipmentDetail.cart_id == cart_reference_id).delete()
 		cart = Cart.query.filter_by(cart_reference_uuid = cart_reference_id).first()
 		db.session.delete(cart)
-		# db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()
-
-
 
 	def get_count_of_items(self, new_items):
 		if new_items is not None:
@@ -912,3 +919,52 @@ class CartService:
 		shipping_add["email"] = shipping_address.email
 		shipping_add["landmark"] = shipping_address.landmark
 		return shipping_add
+
+	def fetch_freebie_details_and_update(self, benefits, order_type):
+		benefit_list = list()
+		for each_benefit in benefits:
+			if each_benefit.get('type') == 0 or each_benefit.get('type') == 1:
+				freebies_id_list = each_benefit['freebies'][0]
+				if freebies_id_list is not None and freebies_id_list.__len__()>0:
+					freebee_detail_list = self.get_freebie_details(each_benefit, freebies_id_list, order_type)
+					benefit = {}
+					benefit["freebies"] = freebee_detail_list
+					benefit["type"] = each_benefit.get('type')
+					benefit["couponCode"] = each_benefit.get('couponCode')
+					benefit_list.append(benefit)
+
+		if benefit_list.__len__()>0:
+			self.benefits = benefit_list
+		else:
+			self.benefits=None
+
+
+	def get_freebie_details(self, benefit, freebies_id_list, order_type):
+		req_data = {
+			"query": {
+				"type": [order_type],
+				"filters": {
+					"id": freebies_id_list
+				},
+				"select": config.SEARCH_API_SELECT_CLAUSE
+			},
+			"count": freebies_id_list.__len__(),
+			"offset": 0
+		}
+		response = self.calculate_price_api(req_data)
+
+		order_item_price_dict = {}
+		for response in response[0].get('items')[0].get('items'):
+			order_item_price_dict[response.get('id')] = response
+
+		freebie_detail_list = list()
+		for each_freebie_id in freebies_id_list:
+			freebie_json ={}
+			freebie_json['id'] = each_freebie_id
+			freebie_json['title'] = order_item_price_dict.get(each_freebie_id).get('title')
+			freebie_json['image_url'] = order_item_price_dict.get(each_freebie_id).get('imageURL')
+			freebie_detail_list.append(freebie_json)
+
+		return freebie_detail_list
+
+

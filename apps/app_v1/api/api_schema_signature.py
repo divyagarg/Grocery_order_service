@@ -158,7 +158,17 @@ CREATE_CART_SCHEMA = {
 					{String: {}}
 				]
 			},
-			"subscription_id": {
+			"id": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			},
+			"title": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			},
+			"image_url":{
 				FUNCTIONS: [
 					{String: {}}
 				]
