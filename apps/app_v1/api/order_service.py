@@ -123,7 +123,7 @@ class OrderService:
 
 			# 1 Parse request
 			request_data = parse_request_data(body)
-			if "cart_reference_uuid" in request_data.get('data'):
+			if "cart_reference_uuid" in request_data:
 				self.cart_reference_given = True
 			else:
 				self.cart_reference_given = False
@@ -146,9 +146,9 @@ class OrderService:
 			# 3. Initialize order Object
 			try:
 				if self.cart_reference_given:
-					self.initialize_order_from_cart_db_data(request_data['data'])
+					self.initialize_order_from_cart_db_data(request_data)
 				else:
-					self.initialize_order_with_request_data(request_data['data'])
+					self.initialize_order_with_request_data(request_data)
 				self.parent_reference_id = generate_reference_order_id()
 			except RequiredFieldMissing as rfm:
 				Logger.error("[%s] cart is empty [%s]" % (g.UUID, rfm.message))
@@ -167,11 +167,11 @@ class OrderService:
 			try:
 				self.calculate_and_validate_prices()
 			except SubscriptionNotFoundException:
-				Logger.error("[%s] Subscript not found for data [%s]" % (g.UUID, json.dumps(request_data['data'])))
+				Logger.error("[%s] Subscript not found for data [%s]" % (g.UUID, json.dumps(request_data)))
 				err = ERROR.SUBSCRIPTION_NOT_FOUND
 				break
 			except  PriceChangedException as pce:
-				Logger.error("[%s] Data was stale, price has changed [%s]" % (g.UUID, json.dumps(request_data['data'])))
+				Logger.error("[%s] Data was stale, price has changed [%s]" % (g.UUID, json.dumps(request_data)))
 				err = pce
 				break
 			except Exception as e:

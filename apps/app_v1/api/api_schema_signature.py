@@ -170,11 +170,6 @@ CREATE_CART_SCHEMA = {
 
 
 CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
-	"data": {
-		FUNCTIONS: [
-			{Dictionary: {}}
-		],
-		SCHEMA: {
 			"shipping_address": {
 				FUNCTIONS: [
 					{Dictionary: {}}
@@ -341,14 +336,9 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 			}
 
 		}
-	}
-}
+
 CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
-	"data": {
-		FUNCTIONS: [
-			{Dictionary: {}}
-		],
-		SCHEMA: {
+
 			"cart_reference_uuid": {
 				FUNCTIONS: [
 					{String: {}}
@@ -396,8 +386,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 				FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
 			}
 		}
-	}
-}
+
 
 
 GET_COUNT_OF_CART_ITEMS = {

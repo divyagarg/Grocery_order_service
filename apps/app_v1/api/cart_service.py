@@ -673,9 +673,12 @@ class CartService:
 		if cart_reference_id is None:
 			ERROR.INTERNAL_ERROR.message = "Cart reference id can not be Null"
 			raise Exception(ERROR.INTERNAL_ERROR)
-		db.session.query(CartItem).filter(CartItem.cart_id == cart_reference_id).delete()
-		db.session.query(OrderShipmentDetail).filter(OrderShipmentDetail.cart_id == cart_reference_id).delete()
-		db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()
+
+		# db.session.query(CartItem).filter(CartItem.cart_id == cart_reference_id).delete()
+		# db.session.query(OrderShipmentDetail).filter(OrderShipmentDetail.cart_id == cart_reference_id).delete()
+		cart = Cart.query.filter_by(cart_reference_uuid = cart_reference_id).first()
+		db.session.delete(cart)
+		# db.session.query(Cart).filter(Cart.cart_reference_uuid == cart_reference_id).delete()
 
 
 

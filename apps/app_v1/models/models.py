@@ -69,15 +69,17 @@ class Cart(Base):
 	shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'))
 	payment_mode = db.Column(db.String(255))
 	Index('cart_geo_user_idx', geo_id, user_id)
-	cartItem = db.relationship('CartItem', backref='Cart')
+	orderShipmentDetail = db.relationship('OrderShipmentDetail', backref='Cart', cascade = 'all, delete-orphan')
+	cartItem = db.relationship('CartItem', backref='Cart', cascade = 'all, delete-orphan')
 
 
 class OrderShipmentDetail(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    shipment_id = db.Column(db.String(255), nullable=False, unique=True)
-    cart_id = db.Column(db.String(255), nullable=False)
-    delivery_slot = db.Column(db.String(255))
-    # UniqueConstraint(shipment_id, cart_id)
+	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+	shipment_id = db.Column(db.String(255), nullable=False, unique=True)
+	cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable=False)
+	delivery_slot = db.Column(db.String(255))
+	cartItem = db.relationship('CartItem', backref='OrderShipmentDetail', cascade="all,delete")
+
 
 class CartItem(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
