@@ -1,6 +1,7 @@
 import logging
 from apps.app_v1.api import RequiredFieldMissing, ERROR, IncorrectDataException
 from config import APP_NAME
+from flask import g
 
 __author__ = 'divyagarg'
 import collections
@@ -115,7 +116,7 @@ def MobileNumber(val):
 
 
 def validate(data, schema):
-    Logger.info("[%s] ********Validating request *********" %g.UUID)
+    Logger.info("[%s] ********Validating request *********" %(g.UUID))
     for key, validator_json in schema.items():
         required = validator_json.get(REQUIRED, True)
         if required and key not in data:
