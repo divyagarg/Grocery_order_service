@@ -78,7 +78,7 @@ class OrderShipmentDetail(db.Model):
 	shipment_id = db.Column(db.String(255), nullable=False, unique=True)
 	cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable=False)
 	delivery_slot = db.Column(db.String(255))
-	cartItem = db.relationship('CartItem', backref='OrderShipmentDetail', cascade="all,delete")
+	cartItem = db.relationship('CartItem', backref='OrderShipmentDetail')
 
 
 class CartItem(db.Model):

@@ -4,7 +4,7 @@ import random
 import time
 from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS, UPDATE_DELIVERY_SLOT
 from apps.app_v1.models import db
-from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail
+from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail, CartItem
 from config import APP_NAME
 from flask import g, current_app
 import requests
@@ -38,13 +38,19 @@ class DeliveryService:
 			request_data = parse_request_data(body)
 			validate(request_data, GET_DELIVERY_DETAILS)
 			cart = Cart.query.filter_by(geo_id=int(request_data['geo_id']), user_id=request_data['user_id']).first()
-
-			if cart is not None:
+			if cart is None:
+				raise NoSuchCartExistException(ERROR.NO_SUCH_CART_EXIST)
+			else:
 				Logger.info("Cart is not none in get delivery info [%s]" %cart.cart_reference_uuid)
 				count = db.session.query(func.count(distinct(OrderShipmentDetail.shipment_id))).filter(
 				OrderShipmentDetail.cart_id == cart.cart_reference_uuid).group_by(OrderShipmentDetail.cart_id).count()
 				if count > 0:
 					Logger.info("Count is not zero in get delivery info [%s]" %count)
+					cart_items_list = CartItem.query.filter_by(cart_id = cart.cart_reference_uuid).all()
+					for each_cart_item in cart_items_list:
+						each_cart_item.shipment_id = None
+						db.session.add(each_cart_item)
+
 					order_shipment_detail_list = OrderShipmentDetail.query.filter_by(cart_id = cart.cart_reference_uuid).all()
 					for each_shipment in order_shipment_detail_list:
 						db.session.delete(each_shipment)
