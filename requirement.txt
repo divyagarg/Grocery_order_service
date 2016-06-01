@@ -38,3 +38,4 @@ traitlets==4.2.1
 ujson==1.33
 uWSGI==2.0.12
 Werkzeug==0.10.4
+jsonpickle-0.9.3
