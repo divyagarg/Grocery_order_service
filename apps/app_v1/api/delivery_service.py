@@ -38,17 +38,19 @@ class DeliveryService:
 			request_data = parse_request_data(body)
 			validate(request_data, GET_DELIVERY_DETAILS)
 			cart = Cart.query.filter_by(geo_id=int(request_data['geo_id']), user_id=request_data['user_id']).first()
+
 			if cart is not None:
 				Logger.info("Cart is not none in get delivery info [%s]" %cart.cart_reference_uuid)
 				count = db.session.query(func.count(distinct(OrderShipmentDetail.shipment_id))).filter(
 				OrderShipmentDetail.cart_id == cart.cart_reference_uuid).group_by(OrderShipmentDetail.cart_id).count()
 				if count > 0:
 					Logger.info("Count is not zero in get delivery info [%s]" %count)
-					OrderShipmentDetail.query.filter_by(cart_id = cart.cart_reference_uuid).delete()
+					order_shipment_detail_list = OrderShipmentDetail.query.filter_by(cart_id = cart.cart_reference_uuid).all()
+					for each_shipment in order_shipment_detail_list:
+						db.session.delete(each_shipment)
 
-
-			self.get_shipment_preview(request_data)
-			self.parse_response_and_update_db()
+				self.get_shipment_preview(request_data)
+				self.parse_response_and_update_db()
 
 			db.session.commit()
 			Logger.info("[%s]************************* Get Delivery Slots Stop **************************" %g.UUID)
