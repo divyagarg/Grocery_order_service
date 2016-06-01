@@ -116,6 +116,7 @@ class OrderService:
 		return create_data_response({"count": count})
 
 	def createorder(self, body):
+		Logger.info("[%s]*************************Start Create Order **************************" %g.UUID)
 		error = True
 		err = None
 
@@ -266,6 +267,7 @@ class OrderService:
 		else:
 			try:
 				db.session.commit()
+				Logger.info("[%s]************************* Order Created **************************" %g.UUID)
 				return create_data_response(self.parent_reference_id)
 			except Exception as e:
 				Logger.error("[%s] Exception occured in committing db changes [%s]" % (g.UUID, str(e)))

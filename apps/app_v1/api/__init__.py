@@ -53,7 +53,6 @@ class ERROR(object):
 	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=1032, message="Shipment Preview Failed")
 
 def parse_request_data(body):
-	Logger.info('{%s} Received request to create cart for request {%s}' % (g.UUID, body))
 	json_data = json.loads(body)
 	Logger.info('{%s} Json encoded content {%s}' % (g.UUID, json_data))
 	return json_data

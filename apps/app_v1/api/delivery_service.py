@@ -33,6 +33,7 @@ class DeliveryService:
 
 
 	def get_delivery_info(self, body):
+		Logger.info("[%s]************************* Get Delivery Slots Start **************************" %g.UUID)
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, GET_DELIVERY_DETAILS)
@@ -50,6 +51,7 @@ class DeliveryService:
 			self.parse_response_and_update_db()
 
 			db.session.commit()
+			Logger.info("[%s]************************* Get Delivery Slots Stop **************************" %g.UUID)
 			return create_data_response(data=self.shipment_preview)
 		except NoSuchCartExistException as nsce:
 			Logger.error("[%s] No such cart Exist [%s]" %(g.UUID, str(nsce)))
@@ -148,11 +150,13 @@ class DeliveryService:
 
 	def update_slot(self, body):
 		try:
+			Logger.info("[%s]************************* Update Delivery Slots Start **************************" %g.UUID)
 			Logger.info("[%s] Update Slot API request body [%s]" %(g.UUID, body))
 			request_data = parse_request_data(body)
 			validate(request_data, UPDATE_DELIVERY_SLOT)
 			self.update_delivery_slot(request_data)
 			db.session.commit()
+			Logger.info("[%s]************************* Update Delivery Slots Start **************************" %g.UUID)
 			return create_data_response(data="success")
 		except Exception as e:
 			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)

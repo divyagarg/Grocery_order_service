@@ -58,6 +58,7 @@ class CartService:
 
 	def create_or_update_cart(self, body):
 		try:
+			Logger.info("[%s] Create/update cart request body [%s]" %(g.UUID, body))
 			request_data = parse_request_data(body)
 			validate(request_data, CREATE_CART_SCHEMA)
 			cart = self.get_cart_for_geo_user_id(request_data)
@@ -77,6 +78,7 @@ class CartService:
 		return Cart().query.filter_by(geo_id=int(data['geo_id']), user_id=data['user_id']).first()
 
 	def update_cart(self, cart, data):
+		Logger.info("[%s]*************************Update Cart Started**************************" %g.UUID)
 		error = True
 		err = None
 		while True:
@@ -187,9 +189,11 @@ class CartService:
 			return create_error_response(err)
 		else:
 			db.session.commit()
+			Logger.info("[%s]*************************Update Create Stop **************************" %g.UUID)
 			return create_data_response(data=response_data)
 
 	def create_cart(self, data):
+		Logger.info("[%s]*************************Start Create Cart **************************" %g.UUID)
 		error = True
 		err = None
 		while True:
@@ -300,6 +304,7 @@ class CartService:
 			return create_error_response(err)
 		else:
 			db.session.commit()
+			Logger.info("[%s]*************************Cart Created [%s] **************************" %(g.UUID, cart.cart_reference_uuid))
 			return create_data_response(data=response_data)
 
 	def save_cart(self, data, cart):
