@@ -187,8 +187,8 @@ def get_shipping_charges(total_price, total_discount):
 
 def generate_reference_order_id():
 	longtime = str(int(time.time()))
-	longtime = 'GRCY'+ longtime[6:] + longtime[:4]
-	reference_orderid = longtime + str(random.randint(10000,100000))
+	longtime = 'GRC'+ longtime[5:] + longtime[:5]
+	reference_orderid = longtime + str(random.randint(1000,10000))
 	return reference_orderid
 
 
