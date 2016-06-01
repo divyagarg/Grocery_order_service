@@ -2,8 +2,10 @@
 from apps.app_v1.api.cart_service import CartService
 from apps.app_v1.api.delivery_service import DeliveryService
 from apps.app_v1.api.order_service import OrderService
+from apps.app_v1.api.payment_service import PaymentInfo
 from flask import request, g
 from config import APP_NAME
+import flask
 from utils.jsonutils.output_formatter import create_error_response
 import logging, uuid
 from . import app_v1
@@ -116,3 +118,28 @@ def slot():
         logger.error("[%s] Exception occured in delivery service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
         return create_error_response(ERROR.INTERNAL_ERROR)
+
+
+@app_v1.route('/get_order_prices', methods=['POST'])
+def get_order_prices():
+    g.UUID = uuid.uuid4()
+    order_info = PaymentInfo()
+    response = order_info.get_order_prices(request)
+    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    return flask.jsonify(response)
+
+@app_v1.route('/update_payment_details', methods=['POST'])
+def update_payment_details():
+    g.UUID = uuid.uuid4()
+    order_info = PaymentInfo()
+    response = order_info.update_payment_details(request)
+    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    return flask.jsonify(response)
+
+@app_v1.route('/get_payment_details', methods=['POST'])
+def get_payment_details():
+    g.UUID = uuid.uuid4()
+    order_info = PaymentInfo()
+    response = order_info.get_payment_details(request)
+    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    return flask.jsonify(response)

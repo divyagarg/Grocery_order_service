@@ -35,7 +35,7 @@ class DevelopmentConfig(Config):
 	ENV = 'development'
 	DEBUG = True
 	DATABASE_NAME = 'grocery_order_service'
-	DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
+	DATABASE_URI = 'mysql+pymysql://amit:amit123@localhost:3307/'
 	SECRET_KEY = 'hard to guess string'
 	# KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
 	# KAFKA_TOPIC = 'fulfillment_staging'
@@ -97,6 +97,7 @@ class StagingConfig(Config):
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 	KAFKA_TOPIC = 'grocery_orderservice_staging'
 	KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
+	PAYMENT_SERVICE_URL = "http://pyservice01.staging.askme.com:13000/payment_service/api/paas/v1/paymentstatus"
 
 
 class ProductionConfig(Config):

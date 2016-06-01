@@ -51,6 +51,8 @@ class ERROR(object):
 	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 1030, message="Delivery slot not found")
 	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 1031, message="Older Delivery slot found")
 	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=1032, message="Shipment Preview Failed")
+	NO_ORDER_FOUND_ERROR = ERROR_DETAIL(code= 1033, message= "Order does not Exist")
+
 
 def parse_request_data(body):
 	json_data = json.loads(body)
@@ -177,6 +179,12 @@ class ShipmentPreviewException(Exception):
 	def __init__(self, error_detail):
 		self.code = error_detail.code
 		super(ShipmentPreviewException, self).__init__(error_detail.message)
+
+class OrderNotFoundException(Exception):
+	code = None
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(OrderNotFoundException, self).__init__(error_detail.message)
 
 def get_shipping_charges(total_price, total_discount):
 		total_shipping_charges =0.0

@@ -13,7 +13,7 @@ from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_R
 from apps.app_v1.api.status_service import StatusService
 from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict
 from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, Payment, OrderShipmentDetail, \
-	CartItem
+	CartItem, MasterOrder
 from config import APP_NAME
 import requests
 from flask import g, current_app
@@ -208,13 +208,19 @@ class OrderService:
 				err = ERROR.INTERNAL_ERROR
 				break
 
+			#4.1 calculate shipping charges
+			if self.total_shipping_charges != get_shipping_charges(self.total_offer_price, self.total_discount):
+				err =  ERROR.SHIPPING_CHARGES_CHANGED
+				break
+
+
 			# 5. Segregate order items based on sdd and ndd, and add freebies with ndd
 			self.segregate_order_based_on_shipments()
 
 			# 6 Create two orders based on ndd and sdd and create a master order id
 			try:
 				self.create_and_save_order()
-				self.save_payment()
+				# self.save_payment()
 			except NoDeliverySlotException as nse:
 				Logger.error("[%s] For placing Order Delivery slot is needed [%s]" %(g.UUID, str(nse)))
 				err= ERROR.NO_DELIVERY_SLOT_ERROR
@@ -530,7 +536,37 @@ class OrderService:
 		# 	else:
 		# 		self.split_order = True
 
+
+	def save_master_order(self):
+		order = MasterOrder()
+		order.order_id = self.parent_reference_id
+		order.total_discount = self.total_discount
+		order.total_display_price = self.total_display_price
+		order.total_offer_price = self.total_offer_price
+		order.total_shipping = self.total_shipping_charges
+		order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
+
+		order.user_id = self.user_id
+		order.geo_id = self.geo_id
+		order.order_type = self.order_type
+		order.order_source = self.order_source_reference
+		order.promo_codes = self.promo_codes
+		order.payment_mode = self.payment_mode
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == payment_modes_dict[0]\
+																						  else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		if self.billing_address is not None:
+			billing_address = self.billing_address
+			address = Address.get_address(billing_address['name'], billing_address['mobile'],
+										  billing_address['address'], billing_address['city'],
+										  billing_address['pincode'], billing_address['state'],
+										  billing_address.get('email'), billing_address.get('landmark'))
+			order.billing_address_ref = address.address_hash
+
+		db.session.add(order)
+
+
 	def create_and_save_order(self):
+		self.save_master_order()
 		if not self.split_order:
 			order = Order()
 			order.parent_order_id = self.parent_reference_id
@@ -546,9 +582,7 @@ class OrderService:
 			order.total_discount = self.total_discount
 			order.total_display_price = self.total_display_price
 			order.total_offer_price = self.total_offer_price
-			order.total_shipping = get_shipping_charges(order.total_offer_price, order.total_discount)
-			if order.total_shipping != self.total_shipping_charges:
-				raise PriceChangedException(ERROR.SHIPPING_CHARGES_CHANGED)
+			order.total_shipping = self.total_shipping_charges
 			order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
 
 			self.order = order
