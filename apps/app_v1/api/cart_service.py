@@ -60,11 +60,11 @@ class CartService:
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, CREATE_CART_SCHEMA)
-			cart = self.get_cart_for_geo_user_id(request_data['data'])
+			cart = self.get_cart_for_geo_user_id(request_data)
 			if cart is not None:
-				return self.update_cart(cart, request_data['data'])
+				return self.update_cart(cart, request_data)
 			else:
-				return self.create_cart(request_data['data'])
+				return self.create_cart(request_data)
 		except IncorrectDataException as ide:
 			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)
@@ -250,7 +250,7 @@ class CartService:
 
 			# 3. check coupons
 			try:
-				response_data = self.get_response_from_check_coupons_api(self.cart_items, data, None)
+				response_data = self.get_response_from_check_coupons_api(self.cart_items, data, cart)
 				self.update_discounts_item_level(response_data, self.cart_items)
 			except CouponInvalidException as cie:
 				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(cie)))
@@ -346,8 +346,8 @@ class CartService:
 		if data.get('order_type') is not None:
 			cart.order_type = order_types[data.get('order_type')]
 		cart.order_source_reference = data['order_source_reference']
-		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
-			cart.promo_codes = json.dumps(map(str, data.get('promo_codes')))
+		# if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
+		# 	cart.promo_codes = json.dumps(map(str, data.get('promo_codes')))
 		if data.get('payment_mode') is not None:
 			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
@@ -522,7 +522,7 @@ class CartService:
 
 		response = requests.post(url=url, data=json.dumps(req_data),
 								 headers=header)
-		if response.status_code == 200 and "coupon_codes" in req_data:
+		if response.status_code == 200 and "coupon_codes" in req_data and cart is not None:
 			cart.promo_codes = json.dumps(req_data["coupon_codes"])
 		json_data = json.loads(response.text)
 		Logger.info(
@@ -689,11 +689,11 @@ class CartService:
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, CREATE_CART_SCHEMA)
-			cart = self.get_cart_for_geo_user_id(request_data['data'])
+			cart = self.get_cart_for_geo_user_id(request_data)
 			if cart is not None:
-				return self.add_item_to_existing_cart_no_price_cal(cart, request_data['data'])
+				return self.add_item_to_existing_cart_no_price_cal(cart, request_data)
 			else:
-				return self.create_cart_no_price_cal(request_data['data'])
+				return self.create_cart_no_price_cal(request_data)
 		except IncorrectDataException as ide:
 			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)

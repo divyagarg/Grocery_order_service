@@ -30,7 +30,7 @@ class DeliveryService:
 	def __init__(self):
 		self.shipment_preview = None
 		self.cart = None
-		self.order_shipment_detail_list = None
+
 
 	def get_delivery_info(self, body):
 		try:
@@ -87,20 +87,23 @@ class DeliveryService:
 		item_dict = {}
 		for each_item in self.cart.cartItem:
 			item_dict[each_item.cart_item_id] = each_item
-		self.order_shipment_detail_list = list()
+
 		for i in range(shipment_list.__len__()):
+			shipment_id = create_shipment_id()
+
 			order_shipment_detail = OrderShipmentDetail()
 			order_shipment_detail.cart_id = self.cart.cart_reference_uuid
-			order_shipment_detail.shipment_id = create_shipment_id()
+			order_shipment_detail.shipment_id = shipment_id
 			db.session.add(order_shipment_detail)
-			self.order_shipment_detail_list.append(order_shipment_detail)
+			shipment_list[i]["shipment_id"] = shipment_id
 
 
+		for i in range(shipment_list.__len__()):
 			shipment_items_list = shipment_list[i].get('shipment_items')
-			shipment_list[i]["shipment_id"] = order_shipment_detail.shipment_id
+			shipment_id = shipment_list[i].get('shipment_id')
 			for each_item in shipment_items_list:
 				item = item_dict[each_item.get('subscription_id')]
-				item.shipment_id = order_shipment_detail.shipment_id
+				item.shipment_id = shipment_id
 				db.session().add(item)
 
 

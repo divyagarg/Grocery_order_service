@@ -1,4 +1,4 @@
-from apps.app_v1.models import DELIVERY_TYPE, ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES, PAYMENT_MODE
+from apps.app_v1.models import ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES, PAYMENT_MODE
 
 from utils.jsonutils.json_schema_validator import *
 
@@ -56,30 +56,87 @@ __author__ = 'divyagarg'
 """
 
 CREATE_CART_SCHEMA = {
-	"data": {
+	"geo_id": {
+		FUNCTIONS: [
+			{Integer: {}}
+		]
+	},
+	"user_id": {
+		FUNCTIONS: [
+			{String: {}}
+		]
+	},
+	"order_type": {
+		FUNCTIONS: [
+			{Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
+		]
+	},
+	"order_source_reference": {
+		REQUIRED: True,
+		FUNCTIONS: [
+			{Contained: {"contained_in": [d.value for d in ORDER_SOURCE_REFERENCE]}}
+		]
+	},
+	"promo_codes": {
+		REQUIRED: False,
+		FUNCTIONS: [
+			{List: {}}
+		]
+	},
+	"payment_mode": {
+		REQUIRED: False,
+		FUNCTIONS: [{Contained: {"contained_in": [d.value for d in PAYMENT_MODE]}}]
+	},
+	"shipping_address": {
+		REQUIRED: False,
 		FUNCTIONS: [
 			{Dictionary: {}}
 		],
 		SCHEMA: {
-			"geo_id": {
+			"name": {
+				FUNCTIONS: [{String: {}}]
+			},
+			"address": {
+				FUNCTIONS: [{String: {}}]
+			},
+			"city": {
+				REQUIRED: False,
+				FUNCTIONS: [{String: {}}]
+			},
+			"pincode": {
+				REQUIRED: False,
+				FUNCTIONS: [{Pincode: {}}]
+			},
+			"state": {
+				REQUIRED: False,
+				FUNCTIONS: [{String: {}}]
+			},
+			"mobile": {
+				FUNCTIONS: [{MobileNumber: {}}]
+			},
+			"email": {
+				REQUIRED: False,
+				FUNCTIONS: [{String: {}}]
+			},
+			"landmark": {
+				REQUIRED: False,
+				FUNCTIONS: [{String: {}}]
+			}
+		}},
+	"orderitems": {
+		REQUIRED: False,
+		FUNCTIONS: [
+			{List: {}}
+		],
+		SCHEMA: {
+			"quantity": {
 				FUNCTIONS: [
-					{Integer: {}}
+					{Integer: {"min_value": 0}}
 				]
 			},
-			"user_id": {
+			"item_uuid": {
 				FUNCTIONS: [
 					{String: {}}
-				]
-			},
-			"order_type": {
-				FUNCTIONS: [
-					{Contained: {"contained_in": [d.value for d in VALID_ORDER_TYPES]}}
-				]
-			},
-			"order_source_reference": {
-				REQUIRED: True,
-				FUNCTIONS: [
-					{Contained: {"contained_in": [d.value for d in ORDER_SOURCE_REFERENCE]}}
 				]
 			},
 			"promo_codes": {
@@ -87,93 +144,30 @@ CREATE_CART_SCHEMA = {
 				FUNCTIONS: [
 					{List: {}}
 				]
-			},
-			"payment_mode": {
-				REQUIRED: False,
-				FUNCTIONS: [	{Contained: {"contained_in": [d.value for d in PAYMENT_MODE]}}]
-			},
-			"shipping_address": {
-				REQUIRED: False,
-				FUNCTIONS: [
-					{Dictionary: {}}
-				],
-				SCHEMA: {
-					"name": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"address": {
-						FUNCTIONS: [{String: {}}]
-					},
-					"city": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
-					},
-					"pincode": {
-						REQUIRED: False,
-						FUNCTIONS: [{Pincode: {}}]
-					},
-					"state": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
-					},
-					"mobile": {
-						FUNCTIONS: [{MobileNumber: {}}]
-					},
-					"email": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
-					},
-					"landmark": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
-					}
-				}},
-			"orderitems": {
-				REQUIRED:False,
-				FUNCTIONS: [
-					{List: {}}
-				],
-				SCHEMA: {
-					"quantity": {
-						FUNCTIONS: [
-							{Integer: {"min_value": 0}}
-						]
-					},
-					"item_uuid": {
-						FUNCTIONS: [
-							{String: {}}
-						]
-					},
-					"promo_codes": {
-						REQUIRED: False,
-						FUNCTIONS: [
-							{List: {}}
-						]
-					}
-				}
-			},
-			"selected_freebee_code": {
-				REQUIRED: False,
-				FUNCTIONS: [
-					{List: {}}
-				],
-				SCHEMA: {
-					"coupon_code": {
-						FUNCTIONS: [
-							{String: {}}
-						]
-					},
-					"subscription_id": {
-						FUNCTIONS: [
-							{String: {}}
-						]
-					}
-				}
 			}
-
+		}
+	},
+	"selected_freebee_code": {
+		REQUIRED: False,
+		FUNCTIONS: [
+			{List: {}}
+		],
+		SCHEMA: {
+			"coupon_code": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			},
+			"subscription_id": {
+				FUNCTIONS: [
+					{String: {}}
+				]
+			}
 		}
 	}
+
 }
+
 
 CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 	"data": {
