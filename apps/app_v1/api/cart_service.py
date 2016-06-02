@@ -269,7 +269,7 @@ class CartService:
 			try:
 				response_data = self.get_response_from_check_coupons_api(self.cart_items, data, cart)
 				self.update_discounts_item_level(response_data, self.cart_items)
-				self.fetch_freebie_details_and_update(response_data.get('benefits'), order_types.get(data['order_type']))
+				self.fetch_freebie_details_and_update(response_data.get('benefits', []), order_types.get(data['order_type']))
 			except SubscriptionNotFoundException as snfe:
 				Logger.error("[%s] Exception occured in fetching catalog info [%s]" %(g.UUID, str(snfe)))
 				err= ERROR.SUBSCRIPTION_NOT_FOUND
