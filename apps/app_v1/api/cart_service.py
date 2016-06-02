@@ -62,6 +62,7 @@ class CartService:
 		self.item_id_to_existing_item_dict = None
 		self.deleted_cart_items = None
 		self.shipping_address = None
+		self.total_cashback = 0.0
 
 	def create_or_update_cart(self, body):
 		try:
@@ -305,7 +306,7 @@ class CartService:
 
 			# 6. create response
 			try:
-				response_data = self.generate_response(self.cart_items, cart)
+				response_data = self.generate_response(self.cart_items, cart, data)
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in generating response for cart [%s]" % (g.UUID, str(e)),
 							 exc_info=True)
@@ -328,6 +329,7 @@ class CartService:
 		cart.total_offer_price = self.total_price
 		cart.total_display_price = self.total_display_price
 		cart.total_discount = self.total_discount
+		cart.total_cashback = self.total_cashback
 		cart.total_shipping_charges = self.total_shipping_charges
 
 		self.shipping_address = data.get('shipping_address')
@@ -372,6 +374,7 @@ class CartService:
 			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
 			cart.selected_freebee_items = json.dumps(data.get('selected_freebee_code'))
+
 
 	def validate_create_new_cart(self, data):
 		if 'orderitems' not in data or ('orderitems' in data and data['orderitems'].__len__() == 0):
@@ -428,13 +431,14 @@ class CartService:
 			raise Exception(ERROR.INTERNAL_ERROR)
 		return json_data['results']
 
-	def generate_response(self, new_items, cart):
+	def generate_response(self, new_items, cart, data):
 		response_json = {
 			"orderitems": [],
 			"total_offer_price": self.total_price,
 			"total_display_price": self.total_display_price,
 			"total_payble_price": self.get_total_payble_price(),
 			"total_discount": self.total_discount,
+			"total_cashback": self.total_cashback,
 			"total_shipping_charges": self.total_shipping_charges,
 			"cart_reference_uuid": cart.cart_reference_uuid,
 			"benefits": self.benefits,
@@ -442,6 +446,15 @@ class CartService:
 		}
 		if self.shipping_address is not None:
 			response_json['shipping_address'] = self.shipping_address
+
+		if self.total_cashback > 0:
+			if data.get('login_status', 0) == 1:
+			   response_json['display_message'] = "Coupon applied successfully. Cashback will be credited to your AskmePay Wallet within 24 hours of delivery"
+			else:
+			   response_json['display_message'] = \
+				   "Coupon applied successfully. Cashback will be credited to your AskmePay Wallet within 24 hours of delivery." \
+				   " Please verify your number on success / payment page to avail cashback."
+
 
 		if new_items is not None:
 			items = list()
@@ -483,11 +496,14 @@ class CartService:
 		item_discount_dict = {}
 		if response_data['success']:
 			self.total_discount = float(response_data['totalDiscount'])
+			self.total_cashback = float(response_data['totalCashback'])
+			#TODO : optimize two loops to one.
 			for item in response_data['products']:
 				item_discount_dict[item['itemid']] = item
 
 			for each_cart_item in cart_items:
 				each_cart_item.item_discount = float(item_discount_dict[str(each_cart_item.cart_item_id)]['discount'])
+				each_cart_item.item_cashback = float(item_discount_dict[str(each_cart_item.cart_item_id)]['cashback'])
 
 
 	def update_cart_total_amounts(self, cart):
@@ -954,6 +970,8 @@ class CartService:
 			"offset": 0
 		}
 		response = self.calculate_price_api(req_data)
+		if len(response) == 0:
+			return None
 
 		order_item_price_dict = {}
 		for response in response[0].get('items')[0].get('items'):

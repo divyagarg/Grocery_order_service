@@ -81,6 +81,7 @@ class OrderService:
 		self.total_offer_price = 0.0
 		self.total_shipping_charges = 0.0
 		self.total_discount = 0.0
+		self.total_cashback = 0.0
 		self.total_display_price = 0.0
 		self.total_payble_amount = 0.0
 		self.order_items = None
@@ -271,8 +272,23 @@ class OrderService:
 		else:
 			try:
 				db.session.commit()
+				response = {}
+				response['order_id'] = self.parent_reference_id
+
+				if self.total_cashback > 0.0:
+					response['total_cashback'] = self.total_cashback
+					if request_data.get('login_status') == 1:
+					   response['display_message'] = "Cashback will be credited to your AskmePay Wallet within 24 hours of delivery"
+					else:
+					   response['display_message'] = \
+						   "Cashback will be credited to your AskmePay Wallet within 24 hours of delivery." \
+						   " Verify your number to avail cashback."
+				else:
+					if request_data.get('login_status') == 0:
+					   response['display_message'] = "To get exciting cash-backs and rewards on your next purchases. Please verify your number"
+
 				Logger.info("[%s]************************* Order Created **************************" %g.UUID)
-				return create_data_response(self.parent_reference_id)
+				return create_data_response(data = response)
 			except Exception as e:
 				Logger.error("[%s] Exception occured in committing db changes [%s]" % (g.UUID, str(e)))
 				ERROR.INTERNAL_ERROR.message = str(e)
@@ -292,6 +308,7 @@ class OrderService:
 		self.total_offer_price = cart.total_offer_price
 		self.total_shipping_charges = cart.total_shipping_charges
 		self.total_discount = cart.total_discount
+		self.total_cashback = cart.total_cashback
 		if cart.shipping_address_ref is None:
 			raise NoShippingAddressFoundException(ERROR.NO_SHIPPING_ADDRESS_FOUND)
 		self.shipping_address = cart.shipping_address_ref
@@ -471,6 +488,8 @@ class OrderService:
 		if response_data['success']:
 			if self.total_discount != float(response_data['totalDiscount']):
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
+			if self.total_cashback != float(response_data['totalCashback']):
+				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 			freebie_coupon_code_list = list()
 			if self.selected_freebies is not None:
 
@@ -494,6 +513,8 @@ class OrderService:
 			if self.cart_reference_given:
 				for key in self.item_id_to_item_obj_dict:
 					if self.item_id_to_item_obj_dict[key].item_discount != item_discount_dict[key].get('discount'):
+						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
+					if self.item_id_to_item_obj_dict[key].item_cashback != item_discount_dict[key].get('cashback'):
 						raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 			else:
 				for key in self.item_id_to_item_json_dict:
@@ -553,6 +574,7 @@ class OrderService:
 		order = MasterOrder()
 		order.order_id = self.parent_reference_id
 		order.total_discount = self.total_discount
+		order.total_cashback = self.total_cashback
 		order.total_display_price = self.total_display_price
 		order.total_offer_price = self.total_offer_price
 		order.total_shipping = self.total_shipping_charges
@@ -604,6 +626,7 @@ class OrderService:
 			if self.selected_freebies is not None:
 				order.freebie = json.dumps(self.selected_freebies)
 			order.total_discount = self.total_discount
+			order.total_cashback = self.total_cashback
 			order.total_display_price = self.total_display_price
 			order.total_offer_price = self.total_offer_price
 			order.total_shipping = self.total_shipping_charges
@@ -631,6 +654,7 @@ class OrderService:
 				self.create_order_item_obj(sub_order.order_reference_id, items, order_item_list)
 				for each_item in items:
 					sub_order.total_discount += each_item.item_discount
+					sub_order.total_cashback += each_item.item_cashback
 					sub_order.total_display_price += each_item.display_price * each_item.quantity
 					sub_order.total_offer_price += each_item.offer_price * each_item.quantity
 
@@ -771,6 +795,7 @@ class OrderService:
 			order_item.item_id = src_item.cart_item_id
 			order_item.quantity = src_item.quantity
 			order_item.item_discount = src_item.item_discount
+			order_item.item_cashback = src_item.item_cashback
 			order_item.offer_price = src_item.offer_price
 			order_item.display_price = src_item.display_price
 			order_item.transfer_price = src_item.transfer_price
