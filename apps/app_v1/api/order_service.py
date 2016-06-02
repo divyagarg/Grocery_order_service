@@ -6,18 +6,18 @@ import datetime
 import time
 
 from apps.app_v1.api.cart_service import CartService
+from apps.app_v1.api.delivery_service import DeliveryService
 import config
 from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
 from apps.app_v1.api.status_service import StatusService
 from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment_modes_dict
-from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, Payment, OrderShipmentDetail, \
-	CartItem, MasterOrder
+from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, OrderShipmentDetail, \
+	MasterOrder, CartItem
 from config import APP_NAME
 import requests
 from flask import g, current_app
-from utils.jsonutils.json_utility import json_serial
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
@@ -26,7 +26,6 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException
 from utils.jsonutils.json_schema_validator import validate
 from dateutil.tz import tzlocal
-from utils.kafka_utils.kafka_publisher import Publisher
 
 __author__ = 'divyagarg'
 
@@ -62,6 +61,7 @@ def get_delivery_slot(cart_reference_id):
 
 class OrderService:
 	def __init__(self):
+		self.shipment_id_slot_dict = {}
 		self.cart_reference_id = None
 		self.order_reference_id = None
 		self.geo_id = None
@@ -77,9 +77,7 @@ class OrderService:
 		self.selected_freebies = None
 		self.payment_mode = None
 		self.order = None
-		# self.sdd_order = None
-		# self.ndd_order = None
-		# self.now = datetime.datetime.utcnow()
+
 		self.total_offer_price = 0.0
 		self.total_shipping_charges = 0.0
 		self.total_discount = 0.0
@@ -91,13 +89,16 @@ class OrderService:
 		self.item_id_to_item_json_dict = None
 
 		self.cart_reference_given = None
-		# self.sdd_items_dict = {}
-		# self.ndd_items_dict = {}
+
 		self.order_list = list()
 		self.split_order = False
 		self.parent_reference_id = None
 		self.shipment_items_dict = None
 		self.apply_coupon_code_list = None
+
+		self.shipment_preview_present = None
+		self.shipment_id_to_item_ids_dict = {}
+		self.delivery_slot = None
 
 	def get_count_of_orders_of_user(self, user_id):
 		try:
@@ -212,13 +213,12 @@ class OrderService:
 				break
 
 
-			# 5. Segregate order items based on sdd and ndd, and add freebies with ndd
+			# 5. Segregate order items based on shipments, and add freebies with ndd
 			self.segregate_order_based_on_shipments()
 
 			# 6 Create two orders based on ndd and sdd and create a master order id
 			try:
 				self.create_and_save_order()
-				# self.save_payment()
 			except NoDeliverySlotException as nse:
 				Logger.error("[%s] For placing Order Delivery slot is needed [%s]" %(g.UUID, str(nse)))
 				err= ERROR.NO_DELIVERY_SLOT_ERROR
@@ -302,6 +302,14 @@ class OrderService:
 		self.order_source_reference = data['order_source_reference']
 		if 'billing_address' in data:
 			self.billing_address = data.get('billing_address')
+		if 'delivery_slots' in data and data.get('delivery_slots') is not None:
+			for each_delivery_slot in data.get('delivery_slots'):
+				slot = {}
+				slot['start_datetime'] = each_delivery_slot.get('start_datetime')
+				slot['end_datetime'] = each_delivery_slot.get('end_datetime')
+				self.shipment_id_slot_dict[each_delivery_slot.get('shipment_id')] = json.dumps(slot)
+
+
 		# self.delivery_type = delivery_types[int(data.get('delivery_type'))]
 		# self.delivery_due_date = data.get('delivery_due_date')
 		# self.delivery_slot = json.dumps(data.get('delivery_slot'))
@@ -498,43 +506,47 @@ class OrderService:
 			raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
 
 	def segregate_order_based_on_shipments(self):
-		shipments = OrderShipmentDetail.query.filter_by(cart_id = self.cart_reference_id).all()
-
-		if shipments.__len__() >1:
+		order_shipment_details = OrderShipmentDetail.query.filter_by(cart_id=self.cart_reference_id).all()
+		if order_shipment_details is None or order_shipment_details.__len__() == 0:
+			self.shipment_preview_present = False
+			shipment_response = self.get_shipment_preview_for_items()
+			shipments_list = shipment_response.get('fulfilment_estimates')[0].get('shipments')
+			if shipments_list.__len__() > 1:
+				self.split_order = True
+				self.create_shipment_item_ids_dict_from_preview_response(shipments_list)
+			else:
+				self.split_order = False
+		elif order_shipment_details.__len__() > 1:
+			self.shipment_preview_present = True
 			self.split_order = True
-			self.shipment_items_dict ={}
-			self.shipment_id_slot_dict = {}
-			for each_shipment in shipments:
-				self.shipment_id_slot_dict[each_shipment.shipment_id] = each_shipment
-				items = CartItem.query.filter_by(shipment_id = each_shipment.shipment_id).all()
-				item_dict = {}
-				for each_item in items:
-					item_dict[each_item.cart_item_id] = each_item
-				self.shipment_items_dict[each_shipment.shipment_id] = item_dict
-		else:
+			self.create_shipment_item_ids_dict_from_cart(order_shipment_details)
+		elif order_shipment_details.__len__() == 1:
+			self.shipment_preview_present = True
 			self.split_order = False
 
-		# if self.cart_reference_given:
-		# 	for item_obj in self.item_id_to_item_obj_dict.values():
-		# 		if item_obj.same_day_delivery == 'SDD':
-		# 			self.sdd_items_dict[item_obj.cart_item_id] = item_obj
-		# 		else:
-		# 			self.ndd_items_dict[item_obj.cart_item_id] = item_obj
-		# 	if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
-		# 		self.split_order = False
-		# 	else:
-		# 		self.split_order = True
-		#
-		# else:
-		# 	for item_json in self.item_id_to_item_json_dict.values():
-		# 		if item_json.get('same_day_delivery') == 'SDD':
-		# 			self.sdd_items_dict[item_json['item_uuid']] = item_json
-		# 		else:
-		# 			self.ndd_items_dict[item_json['item_uuid']] = item_json
-		# 	if self.sdd_items_dict.__len__() == 0 or self.ndd_items_dict.__len__() == 0:
-		# 		self.split_order = False
-		# 	else:
-		# 		self.split_order = True
+	def create_shipment_item_ids_dict_from_preview_response(self, shipment_list):
+		for i in range(shipment_list.__len__()):
+			subscription_id_list = list()
+			shipment_items = shipment_list[i].get('shipment_items')
+			for j in range(shipment_items.__len__()):
+				# subscription id will be string here
+				subscription_id_list.append(shipment_items[j].get('subscription_id'))
+
+			self.shipment_id_to_item_ids_dict[i] = subscription_id_list
+			self.shipment_id_slot_dict[i] =  self.get_default_slot()
+
+	def create_shipment_item_ids_dict_from_cart(self, order_shipment_details):
+		slot_present_in_request = True
+		if self.shipment_id_slot_dict.values().__len__() == 0:
+			slot_present_in_request = False
+		for each_row in order_shipment_details:
+			if slot_present_in_request is False:
+				self.shipment_id_slot_dict[each_row.shipment_id] = each_row.delivery_slot
+			subscription_id_list = list()
+			items = CartItem.query.filter_by(shipment_id=each_row.shipment_id).all()
+			for cart_item_row in items:
+				subscription_id_list.append(cart_item_row.cart_item_id)
+			self.shipment_id_to_item_ids_dict[each_row.shipment_id] = subscription_id_list
 
 
 	def save_master_order(self):
@@ -574,8 +586,8 @@ class OrderService:
 			order_item_list = list()
 			self.create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict, order_item_list)
 			order.orderItem = order_item_list
-
-			order.delivery_slot = get_delivery_slot(self.cart_reference_id)
+			if self.delivery_slot is not None:
+				order.delivery_slot = self.delivery_slot
 			self.save_common_order_data(order)
 			if self.selected_freebies is not None:
 				order.freebie = json.dumps(self.selected_freebies)
@@ -589,23 +601,28 @@ class OrderService:
 			db.session.add(order)
 			db.session.add_all(order_item_list)
 			return order.order_reference_id
-		else:
+		elif self.split_order:
 			freebee_given = False
-			for each_shipment in self.shipment_id_slot_dict.values():
+			for key in self.shipment_id_to_item_ids_dict:
 				sub_order = Order()
 				sub_order.parent_order_id = self.parent_reference_id
 				sub_order.order_reference_id = uuid.uuid1().hex
-				sub_order.delivery_slot = validate_delivery_slot(each_shipment.delivery_slot)
+				if key in self.shipment_id_slot_dict:
+					sub_order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict[key])
+				else:
+					sub_order.delivery_slot = None
+
 				self.save_common_order_data(sub_order)
-				items = self.shipment_items_dict[each_shipment.shipment_id]
+				items = CartItem.query.filter(CartItem.cart_item_id.in_(self.shipment_id_to_item_ids_dict[key])).all()
+
 				order_item_list = list()
 				self.create_order_item_obj(sub_order.order_reference_id, items, order_item_list)
 				for each_item in items:
-					sub_order.total_discount += items[each_item].item_discount
-					sub_order.total_display_price += items[each_item].display_price * items[each_item].quantity
-					sub_order.total_offer_price += items[each_item].offer_price * items[each_item].quantity
+					sub_order.total_discount += each_item.item_discount
+					sub_order.total_display_price += each_item.display_price * each_item.quantity
+					sub_order.total_offer_price += each_item.offer_price * each_item.quantity
 
-				sub_order.total_shipping = self.total_shipping_charges / self.shipment_id_slot_dict.__len__()
+				sub_order.total_shipping = self.total_shipping_charges / self.shipment_id_to_item_ids_dict.__len__()
 				sub_order.total_payble_amount = sub_order.total_offer_price - sub_order.total_discount + sub_order.total_shipping
 
 				if self.selected_freebies is not None and sub_order.delivery_slot is not None and freebee_given is False:
@@ -617,16 +634,6 @@ class OrderService:
 				db.session.add_all(order_item_list)
 				self.order_list.append(sub_order)
 
-
-	# def create_order(self, master_order, sdd_order, ndd_order):
-	# 	if not self.split_order:
-	# 		master_order.delivery_slot = get_delivery_slot(self.cart_reference_id)
-	# 		self.save_common_order_data(master_order)
-	# 		self.save_specific_order_data(order=master_order, sdd_order=None, ndd_order=None)
-	# 	else:
-	# 		self.save_common_order_data(sdd_order)
-	# 		self.save_common_order_data(ndd_order)
-	# 		self.save_specific_order_data(order=None, sdd_order=sdd_order, ndd_order=ndd_order)
 
 	def save_common_order_data(self, order):
 		order.user_id = self.user_id
@@ -747,7 +754,7 @@ class OrderService:
 	# 	return order_item_list
 
 	def create_order_item_obj(self, order_id, src_dict, list_of_items):
-		for src_item in src_dict.values():
+		for src_item in src_dict:
 			order_item = OrderItem()
 			order_item.item_id = src_item.cart_item_id
 			order_item.quantity = src_item.quantity
@@ -777,11 +784,6 @@ class OrderService:
 			order_item.order_id = order_id
 			list_of_items.append(order_item)
 
-	def save_payment(self):
-		payment = Payment()
-		payment.order_id = self.parent_reference_id
-		payment.payment_mode = self.payment_mode
-		db.session.add(payment)
 
 	def create_publisher_message(self, order):
 		data = {}
@@ -901,3 +903,15 @@ class OrderService:
 			error_msg = json_data['error'].get('error')
 			ERROR.COUPON_APPLY_FAILED.message = error_msg
 			raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)
+
+	def get_shipment_preview_for_items(self):
+		request_data = {}
+		request_data['geo_id'] = self.geo_id
+		request_data['user_id'] = self.user_id
+		delivery_service = DeliveryService()
+		delivery_service
+		return delivery_service.get_shipment_preview(request_data)
+
+	def get_default_slot(self):
+		return None
+

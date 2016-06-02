@@ -28,7 +28,7 @@ def create_shipment_id():
 
 class DeliveryService:
 	def __init__(self):
-		self.shipment_preview = None
+
 		self.cart = None
 
 
@@ -55,12 +55,12 @@ class DeliveryService:
 					for each_shipment in order_shipment_detail_list:
 						db.session.delete(each_shipment)
 
-				self.get_shipment_preview(request_data)
-				self.parse_response_and_update_db()
+				shipment_preview_response = self.get_shipment_preview(request_data)
+				self.parse_response_and_update_db(shipment_preview_response)
 
 			db.session.commit()
 			Logger.info("[%s]************************* Get Delivery Slots Stop **************************" %g.UUID)
-			return create_data_response(data=self.shipment_preview)
+			return create_data_response(data=shipment_preview_response)
 		except NoSuchCartExistException as nsce:
 			Logger.error("[%s] No such cart Exist [%s]" %(g.UUID, str(nsce)))
 			db.session.rollback()
@@ -89,11 +89,10 @@ class DeliveryService:
 		if not json_data['success']:
 			ERROR.INTERNAL_ERROR.message = "Shipment preview API returning failure as response"
 			raise Exception(ERROR.INTERNAL_ERROR)
-		self.shipment_preview = json_data['data']
+		return json_data['data']
 
-	def parse_response_and_update_db(self):
-		response_json = self.shipment_preview
-		shipment_list = response_json.get('fulfilment_estimates')[0].get('shipments')
+	def parse_response_and_update_db(self, shipment_preview):
+		shipment_list = shipment_preview.get('fulfilment_estimates')[0].get('shipments')
 		item_dict = {}
 		for each_item in self.cart.cartItem:
 			item_dict[each_item.cart_item_id] = each_item

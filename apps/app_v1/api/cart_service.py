@@ -527,12 +527,13 @@ class CartService:
 			req_data['payment_mode'] = payment_modes_dict[data.get('payment_mode')]
 			url+config.COUPON_QUERY_PARAM
 		if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
-			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
-			if cart is not None and cart.promo_codes is not None:
-				req_data["coupon_codes"] = req_data["coupon_codes"] + json.loads(cart.promo_codes)
 
-		elif cart is not None and cart.promo_codes is not None:
-			req_data["coupon_codes"] = json.loads(cart.promo_codes)
+			if cart is not None and cart.promo_codes is not None:
+				req_data["coupon_codes"] = json.loads(cart.promo_codes)
+				if map(str, data.get('promo_codes')) not in req_data["coupon_codes"]:
+					req_data["coupon_codes"] = req_data["coupon_codes"] + map(str, data.get('promo_codes'))
+			else:
+				req_data["coupon_codes"] = map(str, data.get('promo_codes'))
 
 		header = {
 			'X-API-USER': current_app.config['X_API_USER'],
@@ -969,6 +970,6 @@ class CartService:
 		return freebie_detail_list
 
 	def get_total_payble_price(self):
-		return self.total_price - self.total_discount
+		return self.total_price - self.total_discount - self.total_shipping_charges
 
 

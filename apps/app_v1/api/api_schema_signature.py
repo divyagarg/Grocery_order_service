@@ -394,6 +394,27 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 			},
 			"order_source_reference": {
 				FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
+			},
+			"delivery_slots": {
+				REQUIRED: False,
+				FUNCTIONS: [
+					{List: {}}
+				],
+				SCHEMA: {
+					"shipment_id": {
+						FUNCTIONS: [{String: {}}]
+					},
+					"start_datetime": {
+						FUNCTIONS: [
+							{String: {}}
+						]
+					},
+					"end_datetime": {
+						FUNCTIONS: [
+							{String: {}}
+						]
+					}
+				}
 			}
 		}
 
