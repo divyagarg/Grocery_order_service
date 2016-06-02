@@ -35,7 +35,7 @@ class DevelopmentConfig(Config):
 	ENV = 'development'
 	DEBUG = True
 	DATABASE_NAME = 'grocery_order_service'
-	DATABASE_URI = 'mysql+pymysql://amit:amit123@localhost:3307/'
+	DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
 	SECRET_KEY = 'hard to guess string'
 	# KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
 	# KAFKA_TOPIC = 'fulfillment_staging'

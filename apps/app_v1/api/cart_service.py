@@ -371,7 +371,7 @@ class CartService:
 		if data.get('payment_mode') is not None:
 			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
-			cart.selected_freebee_items = data.get('selected_freebee_code')
+			cart.selected_freebee_items = json.dumps(data.get('selected_freebee_code'))
 
 	def validate_create_new_cart(self, data):
 		if 'orderitems' not in data or ('orderitems' in data and data['orderitems'].__len__() == 0):

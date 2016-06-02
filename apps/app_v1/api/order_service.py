@@ -37,22 +37,20 @@ def get_cart(cart_reference_id):
 	return Cart.query.filter_by(cart_reference_uuid = cart_reference_id).first()
 
 
-def get_shipment_count(cart_reference_id):
-	return db.session.query(func.count(distinct(OrderShipmentDetail.shipment_id))).filter(
-				OrderShipmentDetail.cart_id == cart_reference_id).group_by(OrderShipmentDetail.cart_id).count()
 
 def validate_delivery_slot(delivery_slot):
-	delivery_slot_json = json.loads(delivery_slot)
-	start_time = delivery_slot_json.get('start_datetime')
-	end_time = delivery_slot_json.get('end_datetime')
-	now = datetime.datetime.now(tzlocal())
-	t_start_time = time.strptime(start_time, '%Y-%m-%dT%H:%M:%S+00:00')
-	t_end_time = time.strptime(end_time, '%Y-%m-%dT%H:%M:%S+00:00')
-	if now.day > t_start_time.tm_mday:
-		raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
-	elif now.day > t_end_time.tm_mday:
-		raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
-	return delivery_slot
+	if delivery_slot is not None:
+		delivery_slot_json = json.loads(delivery_slot)
+		start_time = delivery_slot_json.get('start_datetime')
+		end_time = delivery_slot_json.get('end_datetime')
+		now = datetime.datetime.now(tzlocal())
+		t_start_time = time.strptime(start_time, '%Y-%m-%dT%H:%M:%S+00:00')
+		t_end_time = time.strptime(end_time, '%Y-%m-%dT%H:%M:%S+00:00')
+		if now.day > t_start_time.tm_mday:
+			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+		elif now.day > t_end_time.tm_mday:
+			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+		return delivery_slot
 
 def get_delivery_slot(cart_reference_id):
 	shipment = OrderShipmentDetail.query.filter_by(cart_id = cart_reference_id).first()
@@ -474,7 +472,9 @@ class OrderService:
 				for each_benefit in response_data['benefits']:
 					benefit_list.append(each_benefit.get('couponCode'))
 			if freebie_coupon_code_list.__len__()>0:
-				self.apply_coupon_code_list = self.promo_codes + freebie_coupon_code_list
+				self.apply_coupon_code_list = freebie_coupon_code_list
+				if self.promo_codes is not None:
+					self.apply_coupon_code_list = self.apply_coupon_code_list + self.promo_codes
 				if not all(x in benefit_list for x in freebie_coupon_code_list):
 					raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_ALLOWED)
 
@@ -498,10 +498,10 @@ class OrderService:
 			raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
 
 	def segregate_order_based_on_shipments(self):
-		no_of_shipments = get_shipment_count(self.cart_reference_id)
-		if no_of_shipments>1:
+		shipments = OrderShipmentDetail.query.filter_by(cart_id = self.cart_reference_id).all()
+
+		if shipments.__len__() >1:
 			self.split_order = True
-			shipments = OrderShipmentDetail.query.filter_by(cart_id = self.cart_reference_id).all()
 			self.shipment_items_dict ={}
 			self.shipment_id_slot_dict = {}
 			for each_shipment in shipments:
@@ -600,10 +600,10 @@ class OrderService:
 				items = self.shipment_items_dict[each_shipment.shipment_id]
 				order_item_list = list()
 				self.create_order_item_obj(sub_order.order_reference_id, items, order_item_list)
-				for each_item in items.value():
-					sub_order.total_discount += each_item.item_discount
-					sub_order.total_display_price += each_item.display_price * each_item.quantity
-					sub_order.total_offer_price += each_item.offer_price * each_item.quantity
+				for each_item in items:
+					sub_order.total_discount += items[each_item].item_discount
+					sub_order.total_display_price += items[each_item].display_price * items[each_item].quantity
+					sub_order.total_offer_price += items[each_item].offer_price * items[each_item].quantity
 
 				sub_order.total_shipping = self.total_shipping_charges / self.shipment_id_slot_dict.__len__()
 				sub_order.total_payble_amount = sub_order.total_offer_price - sub_order.total_discount + sub_order.total_shipping
@@ -859,12 +859,14 @@ class OrderService:
 			for key in self.item_id_to_item_obj_dict:
 				product = {}
 				product["item_id"] = str(key)
+				product["subscription_id"] = str(key)
 				product["quantity"] = self.item_id_to_item_obj_dict[key].quantity
 				product_list.append(product)
 		else:
 			for key in self.item_id_to_item_json_dict:
 				product = {}
 				product["item_id"] = str(key)
+				product["subscription_id"] = str(key)
 				product["quantity"] = self.item_id_to_item_json_dict[key].get('quantity')
 				product_list.append(product)
 		req_data = {
@@ -898,4 +900,4 @@ class OrderService:
 		if not json_data['success']:
 			error_msg = json_data['error'].get('error')
 			ERROR.COUPON_APPLY_FAILED.message = error_msg
-			raise CouponInvalidException(ERROR.ERROR.COUPON_APPLY_FAILED)
+			raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)

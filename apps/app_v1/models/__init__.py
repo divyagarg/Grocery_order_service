@@ -48,8 +48,12 @@ order_types[2] = 'pharma'
 
 class PAYMENT_MODE(Enum):
     COD = 0
-    PREPAID =1
+    PREPAID = 1
+    SODEXO = 2
+    TICKET = 3
 
 payment_modes_dict = {}
 payment_modes_dict[0] = 'COD'
 payment_modes_dict[1] = 'PREPAID'
+payment_modes_dict[2] = 'SODEXO'
+payment_modes_dict[3] = 'TICKET'
