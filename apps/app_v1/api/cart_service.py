@@ -127,7 +127,7 @@ class CartService:
 			if data.get('payment_mode') is not None:
 				cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 
-			# 3 Coupon Update (Cart Level or Item level)
+			# 3 Check coupons (Cart Level or Item level)
 			if self.is_cart_empty == False:
 				try:
 					self.check_for_coupons_applicable(data, cart)
@@ -444,6 +444,11 @@ class CartService:
 			"benefits": self.benefits,
 			"cart_items_count": self.get_count_of_items(new_items),
 		}
+		if cart.promo_codes is not None:
+			response_json["promo_codes"] = json.loads(cart.promo_codes)
+		if cart.selected_freebee_items is not None:
+			response_json["selected_freebee_code"] = json.loads(cart.selected_freebee_items)
+
 		if self.shipping_address is not None:
 			response_json['shipping_address'] = self.shipping_address
 
@@ -455,6 +460,14 @@ class CartService:
 				   "Coupon applied successfully. Cashback will be credited to your AskmePay Wallet within 24 hours of delivery." \
 				   " Please verify your number on success / payment page to avail cashback."
 
+		selected_slots = list()
+		order_shipment_details = OrderShipmentDetail.query.filter_by(cart_id = cart.cart_reference_uuid).all()
+		if order_shipment_details is not None:
+			for each_shipment_detail in order_shipment_details:
+				if each_shipment_detail.delivery_slot is not None:
+					selected_slots.append(json.loads(each_shipment_detail.delivery_slot))
+			if selected_slots.__len__() > 0:
+				response_json["selected_delivery_slot"] = selected_slots
 
 		if new_items is not None:
 			items = list()
@@ -546,7 +559,7 @@ class CartService:
 
 			if cart is not None and cart.promo_codes is not None:
 				req_data["coupon_codes"] = json.loads(cart.promo_codes)
-				if map(str, data.get('promo_codes')) not in req_data["coupon_codes"]:
+				if not all( x in data.get('promo_codes') for x in req_data["coupon_codes"]):
 					req_data["coupon_codes"] = req_data["coupon_codes"] + map(str, data.get('promo_codes'))
 			else:
 				req_data["coupon_codes"] = map(str, data.get('promo_codes'))
