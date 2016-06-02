@@ -186,7 +186,7 @@ class CartService:
 
 			# 7 Create Response
 			try:
-				response_data = self.generate_response(None, cart)
+				response_data = self.generate_response(None, cart, data)
 			except Exception as e:
 				Logger.error(
 					'[%s] Exception occurred in creating response while updating the cart [%s]' % (g.UUID, str(e)),
