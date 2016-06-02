@@ -433,6 +433,7 @@ class CartService:
 			"orderitems": [],
 			"total_offer_price": self.total_price,
 			"total_display_price": self.total_display_price,
+			"total_payble_price": self.get_total_payble_price(),
 			"total_discount": self.total_discount,
 			"total_shipping_charges": self.total_shipping_charges,
 			"cart_reference_uuid": cart.cart_reference_uuid,
@@ -966,5 +967,8 @@ class CartService:
 			freebie_detail_list.append(freebie_json)
 
 		return freebie_detail_list
+
+	def get_total_payble_price(self):
+		return self.total_price - self.total_discount
 
 
