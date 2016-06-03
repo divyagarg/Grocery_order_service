@@ -146,3 +146,16 @@ def get_payment_details():
     response = order_info.get_payment_details(request)
     logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
     return flask.jsonify(response)
+
+
+@app_v1.route('/change_user', methods=['POST'])
+def change_user():
+    g.UUID = uuid.uuid4()
+    cart_service = CartService()
+    response = cart_service.change_user(request.data)
+    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    return flask.jsonify(response)
+
+
+
+

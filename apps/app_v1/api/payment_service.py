@@ -100,6 +100,9 @@ class PaymentInfo(JsonUtility):
             if order_data is None:
                 return create_error_response(ERROR.NO_ORDER_FOUND_ERROR)
 
+            if order_data.payment_status != "pending":
+                 return create_data_response(data={"message" : "payment is already updated"})
+
             #update payment_status in order table
             order_data.payment_status = pure_json['status']
             db.session.add(order_data)
@@ -202,7 +205,7 @@ class PaymentInfo(JsonUtility):
             response['payment_details'] = payment_details
             response['payment_status'] = order_data.payment_status
             Logger.info("[%s]************************* Get Payment Details End **************************" %g.UUID)
-            Logger.info("[%s] Response for Get Payment Detail API is: [%s]" %(g.UUID, json.dumps(response)))
+            #Logger.info("[%s] Response for Get Payment Detail API is: [%s]" %(g.UUID, json.dumps(response)))
             return create_data_response(data=response)
 
         except Exception as e:

@@ -96,6 +96,11 @@ class CartService:
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
+
+	def get_cart_for_geo_user_id(self, geo_id, user_id):
+		return Cart().query.filter_by(geo_id=int(geo_id), user_id=user_id).first()
+
+
 	def update_cart(self, cart, data):
 		Logger.info("[%s]*************************Update Cart Started**************************" % g.UUID)
 		error = True
@@ -993,3 +998,40 @@ class CartService:
 
 	def get_total_payble_price(self):
 		return self.total_price - self.total_discount + self.total_shipping_charges
+
+
+	def change_user(self, data):
+		data = json.loads(data)
+		old_user = data.get("old_user_id", None)
+		new_user = data.get("user_id", None)
+		geo_id = data.get("geo_id", None)
+
+		try:
+			Cart1 = self.get_cart_for_geo_user_id(geo_id, old_user)
+			Cart2 = self.get_cart_for_geo_user_id(geo_id, new_user)
+			if Cart1 is not None:
+				if len(Cart1.cartItem) == 0:
+				   self.remove_cart(Cart1.cart_reference_uuid)
+				   #return Cart2
+				   #TODO: Fix this
+				   data['order_source_reference'] = Cart2.order_source_reference
+				   data['order_type'] = 0
+				   return self.update_cart(Cart2, data)
+				else:
+				   self.remove_cart(Cart2.cart_reference_uuid)
+				   #replace old_user by new_user
+				   Cart1.user_id = new_user
+				   #return Cart1
+				   data['order_source_reference'] = Cart1.order_source_reference
+				   data['order_type'] = 0
+				   return self.update_cart(Cart1, data)
+			else:
+				#return Cart2
+				data['order_source_reference'] = Cart2.order_source_reference
+				data['order_type'] = 0
+				return self.update_cart(Cart2, data)
+
+		except Exception as e:
+			Logger.error('[%s] Exception occured while change_user [%s]' % (g.UUID, str(e)), exc_info=True)
+			ERROR.INTERNAL_ERROR.message = str(e)
+			return create_error_response(ERROR.INTERNAL_ERROR)
