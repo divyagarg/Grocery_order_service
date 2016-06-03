@@ -552,13 +552,7 @@ class CartService:
 		if 'promo_codes' in data and data.get('promo_codes') == []:
 			cart.promo_codes = None
 		elif 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
-
-			if cart is not None and cart.promo_codes is not None:
-				req_data["coupon_codes"] = json.loads(cart.promo_codes)
-				if not all(x in data.get('promo_codes') for x in req_data["coupon_codes"]):
-					req_data["coupon_codes"] = req_data["coupon_codes"] + map(str, data.get('promo_codes'))
-			else:
-				req_data["coupon_codes"] = map(str, data.get('promo_codes'))
+			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
 
 		header = {
 			'X-API-USER': current_app.config['X_API_USER'],
