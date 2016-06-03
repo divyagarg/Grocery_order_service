@@ -584,6 +584,7 @@ class OrderService:
 		order.order_source = self.order_source_reference
 		order.promo_codes = self.promo_codes
 		order.payment_mode = self.payment_mode
+		order.payment_status = "pending"
 		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == \
 																							 payment_modes_dict[0] \
 			else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
