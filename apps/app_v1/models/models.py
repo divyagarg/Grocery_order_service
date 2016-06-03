@@ -138,7 +138,6 @@ class MasterOrder(Base):
 	total_display_price = db.Column(db.Float(precision='10,2'))
 	total_discount = db.Column(db.Float(precision='10,2'))
 	total_cashback = db.Column(db.Float(precision='10,2'), default=0.0)
-	total_cashback = db.Column(db.Float(precision='10,2'))
 	total_shipping = db.Column(db.Float(precision='10,2'), default=0.0)
 	total_payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
 	billing_address_ref = db.Column(db.String(255))
