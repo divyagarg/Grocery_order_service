@@ -1,59 +1,7 @@
 from apps.app_v1.models import ORDER_SOURCE_REFERENCE, VALID_ORDER_TYPES, PAYMENT_MODE
-
 from utils.jsonutils.json_schema_validator import *
 
 __author__ = 'divyagarg'
-
-"""
-{
-  "data": {
-    "geo_id": 232,
-    "user_id": "121212",
-    "order_type": "NDD/National/Grocery/Pharma",
-    "order_source_reference": "ANDROID_APP/WEB/IOS_APP",
-    "promo_codes": [
-      "223",
-      "113"
-    ],
-    "orderitems": [
-      {
-        "quantity": 1,
-        "item_uuid": "23",
-        "promo_codes": [
-          "223",
-          "113"
-        ]
-      },
-      {
-        "quantity": 1,
-        "item_uuid": "23",
-        "promo_codes": [
-          "223",
-          "113"
-        ]
-      }
-    ],
-   "payment_mode" : "cod",
-   "shipping_address": {
-      "name": "Divya Garg",
-      "mobile": "1234567890",
-      "email": "",
-      "address": "121/5 SIlver Oaks Apartment"
-      "city": "Gurgaon",
-      "pincode": "122001",
-      "state": "Haryana",
-      "landmark": "Near India Gate"
-    },
-   "selected_freebee_code" : [
-            {
-               "coupon_code" : "",
-               "subscription_id" : ""
-            }
-      ]
-  }
-}
-
-"""
 
 CREATE_CART_SCHEMA = {
 	"geo_id": {

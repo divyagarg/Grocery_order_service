@@ -28,13 +28,11 @@ from utils.jsonutils.json_schema_validator import validate
 from dateutil.tz import tzlocal
 
 __author__ = 'divyagarg'
-
 Logger = logging.getLogger(APP_NAME)
 
 
 def get_cart(cart_reference_id):
-	return Cart.query.filter_by(cart_reference_uuid = cart_reference_id).first()
-
+	return Cart.query.filter_by(cart_reference_uuid=cart_reference_id).first()
 
 
 def validate_delivery_slot(delivery_slot):
@@ -51,13 +49,15 @@ def validate_delivery_slot(delivery_slot):
 			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
 		return delivery_slot
 
+
 def get_delivery_slot(cart_reference_id):
-	shipment = OrderShipmentDetail.query.filter_by(cart_id = cart_reference_id).first()
+	shipment = OrderShipmentDetail.query.filter_by(cart_id=cart_reference_id).first()
 	if shipment is None:
 		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
 	if shipment.delivery_slot is None:
 		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
 	return validate_delivery_slot(shipment.delivery_slot)
+
 
 class OrderService:
 	def __init__(self):
@@ -116,7 +116,7 @@ class OrderService:
 		return create_data_response({"count": count})
 
 	def createorder(self, body):
-		Logger.info("[%s]*************************Start Create Order **************************" %g.UUID)
+		Logger.info("[%s]*************************Start Create Order **************************" % g.UUID)
 		error = True
 		err = None
 
@@ -177,7 +177,7 @@ class OrderService:
 				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in calculating and validating prices of subscriptions [%s]" % (
-				g.UUID, str(e)), exc_info=True)
+					g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
@@ -208,9 +208,9 @@ class OrderService:
 				err = ERROR.INTERNAL_ERROR
 				break
 
-			#4.1 calculate shipping charges
+			# 4.1 calculate shipping charges
 			if self.total_shipping_charges != get_shipping_charges(self.total_offer_price, self.total_discount):
-				err =  ERROR.SHIPPING_CHARGES_CHANGED
+				err = ERROR.SHIPPING_CHARGES_CHANGED
 				break
 
 
@@ -221,12 +221,12 @@ class OrderService:
 			try:
 				self.create_and_save_order()
 			except NoDeliverySlotException as nse:
-				Logger.error("[%s] For placing Order Delivery slot is needed [%s]" %(g.UUID, str(nse)))
-				err= ERROR.NO_DELIVERY_SLOT_ERROR
+				Logger.error("[%s] For placing Order Delivery slot is needed [%s]" % (g.UUID, str(nse)))
+				err = ERROR.NO_DELIVERY_SLOT_ERROR
 				break
 			except OlderDeliverySlotException as odse:
-				Logger.error("[%s] Older delivery slot found [%s]" %(g.UUID, str(odse)))
-				err= ERROR.OLDER_DELIVERY_SLOT_ERROR
+				Logger.error("[%s] Older delivery slot found [%s]" % (g.UUID, str(odse)))
+				err = ERROR.OLDER_DELIVERY_SLOT_ERROR
 				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in saving order [%s]" % (g.UUID, str(e)), exc_info=True)
@@ -278,17 +278,19 @@ class OrderService:
 				if self.total_cashback > 0.0:
 					response['total_cashback'] = self.total_cashback
 					if request_data.get('login_status') == 1:
-					   response['display_message'] = "Cashback will be credited to your AskmePay Wallet within 24 hours of delivery"
+						response[
+							'display_message'] = "Cashback will be credited to your AskmePay Wallet within 24 hours of delivery"
 					else:
-					   response['display_message'] = \
-						   "Cashback will be credited to your AskmePay Wallet within 24 hours of delivery." \
-						   " Verify your number to avail cashback."
+						response['display_message'] = \
+							"Cashback will be credited to your AskmePay Wallet within 24 hours of delivery." \
+							" Verify your number to avail cashback."
 				else:
 					if request_data.get('login_status') == 0:
-					   response['display_message'] = "To get exciting cash-backs and rewards on your next purchases. Please verify your number"
-
-				Logger.info("[%s]************************* Order Created **************************" %g.UUID)
-				return create_data_response(data = response)
+						response[
+							'display_message'] = "To get exciting cash-backs and rewards on your next purchases. Please verify your number"
+				Logger.info("[%s] Response for order API is: [%s]" % (g.UUID, json.dumps(response)))
+				Logger.info("[%s]************************* Order Created **************************" % g.UUID)
+				return create_data_response(data=response)
 			except Exception as e:
 				Logger.error("[%s] Exception occured in committing db changes [%s]" % (g.UUID, str(e)))
 				ERROR.INTERNAL_ERROR.message = str(e)
@@ -299,11 +301,13 @@ class OrderService:
 		cart = get_cart(self.cart_reference_id)
 		if cart is None:
 			raise NoSuchCartExistException(ERROR.NO_SUCH_CART_EXIST)
+		self.cart = cart
 		self.user_id = cart.user_id
 		self.geo_id = cart.geo_id
 		self.order_type = cart.order_type
 		self.promo_codes = json.loads(cart.promo_codes) if cart.promo_codes is not None else None
-		self.selected_freebies = json.loads(cart.selected_freebee_items) if cart.selected_freebee_items is not None else None
+		self.selected_freebies = json.loads(
+			cart.selected_freebee_items) if cart.selected_freebee_items is not None else None
 		self.total_display_price = cart.total_display_price
 		self.total_offer_price = cart.total_offer_price
 		self.total_shipping_charges = cart.total_shipping_charges
@@ -326,11 +330,6 @@ class OrderService:
 				slot['end_datetime'] = each_delivery_slot.get('end_datetime')
 				self.shipment_id_slot_dict[each_delivery_slot.get('shipment_id')] = json.dumps(slot)
 
-
-		# self.delivery_type = delivery_types[int(data.get('delivery_type'))]
-		# self.delivery_due_date = data.get('delivery_due_date')
-		# self.delivery_slot = json.dumps(data.get('delivery_slot'))
-
 	def initialize_order_with_request_data(self, data):
 		self.user_id = data.get('user_id')
 		self.geo_id = int(data.get('geo_id'))
@@ -352,9 +351,10 @@ class OrderService:
 		if 'billing_address' in data:
 			self.billing_address = data.get('billing_address')
 		self.selected_freebies = data.get('selected_free_bees_code')
-		# self.delivery_type = delivery_types[int(data.get('delivery_type'))] if data.get(
-		# 	'delivery_type') is not None else None
-		# self.delivery_slot = json.dumps(data.get('delivery_slot'))
+
+	# self.delivery_type = delivery_types[int(data.get('delivery_type'))] if data.get(
+	# 	'delivery_type') is not None else None
+	# self.delivery_slot = json.dumps(data.get('delivery_slot'))
 
 	def fetch_items_price(self, list_of_item_ids):
 		req_data = {
@@ -374,7 +374,7 @@ class OrderService:
 								 headers={'Content-type': 'application/json'})
 		json_data = json.loads(response.text)
 		Logger.info("[%s] Calculate Price API Request [%s], Response [%s]" % (
-		g.UUID, json.dumps(req_data), json.dumps(json_data)))
+			g.UUID, json.dumps(req_data), json.dumps(json_data)))
 		return json_data['results']
 
 	def calculate_and_validate_prices(self):
@@ -416,7 +416,7 @@ class OrderService:
 			if src.get('offerPrice') != tar.offer_price:
 				raise PriceChangedException(ERROR.PRODUCT_OFFER_PRICE_CHANGED)
 			if (src.get('deliveryDays') == 0 and tar.same_day_delivery == 'NDD') or (
-					src.get('deliveryDays') == 1 and tar.same_day_delivery == 'SDD'):
+							src.get('deliveryDays') == 1 and tar.same_day_delivery == 'SDD'):
 				tar.same_day_delivery = 'SDD' if src.get('deliveryDays') == 0 else 'NDD'
 			if src.get('transferPrice') != tar.transfer_price:
 				tar.transfer_price = src.get('transferPrice')
@@ -432,7 +432,7 @@ class OrderService:
 			if src.get('offerPrice') != float(tar.get('offer_price')):
 				raise PriceChangedException(ERROR.PRODUCT_OFFER_PRICE_CHANGED)
 			if (src.get('deliveryDays') == 0 and tar.get('same_day_delivery') == False) or (
-					src.get('deliveryDays') == 1 and tar.get('same_day_delivery') == str(True)):
+							src.get('deliveryDays') == 1 and tar.get('same_day_delivery') == str(True)):
 				tar["same_day_delivery"] = 'SDD' if src.get('deliveryDays') == 0 else 'NDD'
 			else:
 				tar["same_day_delivery"] = 'SDD' if tar["same_day_delivery"] == 'True' else 'NDD'
@@ -444,7 +444,7 @@ class OrderService:
 			for key in self.item_id_to_item_obj_dict:
 				product = {}
 				product["item_id"] = str(key)
-				product["subscription_id"]= str(key)
+				product["subscription_id"] = str(key)
 				product["quantity"] = self.item_id_to_item_obj_dict[key].quantity
 				product["coupon_code"] = self.item_id_to_item_obj_dict[key].promo_codes
 				product_list.append(product)
@@ -452,7 +452,7 @@ class OrderService:
 			for key in self.item_id_to_item_json_dict:
 				product = {}
 				product["item_id"] = str(key)
-				product["subscription_id"]= str(key)
+				product["subscription_id"] = str(key)
 				product["quantity"] = self.item_id_to_item_json_dict[key].get('quantity')
 				product["coupon_code"] = self.item_id_to_item_json_dict[key].get('promo_codes')
 				product_list.append(product)
@@ -498,13 +498,12 @@ class OrderService:
 				benefit_list = list()
 				for each_benefit in response_data['benefits']:
 					benefit_list.append(each_benefit.get('couponCode'))
-			if freebie_coupon_code_list.__len__()>0:
+			if freebie_coupon_code_list.__len__() > 0:
 				self.apply_coupon_code_list = freebie_coupon_code_list
 				if self.promo_codes is not None:
 					self.apply_coupon_code_list = self.apply_coupon_code_list + self.promo_codes
 				if not all(x in benefit_list for x in freebie_coupon_code_list):
 					raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_ALLOWED)
-
 
 			item_discount_dict = {}
 			for item in response_data['products']:
@@ -554,7 +553,7 @@ class OrderService:
 				subscription_id_list.append(shipment_items[j].get('subscription_id'))
 
 			self.shipment_id_to_item_ids_dict[i] = subscription_id_list
-			self.shipment_id_slot_dict[i] =  self.get_default_slot()
+			self.shipment_id_slot_dict[i] = self.get_default_slot()
 
 	def create_shipment_item_ids_dict_from_cart(self, order_shipment_details):
 		slot_present_in_request = True
@@ -568,7 +567,6 @@ class OrderService:
 			for cart_item_row in items:
 				subscription_id_list.append(cart_item_row.cart_item_id)
 			self.shipment_id_to_item_ids_dict[each_row.shipment_id] = subscription_id_list
-
 
 	def save_master_order(self):
 		order = MasterOrder()
@@ -586,8 +584,9 @@ class OrderService:
 		order.order_source = self.order_source_reference
 		order.promo_codes = self.promo_codes
 		order.payment_mode = self.payment_mode
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == payment_modes_dict[0]\
-																						  else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == \
+																							 payment_modes_dict[0] \
+			else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
 
 		if self.billing_address is not None:
 			billing_address = self.billing_address
@@ -609,7 +608,6 @@ class OrderService:
 			order.billing_address_ref = address.address_hash
 
 		db.session.add(order)
-
 
 	def create_and_save_order(self):
 		self.save_master_order()
@@ -660,16 +658,18 @@ class OrderService:
 
 				sub_order.total_shipping = self.total_shipping_charges / self.shipment_id_to_item_ids_dict.__len__()
 				sub_order.total_payble_amount = sub_order.total_offer_price - sub_order.total_discount + sub_order.total_shipping
-
-				if self.selected_freebies is not None and sub_order.delivery_slot is not None and freebee_given is False:
-					sub_order.freebie = json.dumps(self.selected_freebies)
+				# Currently Only one Freebie can be givenon a order, so after freebee is given we are setting freebie_given as True
+				if self.selected_freebies is not None and freebee_given is False:
+					for freebie in self.selected_freebies:
+						shipment_id = freebie.get('shipment_id')
+						if shipment_id == key:
+							sub_order.freebie = json.dumps(self.selected_freebies)
 					freebee_given = True
 
 				sub_order.orderItem = order_item_list
 				db.session.add(sub_order)
 				db.session.add_all(order_item_list)
 				self.order_list.append(sub_order)
-
 
 	def save_common_order_data(self, order):
 		order.user_id = self.user_id
@@ -821,7 +821,6 @@ class OrderService:
 			order_item.order_id = order_id
 			list_of_items.append(order_item)
 
-
 	def create_publisher_message(self, order):
 		data = {}
 		data['parent_order_id'] = order.parent_order_id
@@ -951,4 +950,3 @@ class OrderService:
 
 	def get_default_slot(self):
 		return None
-

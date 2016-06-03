@@ -5,7 +5,7 @@ import datetime
 import logging
 import json
 import uuid
-
+import requests
 from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException, IncorrectDataException, \
 	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException, get_shipping_charges
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
@@ -14,25 +14,27 @@ from apps.app_v1.models.models import Cart, CartItem, Address, OrderShipmentDeta
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from utils.jsonutils.json_schema_validator import validate
 from config import APP_NAME
-import requests
+
 from flask import g, current_app
 from apps.app_v1.models.models import db
 from apps.app_v1.api import ERROR
 
-
-
 Logger = logging.getLogger(APP_NAME)
+
+
+def get_cart_for_geo_user_id(geo_id, user_id):
+	return Cart().query.filter_by(geo_id=int(geo_id), user_id=user_id).first()
 
 
 def check_if_calculate_price_api_response_is_correct_or_quantity_is_available(item, json_order_item):
 	if json_order_item is None:
 		Logger.error(
-			"[%s] No item is found in calculate price API response for the item [%s]" %(g.UUID, item['item_uuid']),
+			"[%s] No item is found in calculate price API response for the item [%s]" % (g.UUID, item['item_uuid']),
 			exc_info=True)
 		raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
-	if json_order_item['maxQuantity'] is not None and json_order_item['maxQuantity']< item['quantity']:
-		Logger.error("[%s] Quantity requested can not be fulfilled for the item [%s]" %(g.UUID, item['item_uuid']),
-			exc_info=True)
+	if json_order_item['maxQuantity'] is not None and json_order_item['maxQuantity'] < item['quantity']:
+		Logger.error("[%s] Quantity requested can not be fulfilled for the item [%s]" % (g.UUID, item['item_uuid']),
+					 exc_info=True)
 		raise QuantityNotAvailableException(ERROR.PRODUCT_AVAILABILITY_CHANGED)
 
 
@@ -41,6 +43,18 @@ def convert_list_type_from_int_to_str(freebies_id_list):
 	for item in freebies_id_list:
 		str_list.append(str(item))
 	return str_list
+
+
+def calculate_price_api(req_data):
+	request_data = json.dumps(req_data)
+	Logger.info("[%s] Request data for calculate price API is [%s]" % (g.UUID, request_data))
+	response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data, headers={'Content-type': 'application/json'})
+	json_data = json.loads(response.text)
+	Logger.info("[%s] Response got from calculate Price API is [%s]" % (g.UUID, json.dumps(json_data)))
+	if response.status_code != 200:
+		ERROR.INTERNAL_ERROR.message = json_data['msg']
+		raise Exception(ERROR.INTERNAL_ERROR)
+	return json_data['results']
 
 
 class CartService:
@@ -66,10 +80,10 @@ class CartService:
 
 	def create_or_update_cart(self, body):
 		try:
-			Logger.info("[%s] Create/update cart request body [%s]" %(g.UUID, body))
+			Logger.info("[%s] Create/update cart request body [%s]" % (g.UUID, body))
 			request_data = parse_request_data(body)
 			validate(request_data, CREATE_CART_SCHEMA)
-			cart = self.get_cart_for_geo_user_id(request_data)
+			cart = get_cart_for_geo_user_id(request_data['geo_id'], request_data['user_id'])
 			if cart is not None:
 				return self.update_cart(cart, request_data)
 			else:
@@ -82,11 +96,8 @@ class CartService:
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
-	def get_cart_for_geo_user_id(self, data):
-		return Cart().query.filter_by(geo_id=int(data['geo_id']), user_id=data['user_id']).first()
-
 	def update_cart(self, cart, data):
-		Logger.info("[%s]*************************Update Cart Started**************************" %g.UUID)
+		Logger.info("[%s]*************************Update Cart Started**************************" % g.UUID)
 		error = True
 		err = None
 		while True:
@@ -128,13 +139,13 @@ class CartService:
 				cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 
 			# 3 Check coupons (Cart Level or Item level)
-			if self.is_cart_empty == False:
+			if not self.is_cart_empty:
 				try:
 					self.check_for_coupons_applicable(data, cart)
 
 				except SubscriptionNotFoundException as snfe:
-					Logger.error("[%s] Exception occured in fetching catalog info [%s]" %(g.UUID, str(snfe)))
-					err= ERROR.SUBSCRIPTION_NOT_FOUND
+					Logger.error("[%s] Exception occured in fetching catalog info [%s]" % (g.UUID, str(snfe)))
+					err = ERROR.SUBSCRIPTION_NOT_FOUND
 					break
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
@@ -149,7 +160,6 @@ class CartService:
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
-
 
 			# 5 update cart price
 			try:
@@ -202,11 +212,11 @@ class CartService:
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			Logger.info("[%s]*************************Update Create Stop **************************" %g.UUID)
+			Logger.info("[%s]*************************Update Create Stop **************************" % g.UUID)
 			return create_data_response(data=response_data)
 
 	def create_cart(self, data):
-		Logger.info("[%s]*************************Start Create Cart **************************" %g.UUID)
+		Logger.info("[%s]*************************Start Create Cart **************************" % g.UUID)
 		error = True
 		err = None
 		while True:
@@ -232,7 +242,6 @@ class CartService:
 				err = ERROR.INCORRECT_DATA
 				break
 
-
 			# 1. Initialize cart object
 			try:
 				self.cart_reference_uuid = uuid.uuid1().hex
@@ -243,7 +252,6 @@ class CartService:
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
-
 
 			# 2. Calculate item prices and cart total
 			try:
@@ -264,15 +272,15 @@ class CartService:
 				err = ERROR.INTERNAL_ERROR
 				break
 
-
 			# 3. check coupons
 			try:
 				response_data = self.get_response_from_check_coupons_api(self.cart_items, data, cart)
 				self.update_discounts_item_level(response_data, self.cart_items)
-				self.fetch_freebie_details_and_update(response_data.get('benefits', []), order_types.get(data['order_type']))
+				self.fetch_freebie_details_and_update(response_data.get('benefits', []),
+													  order_types.get(data['order_type']))
 			except SubscriptionNotFoundException as snfe:
-				Logger.error("[%s] Exception occured in fetching catalog info [%s]" %(g.UUID, str(snfe)))
-				err= ERROR.SUBSCRIPTION_NOT_FOUND
+				Logger.error("[%s] Exception occured in fetching catalog info [%s]" % (g.UUID, str(snfe)))
+				err = ERROR.SUBSCRIPTION_NOT_FOUND
 				break
 			except CouponInvalidException as cie:
 				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(cie)))
@@ -322,7 +330,8 @@ class CartService:
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			Logger.info("[%s]*************************Cart Created [%s] **************************" %(g.UUID, cart.cart_reference_uuid))
+			Logger.info("[%s]*************************Cart Created [%s] **************************" % (
+				g.UUID, cart.cart_reference_uuid))
 			return create_data_response(data=response_data)
 
 	def save_cart(self, data, cart):
@@ -345,8 +354,6 @@ class CartService:
 		for cart_item in self.cart_items:
 			db.session.add(cart_item)
 
-	def remove_cart_item_from_cart(self, cart_item_db):
-		db.session.delete()
 
 	def change_quantity_of_cart_item(self, cart_item_db, check_price_json, item):
 		cart_item_db.quantity = item['quantity']
@@ -374,7 +381,6 @@ class CartService:
 			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
 		if data.get('selected_freebee_code') is not None:
 			cart.selected_freebee_items = json.dumps(data.get('selected_freebee_code'))
-
 
 	def validate_create_new_cart(self, data):
 		if 'orderitems' not in data or ('orderitems' in data and data['orderitems'].__len__() == 0):
@@ -416,20 +422,7 @@ class CartService:
 			"offset": 0
 		}
 
-		return self.calculate_price_api(req_data)
-
-	def calculate_price_api(self, req_data):
-
-		request_data = json.dumps(req_data)
-		Logger.info("[%s] Request data for calculate price API is [%s]" % (g.UUID, request_data))
-		response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data,
-								 headers={'Content-type': 'application/json'})
-		json_data = json.loads(response.text)
-		Logger.info("[%s] Response got from calculate Price API is [%s]" % (g.UUID, json.dumps(json_data)))
-		if response.status_code != 200:
-			ERROR.INTERNAL_ERROR.message = json_data['msg']
-			raise Exception(ERROR.INTERNAL_ERROR)
-		return json_data['results']
+		return calculate_price_api(req_data)
 
 	def generate_response(self, new_items, cart, data):
 		response_json = {
@@ -454,14 +447,15 @@ class CartService:
 
 		if self.total_cashback > 0:
 			if data.get('login_status', 0) == 1:
-			   response_json['display_message'] = "Coupon applied successfully. Cashback will be credited to your AskmePay Wallet within 24 hours of delivery"
+				response_json[
+					'display_message'] = "Coupon applied successfully. Cashback will be credited to your AskmePay Wallet within 24 hours of delivery"
 			else:
-			   response_json['display_message'] = \
-				   "Coupon applied successfully. Cashback will be credited to your AskmePay Wallet within 24 hours of delivery." \
-				   " Please verify your number on success / payment page to avail cashback."
+				response_json['display_message'] = \
+					"Coupon applied successfully. Cashback will be credited to your AskmePay Wallet within 24 hours of delivery." \
+					" Please verify your number on success / payment page to avail cashback."
 
 		selected_slots = list()
-		order_shipment_details = OrderShipmentDetail.query.filter_by(cart_id = cart.cart_reference_uuid).all()
+		order_shipment_details = OrderShipmentDetail.query.filter_by(cart_id=cart.cart_reference_uuid).all()
 		if order_shipment_details is not None:
 			for each_shipment_detail in order_shipment_details:
 				if each_shipment_detail.delivery_slot is not None:
@@ -496,13 +490,13 @@ class CartService:
 				order_item_dict["image_url"] = item.image_url
 				items.append(order_item_dict)
 			response_json["orderitems"].append(items)
-
+		Logger.info("[%s] Response for create/update cart is: [%s]" % (g.UUID, json.dumps(response_json)))
 		return response_json
 
 	def remove_discounts(self, cart_items, cart):
 		for each_cart_item in cart_items:
-				each_cart_item.item_discount = 0.0
-		cart.total_discount =0.0
+			each_cart_item.item_discount = 0.0
+		cart.total_discount = 0.0
 		cart.promo_codes = None
 
 	def update_discounts_item_level(self, response_data, cart_items):
@@ -510,14 +504,13 @@ class CartService:
 		if response_data['success']:
 			self.total_discount = float(response_data['totalDiscount'])
 			self.total_cashback = float(response_data['totalCashback'])
-			#TODO : optimize two loops to one.
+			# TODO : optimize two loops to one.
 			for item in response_data['products']:
 				item_discount_dict[item['itemid']] = item
 
 			for each_cart_item in cart_items:
 				each_cart_item.item_discount = float(item_discount_dict[str(each_cart_item.cart_item_id)]['discount'])
 				each_cart_item.item_cashback = float(item_discount_dict[str(each_cart_item.cart_item_id)]['cashback'])
-
 
 	def update_cart_total_amounts(self, cart):
 		cart.total_display_price = 0.0
@@ -542,31 +535,30 @@ class CartService:
 		cart.total_shipping_charges = self.total_shipping_charges
 
 	def get_response_from_check_coupons_api(self, cart_items, data, cart):
-		url=current_app.config['COUPON_CHECK_URL']
+		url = current_app.config['COUPON_CHECK_URL']
 		req_data = {
 			"area_id": str(data['geo_id']),
 			"customer_id": data['user_id'],
 			'channel': data['order_source_reference'],
 			"products": [
-				{"item_id": str(each_cart_item.cart_item_id), "subscription_id": str(each_cart_item.cart_item_id), "quantity": each_cart_item.quantity,
+				{"item_id": str(each_cart_item.cart_item_id), "subscription_id": str(each_cart_item.cart_item_id),
+				 "quantity": each_cart_item.quantity,
 				 "coupon_code": each_cart_item.promo_codes}
 				for each_cart_item in cart_items]
 		}
-		if 'payment_mode' in data :
+		if 'payment_mode' in data:
 			req_data['payment_mode'] = payment_modes_dict[data.get('payment_mode')]
-			url+config.COUPON_QUERY_PARAM
+			url + config.COUPON_QUERY_PARAM
 		if 'promo_codes' in data and data.get('promo_codes') == []:
 			cart.promo_codes = None
 		elif 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 
 			if cart is not None and cart.promo_codes is not None:
 				req_data["coupon_codes"] = json.loads(cart.promo_codes)
-				if not all( x in data.get('promo_codes') for x in req_data["coupon_codes"]):
+				if not all(x in data.get('promo_codes') for x in req_data["coupon_codes"]):
 					req_data["coupon_codes"] = req_data["coupon_codes"] + map(str, data.get('promo_codes'))
 			else:
 				req_data["coupon_codes"] = map(str, data.get('promo_codes'))
-
-
 
 		header = {
 			'X-API-USER': current_app.config['X_API_USER'],
@@ -581,7 +573,7 @@ class CartService:
 		json_data = json.loads(response.text)
 		Logger.info(
 			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
-			g.UUID, json.dumps(req_data), json_data))
+				g.UUID, json.dumps(req_data), json_data))
 		return json_data
 
 	def get_price_and_update_in_cart_item(self, data):
@@ -628,7 +620,8 @@ class CartService:
 		for response in response_data[0].get('items')[0].get('items'):
 			order_item_price_dict[response.get('id')] = response
 		for each_item in request_items:
-			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(each_item, order_item_price_dict[int(each_item['item_uuid'])])
+			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(each_item, order_item_price_dict[
+				int(each_item['item_uuid'])])
 
 		return order_item_price_dict
 
@@ -672,8 +665,6 @@ class CartService:
 					self.item_id_to_existing_item_dict[int(data_item['item_uuid'])] = new_cart_item
 					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 
-
-
 		request_items = list()
 		for cart_item in self.item_id_to_existing_item_dict.values():
 			request_item_detail = {"item_uuid": cart_item.cart_item_id, "quantity": cart_item.quantity}
@@ -695,7 +686,8 @@ class CartService:
 					existing_cart_item.image_url = cart_item.get('imageURL')
 
 	def check_for_coupons_applicable(self, data, cart):
-		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data, cart)
+		response_data = self.get_response_from_check_coupons_api(self.item_id_to_existing_item_dict.values(), data,
+																 cart)
 		if "error" in response_data:
 			if 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 				self.remove_discounts(self.item_id_to_existing_item_dict.values(), cart)
@@ -707,11 +699,12 @@ class CartService:
 				ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
 				raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
 			else:
-				Logger.info("[%s] Updating discount to 0 because of coupon error [%s]" %(g.UUID, response_data.get('error')))
+				Logger.info(
+					"[%s] Updating discount to 0 because of coupon error [%s]" % (g.UUID, response_data.get('error')))
 				self.remove_discounts(self.item_id_to_existing_item_dict.values(), cart)
 		else:
 
-			self.fetch_freebie_details_and_update(response_data['benefits'],  order_types[data.get('order_type')])
+			self.fetch_freebie_details_and_update(response_data['benefits'], order_types[data.get('order_type')])
 			self.update_discounts_item_level(response_data, self.item_id_to_existing_item_dict.values())
 
 	def update_address(self, data, cart):
@@ -719,14 +712,14 @@ class CartService:
 			address = self.save_address_and_get_hash(data)
 			cart.shipping_address_ref = address.address_hash
 		elif cart.shipping_address_ref is not None:
-			shipping_address = Address.query.filter_by(address_hash = cart.shipping_address_ref).first()
+			shipping_address = Address.query.filter_by(address_hash=cart.shipping_address_ref).first()
 			self.shipping_address = self.create_address_json(shipping_address)
 
 	def remove_cart(self, cart_reference_id):
 		if cart_reference_id is None:
 			ERROR.INTERNAL_ERROR.message = "Cart reference id can not be Null"
 			raise Exception(ERROR.INTERNAL_ERROR)
-		cart = Cart.query.filter_by(cart_reference_uuid = cart_reference_id).first()
+		cart = Cart.query.filter_by(cart_reference_uuid=cart_reference_id).first()
 		db.session.delete(cart)
 
 	def get_count_of_items(self, new_items):
@@ -739,7 +732,7 @@ class CartService:
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, CREATE_CART_SCHEMA)
-			cart = self.get_cart_for_geo_user_id(request_data)
+			cart = get_cart_for_geo_user_id(request_data['geo_id'], request_data['user_id'])
 			if cart is not None:
 				return self.add_item_to_existing_cart_no_price_cal(cart, request_data)
 			else:
@@ -960,21 +953,18 @@ class CartService:
 		for each_benefit in benefits:
 			if each_benefit.get('type') == 0 or each_benefit.get('type') == 1:
 				freebies_id_list = each_benefit['freebies'][0]
-				if freebies_id_list is not None and freebies_id_list.__len__()>0:
-					freebee_detail_list = self.get_freebie_details(each_benefit, freebies_id_list, order_type)
-					benefit = {}
-					benefit["freebies"] = freebee_detail_list
-					benefit["type"] = each_benefit.get('type')
-					benefit["couponCode"] = each_benefit.get('couponCode')
+				if freebies_id_list is not None and freebies_id_list.__len__() > 0:
+					freebee_detail_list = self.get_freebie_details(freebies_id_list, order_type)
+					benefit = dict(freebies=freebee_detail_list, type=each_benefit.get('type'),
+								   couponCode=each_benefit.get('couponCode'))
 					benefit_list.append(benefit)
 
-		if benefit_list.__len__()>0:
+		if benefit_list.__len__() > 0:
 			self.benefits = benefit_list
 		else:
-			self.benefits=None
+			self.benefits = None
 
-
-	def get_freebie_details(self, benefit, freebies_id_list, order_type):
+	def get_freebie_details(self, freebies_id_list, order_type):
 		req_data = {
 			"query": {
 				"type": [order_type],
@@ -986,7 +976,7 @@ class CartService:
 			"count": freebies_id_list.__len__(),
 			"offset": 0
 		}
-		response = self.calculate_price_api(req_data)
+		response = calculate_price_api(req_data)
 		if len(response) == 0:
 			return None
 
@@ -996,15 +986,12 @@ class CartService:
 
 		freebie_detail_list = list()
 		for each_freebie_id in freebies_id_list:
-			freebie_json ={}
-			freebie_json['id'] = each_freebie_id
-			freebie_json['title'] = order_item_price_dict.get(each_freebie_id).get('title')
-			freebie_json['image_url'] = order_item_price_dict.get(each_freebie_id).get('imageURL')
+			freebie_json = {'id': each_freebie_id,
+							'title': order_item_price_dict.get(each_freebie_id).get('title'),
+							'image_url': order_item_price_dict.get(each_freebie_id).get('imageURL')}
 			freebie_detail_list.append(freebie_json)
 
 		return freebie_detail_list
 
 	def get_total_payble_price(self):
 		return self.total_price - self.total_discount + self.total_shipping_charges
-
-

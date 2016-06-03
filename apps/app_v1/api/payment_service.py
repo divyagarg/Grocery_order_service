@@ -2,7 +2,7 @@ import json
 from utils.jsonutils.json_utility import JsonUtility
 import logging
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
-from apps.app_v1.models.models import MasterOrder, Order, Address, Payment, db
+from apps.app_v1.models.models import MasterOrder, Address, Payment, db
 import requests
 from flask import g, current_app
 from config import APP_NAME
@@ -50,6 +50,7 @@ class PaymentInfo(JsonUtility):
 
     def get_order_prices(self, request):
         try:
+            Logger.info("[%s]************************* Get Order Price Start **************************" %g.UUID)
             raw_data = request.data
             Logger.info('{%s} Data from request {%s}' % (g.UUID, raw_data))
             pure_json = json.loads(raw_data)
@@ -72,7 +73,8 @@ class PaymentInfo(JsonUtility):
             response['total_payable_amount'] = order_data.total_payble_amount
             response['user_id'] = order_data.user_id
             response['address'] = billing_address.convert_to_json()
-
+            Logger.info("[%s] Response for Get Order Price is: [%s]" %(g.UUID, json.dumps(response)))
+            Logger.info("[%s]************************* Get Order Price End **************************" %g.UUID)
             return create_data_response(data=response)
 
         except Exception as e:
@@ -81,6 +83,7 @@ class PaymentInfo(JsonUtility):
             return create_error_response(ERROR.INTERNAL_ERROR)
 
     def update_payment_details(self, request):
+        Logger.info("[%s]************************* Update Payment Details Start **************************" %g.UUID)
         required_fields = ["order_id", "status"]
         required_fields_in_child_txn = ["paymentMode"]
         try:
@@ -130,7 +133,8 @@ class PaymentInfo(JsonUtility):
             """
             #create response data here
             db.session.commit()
-
+            Logger.info("[%s]************************* Update Payment Details End **************************" %g.UUID)
+            Logger.info("[%s] Response for Update Payment Detail API is: [%s]" %(g.UUID, json.dumps(response)))
             return create_data_response(data=response)
 
         except Exception as e:
@@ -142,6 +146,7 @@ class PaymentInfo(JsonUtility):
 
     def get_payment_details(self, request):
         try:
+            Logger.info("[%s]************************* Get Payment Details Start **************************" %g.UUID)
             raw_data = request.data
             Logger.info('{%s} Data from request {%s}' % (g.UUID, raw_data))
             pure_json = json.loads(raw_data)
@@ -196,6 +201,8 @@ class PaymentInfo(JsonUtility):
 
             response['payment_details'] = payment_details
             response['payment_status'] = order_data.payment_status
+            Logger.info("[%s]************************* Get Payment Details End **************************" %g.UUID)
+            Logger.info("[%s] Response for Get Payment Detail API is: [%s]" %(g.UUID, json.dumps(response)))
             return create_data_response(data=response)
 
         except Exception as e:

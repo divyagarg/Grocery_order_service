@@ -122,6 +122,7 @@ def slot():
 
 @app_v1.route('/get_order_prices', methods=['POST'])
 def get_order_prices():
+    logger.info('[%s] : Requested url = <%s> , arguments = <%s>' % ('/user', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
     order_info = PaymentInfo()
     response = order_info.get_order_prices(request)
@@ -130,6 +131,7 @@ def get_order_prices():
 
 @app_v1.route('/update_payment_details', methods=['POST'])
 def update_payment_details():
+    logger.info('[%s] : Requested url = <%s> , arguments = <%s>' % ('/user', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
     order_info = PaymentInfo()
     response = order_info.update_payment_details(request)
@@ -138,6 +140,7 @@ def update_payment_details():
 
 @app_v1.route('/get_payment_details', methods=['POST'])
 def get_payment_details():
+    logger.info('[%s] : Requested url = <%s> , arguments = <%s>' % ('/user', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
     order_info = PaymentInfo()
     response = order_info.get_payment_details(request)
