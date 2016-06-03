@@ -171,8 +171,10 @@ class CartService:
 				break
 			# Selected Freebie
 			try:
-				if data.get('selected_freebee_code') is not None:
+				if data.get('selected_freebee_code') is not None and data.get('selected_freebee_code') != []:
 					cart.selected_freebee_items = json.dumps(data.get('selected_freebee_code'))
+				elif data.get('selected_freebee_code') is not None and data.get('selected_freebee_code') == []:
+					cart.selected_freebee_items = None
 			except Exception as e:
 				Logger.error('[%s] Selected Freebee code could not be set in cart [%s]' % (g.UUID, str(e)),
 							 exc_info=True)
@@ -379,8 +381,10 @@ class CartService:
 		cart.order_source_reference = data['order_source_reference']
 		if data.get('payment_mode') is not None:
 			cart.payment_mode = payment_modes_dict[data.get('payment_mode')]
-		if data.get('selected_freebee_code') is not None:
+		if data.get('selected_freebee_code') is not None and data.get('selected_freebee_code') != []:
 			cart.selected_freebee_items = json.dumps(data.get('selected_freebee_code'))
+		elif data.get('selected_freebee_code') is not None and data.get('selected_freebee_code') == []:
+			cart.selected_freebee_items = None
 
 	def validate_create_new_cart(self, data):
 		if 'orderitems' not in data or ('orderitems' in data and data['orderitems'].__len__() == 0):
@@ -599,7 +603,7 @@ class CartService:
 		addr1 = data.get('shipping_address')
 		self.shipping_address = data.get('shipping_address')
 		address = Address.get_address(name=addr1["name"], mobile=addr1["mobile"], address=addr1["address"],
-									  city=addr1["city"], pincode=addr1["pincode"], state=addr1["state"],
+									  city=addr1.get("city"), pincode=addr1.get("pincode"), state=addr1.get("state"),
 									  email=addr1.get('email'), landmark=addr1.get('landmark'))
 
 		return address

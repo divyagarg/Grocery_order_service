@@ -618,8 +618,13 @@ class OrderService:
 			order_item_list = list()
 			self.create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict.values(), order_item_list)
 			order.orderItem = order_item_list
-			if self.delivery_slot is not None:
-				order.delivery_slot = self.delivery_slot
+
+			if self.shipment_id_slot_dict is not None and self.shipment_id_slot_dict.__len__() >0:
+				order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict.values()[0])
+			else:
+				order.delivery_slot = None
+			# if self.delivery_slot is not None:
+			# 	order.delivery_slot = self.delivery_slot
 			self.save_common_order_data(order)
 			if self.selected_freebies is not None:
 				order.freebie = json.dumps(self.selected_freebies)
@@ -638,7 +643,7 @@ class OrderService:
 			freebee_given = False
 			for key in self.shipment_id_to_item_ids_dict:
 				sub_order = Order()
-				# total cahback was coming as None so intializing with 0
+				# total cashback was coming as None so intializing with 0
 				sub_order.total_cashback = 0.0
 				sub_order.parent_order_id = self.parent_reference_id
 				sub_order.order_reference_id = uuid.uuid1().hex

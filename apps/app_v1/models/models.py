@@ -46,7 +46,7 @@ class Address(db.Model, JsonUtility):
 
 	def __hash__(self):
 		raw_string = self.name + self.mobile + self.address
-		return hashlib.sha1(raw_string).hexdigest()
+		return hashlib.sha1(raw_string.encode('ascii','ignore')).hexdigest()
 
 	@staticmethod
 	def find(address_hash):
