@@ -638,6 +638,8 @@ class OrderService:
 			freebee_given = False
 			for key in self.shipment_id_to_item_ids_dict:
 				sub_order = Order()
+				# total cahback was coming as None so intializing with 0
+				sub_order.total_cashback = 0.0
 				sub_order.parent_order_id = self.parent_reference_id
 				sub_order.order_reference_id = uuid.uuid1().hex
 				if key in self.shipment_id_slot_dict:
