@@ -616,7 +616,7 @@ class OrderService:
 			order.parent_order_id = self.parent_reference_id
 			order.order_reference_id = order.parent_order_id
 			order_item_list = list()
-			self.create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict, order_item_list)
+			self.create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict.values(), order_item_list)
 			order.orderItem = order_item_list
 			if self.delivery_slot is not None:
 				order.delivery_slot = self.delivery_slot
@@ -791,8 +791,8 @@ class OrderService:
 	#
 	# 	return order_item_list
 
-	def create_order_item_obj(self, order_id, src_dict, list_of_items):
-		for src_item in src_dict:
+	def create_order_item_obj(self, order_id, src_list, list_of_items):
+		for src_item in src_list:
 			order_item = OrderItem()
 			order_item.item_id = src_item.cart_item_id
 			order_item.quantity = src_item.quantity
