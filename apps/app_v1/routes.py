@@ -1,4 +1,4 @@
-
+import json
 from apps.app_v1.api.cart_service import CartService
 from apps.app_v1.api.delivery_service import DeliveryService
 from apps.app_v1.api.order_service import OrderService
@@ -28,12 +28,13 @@ def test():
 @jsonify
 @logrequest
 def createOrUpdateCart():
-    logger.info(
-        '%s : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
+    logger.info('START CALL [%s] %s : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
     try:
         cartservice = CartService()
-        return cartservice.create_or_update_cart(request.data)
+        response =  cartservice.create_or_update_cart(request.data)
+        logger.info("[%s] End of call [%s]" %(g.UUID, json.dumps(response)))
+        return response
     except Exception as e:
         logger.error("[%s] Exception occured in cart service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
@@ -44,12 +45,14 @@ def createOrUpdateCart():
 @jsonify
 @logrequest
 def add_item_to_cart_and_get_count_of_items():
-    logger.info(
-        '%s : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
+    logger.info(
+        'START CALL [%s] %s : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
     try:
         cartservice = CartService()
-        return cartservice.add_item_to_cart(request.data)
+        response  = cartservice.add_item_to_cart(request.data)
+        logger.info("[%s] End of call" %g.UUID)
+        return response
     except Exception as e:
         logger.error("[%s] Exception occured in getting count of cart items [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
@@ -61,11 +64,13 @@ def add_item_to_cart_and_get_count_of_items():
 @logrequest
 
 def get_count_of_orders_of_a_user(user_id):
-    logger.info('[%s] : Requested url = <%s> , arguments = <%s>, user_id =<%s>' % ('/user', str(request.url), str(request.args), user_id))
     g.UUID = uuid.uuid4()
+    logger.info('START CALL [%s]  [%s] : Requested url = <%s> , arguments = <%s>, user_id =<%s>' % (g.UUID, '/user', str(request.url), str(request.args), user_id))
     try:
         order_service = OrderService()
-        return order_service.get_count_of_orders_of_user(user_id)
+        response = order_service.get_count_of_orders_of_user(user_id)
+        logger.info("[%s] End of call" %g.UUID)
+        return response
     except Exception as e:
         logger.error("[%s] Exception occured in getting count of orders of a user [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
@@ -76,12 +81,15 @@ def get_count_of_orders_of_a_user(user_id):
 @jsonify
 @logrequest
 def order():
-    logger.info(
-        '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
+    logger.info(
+        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
+
     try:
         order_service = OrderService()
-        return order_service.createorder(request.data)
+        response = order_service.createorder(request.data)
+        logger.info("[%s] End OF CALL [%s]" % (g.UUID, json.dumps(response)))
+        return response
     except Exception as e:
         logger.error("[%s] Exception occured in order service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
@@ -92,12 +100,15 @@ def order():
 @jsonify
 @logrequest
 def delivery_info():
-    logger.info(
-        '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
+    logger.info(
+        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
+
     try:
         delivery_service = DeliveryService()
-        return delivery_service.get_delivery_info(request.data)
+        response = delivery_service.get_delivery_info(request.data)
+        logger.info("[%s] End OF CALL [%s]" % (g.UUID, json.dumps(response)))
+        return response
     except Exception as e:
         logger.error("[%s] Exception occured in delivery service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)
@@ -109,11 +120,13 @@ def delivery_info():
 @logrequest
 def slot():
     logger.info(
-        '[%s] : Requested url = <%s> , arguments = <%s>' % ('/cart', str(request.url), str(request.args)))
+        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
     try:
         delivery_service = DeliveryService()
-        return delivery_service.update_slot(request.data)
+        response = delivery_service.update_slot(request.data)
+        logger.info("[%s] End OF CALL [%s]" % (g.UUID, json.dumps(response)))
+        return response
     except Exception as e:
         logger.error("[%s] Exception occured in delivery service [%s]" % (g.UUID, str(e)), exc_info=True)
         ERROR.INTERNAL_ERROR.message = str(e)

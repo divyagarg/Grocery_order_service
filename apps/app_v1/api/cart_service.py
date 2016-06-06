@@ -219,7 +219,6 @@ class CartService:
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			Logger.info("[%s]*************************Update Create Stop **************************" % g.UUID)
 			return create_data_response(data=response_data)
 
 	def create_cart(self, data):
@@ -337,8 +336,6 @@ class CartService:
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			Logger.info("[%s]*************************Cart Created [%s] **************************" % (
-				g.UUID, cart.cart_reference_uuid))
 			return create_data_response(data=response_data)
 
 	def save_cart(self, data, cart):

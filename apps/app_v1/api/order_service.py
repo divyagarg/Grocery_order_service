@@ -116,7 +116,6 @@ class OrderService:
 		return create_data_response({"count": count})
 
 	def createorder(self, body):
-		Logger.info("[%s]*************************Start Create Order **************************" % g.UUID)
 		error = True
 		err = None
 
@@ -288,8 +287,8 @@ class OrderService:
 					if request_data.get('login_status') == 0:
 						response[
 							'display_message'] = "To get exciting cash-backs and rewards on your next purchases. Please verify your number"
-				Logger.info("[%s] Response for order API is: [%s]" % (g.UUID, json.dumps(response)))
-				Logger.info("[%s]************************* Order Created **************************" % g.UUID)
+
+
 				return create_data_response(data=response)
 			except Exception as e:
 				Logger.error("[%s] Exception occured in committing db changes [%s]" % (g.UUID, str(e)))

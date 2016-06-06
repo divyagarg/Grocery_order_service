@@ -17,8 +17,8 @@ import config
 hostenv = os.environ.get('HOSTENV') or 'default'
 
 
-if hostenv == "production":
-    newrelic_cfg_file = os.path.join(os.getcwd(), "conf", "newapp-newrelic-%s.ini" % hostenv)
+if hostenv in ["production", "staging"]:
+    newrelic_cfg_file = os.path.join(os.getcwd(), "conf", "grocery_order_service-newrelic-%s.ini" % hostenv)
     newrelic.agent.initialize(newrelic_cfg_file)
 
 app = create_app(hostenv)
