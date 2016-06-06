@@ -536,7 +536,7 @@ class OrderService:
 				self.create_shipment_item_ids_dict_from_preview_response(shipments_list)
 			else:
 				self.split_order = False
-		elif order_shipment_details.__len__() > 1:
+		elif order_shipment_details.__len__() > 0:
 			self.shipment_preview_present = True
 			self.split_order = True
 			self.create_shipment_item_ids_dict_from_cart(order_shipment_details)
