@@ -29,7 +29,7 @@ def test():
 @logrequest
 def createOrUpdateCart():
     g.UUID = uuid.uuid4()
-    logger.info('START CALL [%s] %s : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
+    logger.info('START CALL [%s] %s :, arguments = <%s>' % (g.UUID, '/cart', json.dumps(request.data)))
     try:
         cartservice = CartService()
         response =  cartservice.create_or_update_cart(request.data)
@@ -47,7 +47,7 @@ def createOrUpdateCart():
 def add_item_to_cart_and_get_count_of_items():
     g.UUID = uuid.uuid4()
     logger.info(
-        'START CALL [%s] %s : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
+        'START CALL [%s] %s : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.data)))
     try:
         cartservice = CartService()
         response  = cartservice.add_item_to_cart(request.data)
@@ -65,7 +65,7 @@ def add_item_to_cart_and_get_count_of_items():
 
 def get_count_of_orders_of_a_user(user_id):
     g.UUID = uuid.uuid4()
-    logger.info('START CALL [%s]  [%s] : Requested url = <%s> , arguments = <%s>, user_id =<%s>' % (g.UUID, '/user', str(request.url), str(request.args), user_id))
+    logger.info('START CALL [%s]  [%s] : Requested url = <%s> , arguments = <%s>, user_id =<%s>' % (g.UUID, '/user', str(request.url), str(request.data), user_id))
     try:
         order_service = OrderService()
         response = order_service.get_count_of_orders_of_user(user_id)
@@ -83,7 +83,7 @@ def get_count_of_orders_of_a_user(user_id):
 def order():
     g.UUID = uuid.uuid4()
     logger.info(
-        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
+        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/order', str(request.url), json.dumps(request.data)))
 
     try:
         order_service = OrderService()
@@ -102,7 +102,7 @@ def order():
 def delivery_info():
     g.UUID = uuid.uuid4()
     logger.info(
-        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
+        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/delivery', str(request.url), json.dumps(request.data)))
 
     try:
         delivery_service = DeliveryService()
@@ -120,7 +120,7 @@ def delivery_info():
 @logrequest
 def slot():
     logger.info(
-        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/cart', str(request.url), str(request.args)))
+        'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/slot', str(request.url), json.dumps(request.data)))
     g.UUID = uuid.uuid4()
     try:
         delivery_service = DeliveryService()
@@ -135,38 +135,40 @@ def slot():
 
 @app_v1.route('/get_order_prices', methods=['POST'])
 def get_order_prices():
-    logger.info('[%s] : Requested url = <%s> , arguments = <%s>' % ('/user', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
+    logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/get_order_price', str(request.url), json.dumps(request.data)))
     order_info = PaymentInfo()
     response = order_info.get_order_prices(request)
-    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    logger.info('[%s] End OF CALL [%s]'%(g.UUID, json.dumps(response)))
     return flask.jsonify(response)
 
 @app_v1.route('/update_payment_details', methods=['POST'])
 def update_payment_details():
-    logger.info('[%s] : Requested url = <%s> , arguments = <%s>' % ('/user', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
+    logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/update_payment_details', str(request.url), str(request.args)))
+
     order_info = PaymentInfo()
     response = order_info.update_payment_details(request)
-    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    logger.info('[%s] End OF CALL [%s]'%(g.UUID, json.dumps(response)))
     return flask.jsonify(response)
 
 @app_v1.route('/get_payment_details', methods=['POST'])
 def get_payment_details():
-    logger.info('[%s] : Requested url = <%s> , arguments = <%s>' % ('/user', str(request.url), str(request.args)))
     g.UUID = uuid.uuid4()
+    logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/get_payment_details', str(request.url), str(request.args)))
     order_info = PaymentInfo()
     response = order_info.get_payment_details(request)
-    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    logger.info('[%s] End OF CALL [%s]'%(g.UUID, json.dumps(response)))
     return flask.jsonify(response)
 
 
 @app_v1.route('/change_user', methods=['POST'])
 def change_user():
     g.UUID = uuid.uuid4()
+    logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (g.UUID, '/change_user', str(request.url), str(request.args)))
     cart_service = CartService()
     response = cart_service.change_user(request.data)
-    logger.info('Hitted request data :{%s} and got response :{%s}'%(request.data, response))
+    logger.info('[%s] End OF CALL [%s]'%(g.UUID, json.dumps(response)))
     return flask.jsonify(response)
 
 
