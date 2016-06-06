@@ -116,7 +116,7 @@ CREATE_CART_SCHEMA = {
 					{String: {}}
 				]
 			},
-			"image_url":{
+			"image_url": {
 				FUNCTIONS: [
 					{String: {}}
 				]
@@ -217,7 +217,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 							{String: {}}
 						]
 					},
-						"subscription_id": {
+					"subscription_id": {
 						FUNCTIONS: [
 							{String: {}}
 						]
@@ -257,7 +257,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 				REQUIRED: False,
 				FUNCTIONS: [{String: {}}]
 			},
-			"total_shipping_charges":{
+			"total_shipping_charges": {
 				FUNCTIONS: [{String: {}}]
 			},
 			"orderitems": {
@@ -287,7 +287,7 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 					"offer_price": {
 						FUNCTIONS: [{String: {}}]
 					},
-					"item_discount":{
+					"item_discount": {
 						FUNCTIONS: [{String: {}}]
 					}
 				}
@@ -366,8 +366,6 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 			}
 		}
 
-
-
 GET_COUNT_OF_CART_ITEMS = {
 	"data": {
 		FUNCTIONS: [
@@ -397,7 +395,7 @@ GET_COUNT_OF_CART_ITEMS = {
 				]
 			},
 			"orderitems": {
-				REQUIRED:False,
+				REQUIRED: False,
 				FUNCTIONS: [
 					{List: {}}
 				],

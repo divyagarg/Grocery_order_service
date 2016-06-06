@@ -48,7 +48,8 @@ def convert_list_type_from_int_to_str(freebies_id_list):
 def calculate_price_api(req_data):
 	request_data = json.dumps(req_data)
 	Logger.info("[%s] Request data for calculate price API is [%s]" % (g.UUID, request_data))
-	response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data, headers={'Content-type': 'application/json'})
+	response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data,
+							 headers={'Content-type': 'application/json'})
 	json_data = json.loads(response.text)
 	Logger.info("[%s] Response got from calculate Price API is [%s]" % (g.UUID, json.dumps(json_data)))
 	if response.status_code != 200:
@@ -96,10 +97,8 @@ class CartService:
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
-
 	def get_cart_for_geo_user_id(self, geo_id, user_id):
 		return Cart().query.filter_by(geo_id=int(geo_id), user_id=user_id).first()
-
 
 	def update_cart(self, cart, data):
 		Logger.info("[%s]*************************Update Cart Started**************************" % g.UUID)
@@ -357,7 +356,6 @@ class CartService:
 
 		for cart_item in self.cart_items:
 			db.session.add(cart_item)
-
 
 	def change_quantity_of_cart_item(self, cart_item_db, check_price_json, item):
 		cart_item_db.quantity = item['quantity']
@@ -765,7 +763,6 @@ class CartService:
 				err = ERROR.INCORRECT_DATA
 				break
 
-
 			# 1. Initialize cart object
 			try:
 				self.cart_reference_uuid = uuid.uuid1().hex
@@ -776,7 +773,6 @@ class CartService:
 				ERROR.INTERNAL_ERROR.message = str(e)
 				err = ERROR.INTERNAL_ERROR
 				break
-
 
 			# 2. save in DB
 			try:
@@ -891,7 +887,7 @@ class CartService:
 				break
 
 			error = False
-			break;
+			break
 		if error:
 			db.session.rollback()
 			return create_error_response(err)
@@ -937,15 +933,10 @@ class CartService:
 					raise EmptyCartException(ERROR.CART_EMPTY)
 
 	def create_address_json(self, shipping_address):
-		shipping_add = {}
-		shipping_add["name"] = shipping_address.name
-		shipping_add["mobile"] = shipping_address.mobile
-		shipping_add["address"] = shipping_address.address
-		shipping_add["city"] = shipping_address.city
-		shipping_add["pincode"] = shipping_address.pincode
-		shipping_add["state"] = shipping_address.state
-		shipping_add["email"] = shipping_address.email
-		shipping_add["landmark"] = shipping_address.landmark
+		shipping_add = {"name": shipping_address.name, "mobile": shipping_address.mobile,
+						"address": shipping_address.address, "city": shipping_address.city,
+						"pincode": shipping_address.pincode, "state": shipping_address.state,
+						"email": shipping_address.email, "landmark": shipping_address.landmark}
 		return shipping_add
 
 	def fetch_freebie_details_and_update(self, benefits, order_type):
@@ -996,7 +987,6 @@ class CartService:
 	def get_total_payble_price(self):
 		return self.total_price - self.total_discount + self.total_shipping_charges
 
-
 	def change_user(self, data):
 		data = json.loads(data)
 		old_user = data.get("old_user_id", None)
@@ -1004,29 +994,29 @@ class CartService:
 		geo_id = data.get("geo_id", None)
 
 		try:
-			Cart1 = self.get_cart_for_geo_user_id(geo_id, old_user)
-			Cart2 = self.get_cart_for_geo_user_id(geo_id, new_user)
-			if Cart1 is not None:
-				if len(Cart1.cartItem) == 0:
-				   self.remove_cart(Cart1.cart_reference_uuid)
-				   #return Cart2
-				   #TODO: Fix this
-				   data['order_source_reference'] = Cart2.order_source_reference
-				   data['order_type'] = 0
-				   return self.update_cart(Cart2, data)
+			cart1 = self.get_cart_for_geo_user_id(geo_id, old_user)
+			cart2 = self.get_cart_for_geo_user_id(geo_id, new_user)
+			if cart1 is not None:
+				if len(cart1.cartItem) == 0:
+					self.remove_cart(cart1.cart_reference_uuid)
+					# return Cart2
+					# TODO: Fix this
+					data['order_source_reference'] = cart2.order_source_reference
+					data['order_type'] = 0
+					return self.update_cart(cart2, data)
 				else:
-				   self.remove_cart(Cart2.cart_reference_uuid)
-				   #replace old_user by new_user
-				   Cart1.user_id = new_user
-				   #return Cart1
-				   data['order_source_reference'] = Cart1.order_source_reference
-				   data['order_type'] = 0
-				   return self.update_cart(Cart1, data)
+					self.remove_cart(cart2.cart_reference_uuid)
+					# replace old_user by new_user
+					cart1.user_id = new_user
+					# return Cart1
+					data['order_source_reference'] = cart1.order_source_reference
+					data['order_type'] = 0
+					return self.update_cart(cart1, data)
 			else:
-				#return Cart2
-				data['order_source_reference'] = Cart2.order_source_reference
+				# return Cart2
+				data['order_source_reference'] = cart2.order_source_reference
 				data['order_type'] = 0
-				return self.update_cart(Cart2, data)
+				return self.update_cart(cart2, data)
 
 		except Exception as e:
 			Logger.error('[%s] Exception occured while change_user [%s]' % (g.UUID, str(e)), exc_info=True)

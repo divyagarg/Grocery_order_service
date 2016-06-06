@@ -61,6 +61,7 @@ def get_delivery_slot(cart_reference_id):
 
 class OrderService:
 	def __init__(self):
+		self.cart = None
 		self.shipment_id_slot_dict = {}
 		self.cart_reference_id = None
 		self.order_reference_id = None
@@ -271,8 +272,7 @@ class OrderService:
 		else:
 			try:
 				db.session.commit()
-				response = {}
-				response['order_id'] = self.parent_reference_id
+				response = {'order_id': self.parent_reference_id}
 
 				if self.total_cashback > 0.0:
 					response['total_cashback'] = self.total_cashback
@@ -287,7 +287,6 @@ class OrderService:
 					if request_data.get('login_status') == 0:
 						response[
 							'display_message'] = "To get exciting cash-backs and rewards on your next purchases. Please verify your number"
-
 
 				return create_data_response(data=response)
 			except Exception as e:
@@ -616,10 +615,11 @@ class OrderService:
 			order.parent_order_id = self.parent_reference_id
 			order.order_reference_id = order.parent_order_id
 			order_item_list = list()
-			self.create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict.values(), order_item_list)
+			self.create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict.values(),
+									   order_item_list)
 			order.orderItem = order_item_list
 
-			if self.shipment_id_slot_dict is not None and self.shipment_id_slot_dict.__len__() >0:
+			if self.shipment_id_slot_dict is not None and self.shipment_id_slot_dict.__len__() > 0:
 				order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict.values()[0])
 			else:
 				order.delivery_slot = None
@@ -904,17 +904,13 @@ class OrderService:
 		product_list = list()
 		if self.cart_reference_given:
 			for key in self.item_id_to_item_obj_dict:
-				product = {}
-				product["item_id"] = str(key)
-				product["subscription_id"] = str(key)
-				product["quantity"] = self.item_id_to_item_obj_dict[key].quantity
+				product = {"item_id": str(key), "subscription_id": str(key),
+						   "quantity": self.item_id_to_item_obj_dict[key].quantity}
 				product_list.append(product)
 		else:
 			for key in self.item_id_to_item_json_dict:
-				product = {}
-				product["item_id"] = str(key)
-				product["subscription_id"] = str(key)
-				product["quantity"] = self.item_id_to_item_json_dict[key].get('quantity')
+				product = {"item_id": str(key), "subscription_id": str(key),
+						   "quantity": self.item_id_to_item_json_dict[key].get('quantity')}
 				product_list.append(product)
 		req_data = {
 			"area_id": str(self.geo_id),
@@ -950,11 +946,8 @@ class OrderService:
 			raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)
 
 	def get_shipment_preview_for_items(self):
-		request_data = {}
-		request_data['geo_id'] = self.geo_id
-		request_data['user_id'] = self.user_id
+		request_data = {'geo_id': self.geo_id, 'user_id': self.user_id}
 		delivery_service = DeliveryService()
-		delivery_service
 		return delivery_service.get_shipment_preview(request_data)
 
 	def get_default_slot(self):

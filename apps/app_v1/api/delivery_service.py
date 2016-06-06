@@ -2,6 +2,7 @@ import json
 import logging
 import random
 import time
+
 from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS, UPDATE_DELIVERY_SLOT
 from apps.app_v1.models import db
 from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail, CartItem
@@ -31,7 +32,6 @@ class DeliveryService:
 		self.cart = None
 
 	def get_delivery_info(self, body):
-		Logger.info("[%s]************************* Get Delivery Slots Start **************************" % g.UUID)
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, GET_DELIVERY_DETAILS)
@@ -59,8 +59,6 @@ class DeliveryService:
 				self.parse_response_and_update_db(shipment_preview_response, cart)
 
 			db.session.commit()
-			Logger.info("[%s] Response for shipment preview is: [%s]" %(g.UUID, json.dumps(shipment_preview_response)))
-			Logger.info("[%s]************************* Get Delivery Slots Stop **************************" % g.UUID)
 			return create_data_response(data=shipment_preview_response)
 		except NoSuchCartExistException as nsce:
 			Logger.error("[%s] No such cart Exist [%s]" % (g.UUID, str(nsce)))
@@ -122,8 +120,6 @@ class DeliveryService:
 					item.shipment_id = shipment_id
 					db.session().add(item)
 
-
-
 	def create_shipment_preview_request_data(self, data):
 		cart = Cart.query.filter_by(geo_id=int(data['geo_id']), user_id=data['user_id']).first()
 		if cart is None:
@@ -132,46 +128,34 @@ class DeliveryService:
 			raise NoShippingAddressFoundException(ERROR.NO_SHIPPING_ADDRESS_FOUND)
 		self.cart = cart
 		shipping_address = Address.query.filter_by(address_hash=cart.shipping_address_ref).first()
-		address = {}
-		address["address_line_1"] = shipping_address.address
-		address["city"] = shipping_address.city
-		address["state"] = shipping_address.state
+		address = {"address_line_1": shipping_address.address, "city": shipping_address.city,
+				   "state": shipping_address.state}
+
 		if shipping_address.pincode is not None:
 			address["pincode"] = shipping_address.pincode
-		address_detail = {}
-		address_detail["address"] = address
-		deliver_to = {}
-		deliver_to["address_detail"] = address_detail
+		address_detail = {"address": address}
+		deliver_to = {"address_detail": address_detail}
 
-		fulfilment_request_object = {}
-		fulfilment_request_object["direction"] = 0
-		fulfilment_request_object["deliver_to"] = deliver_to
+		fulfilment_request_object = {"direction": 0, "deliver_to": deliver_to}
 
 		order_items = list()
 		for i in range(cart.cartItem.__len__()):
-			order_item = {}
-			order_item["order_item_id"] = str(i)
-			order_item["subscription_id"] = cart.cartItem[i].cart_item_id
-			order_item["quantity"] = cart.cartItem[i].quantity
+			order_item = {"order_item_id": str(i), "subscription_id": cart.cartItem[i].cart_item_id,
+						  "quantity": cart.cartItem[i].quantity}
 			order_items.append(order_item)
-		i = i+1
+		i += 1
 		if cart.selected_freebee_items is not None:
 			selected_freebies = json.loads(cart.selected_freebee_items)
 			for j in range(selected_freebies.__len__()):
-				order_item = {}
-				order_item["order_item_id"] = str(i + j)
-				order_item["subscription_id"] = selected_freebies[j].get('id')
-				order_item["quantity"] = 1
-				isfreebie = { "freebie": True}
+				order_item = {"order_item_id": str(i + j), "subscription_id": selected_freebies[j].get('id'),
+							  "quantity": 1}
+				isfreebie = {"freebie": True}
 				order_item["custom"] = json.dumps(isfreebie)
 				order_item["freebie"] = True
 				order_items.append(order_item)
 
-		order_data = {}
-		order_data["order_items"] = order_items
-		request_data = {}
-		request_data["fulfilment_request_object"] = fulfilment_request_object
-		request_data["order_data"] = order_data
+		order_data = {"order_items": order_items}
+		request_data = {"fulfilment_request_object": fulfilment_request_object, "order_data": order_data}
 		Logger.info("[%s] Request data for shipment preview is [%s]" % (g.UUID, json.dumps(request_data)))
 		return request_data
 
@@ -195,9 +179,8 @@ class DeliveryService:
 		delivery_slots_list = request_data.get('delivery_slots')
 		for each_slot in delivery_slots_list:
 			shipment_id = each_slot.get('shipment_id')
-			timerange = {}
-			timerange["start_datetime"] = each_slot.get('start_datetime')
-			timerange["end_datetime"] = each_slot.get('end_datetime')
+			timerange = {"start_datetime": each_slot.get('start_datetime'),
+						 "end_datetime": each_slot.get('end_datetime')}
 			Logger.info("[%s] Shipment Id [%s], timerange = [%s]" % (g.UUID, shipment_id, timerange))
 			order_shipment = OrderShipmentDetail.query.filter_by(shipment_id=shipment_id).first()
 			if order_shipment is None:
