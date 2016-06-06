@@ -19,39 +19,46 @@ class ERROR_DETAIL(object):
 
 
 class ERROR(object):
-	DISCOUNT_CHANGED = ERROR_DETAIL(code=1001, message="Discount not applicable")
-	PRODUCT_OFFER_PRICE_CHANGED = ERROR_DETAIL(code=1002, message="Product price changed")
-	PRODUCT_DISPLAY_PRICE_CHANGED = ERROR_DETAIL(code=1003, message="Product display prices changed")
-	PRODUCT_AVAILABILITY_CHANGED = ERROR_DETAIL(code=1004, message="Product is not available in the given quantity")
-	PAYMENT_MODE_NOT_ALLOWED = ERROR_DETAIL(code=1005, message="Selected Payment mode is not applicable for this order")
-	FREEBIE_NOT_ALLOWED = ERROR_DETAIL(code=1006, message="Freebie is not correct")
-	COUPON_NOT_APPLIED_FOR_CHANNEL = ERROR_DETAIL(code=1007, message="Coupon is not applicable for this channel")
-	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=1008, message="Coupon service returning failure status")
-	INTERNAL_ERROR = ERROR_DETAIL(code=1009, message=None)
-	ORDER_ERROR = ERROR_DETAIL(code=1010, message="Order Error")
-	ORDER_VALIDATION_REQUEST_ERROR = ERROR_DETAIL(code=1011, message="Order Request Validation Failed")
-	NETWORK_ERROR = ERROR_DETAIL(code=1012, message="Network Error")
-	CONNECTION_ERROR = ERROR_DETAIL(code=1013, message="Connection Error")
-	CART_EMPTY = ERROR_DETAIL(code=1014, message="Cart is Empty")
-	CART_ITEM_MISSING = ERROR_DETAIL(code=1015, message="Cart items are missing")
-	CART_ZERO_QUANTITY_CAN_NOT_BE_ADDED = ERROR_DETAIL(code=1016, message="Zero quantity can not be added")
-	DATABASE_ERROR = ERROR_DETAIL(code=1017, message=None)
-	SUBSCRIPTION_NOT_FOUND = ERROR_DETAIL(code=1018, message="Subscription id is not correct")
-	NOT_AVAILABLE_ERROR = ERROR_DETAIL(code=1019, message="Quantity not available")
-	KEY_MISSING = ERROR_DETAIL(code=1020, message=None)
-	INCORRECT_DATA = ERROR_DETAIL(code=1021, message="Zero quantity can not be added")
-	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 1022, message="Non existing item can not be deleted")
-	VALIDATION_ERROR = ERROR_DETAIL(code=1023, message="Input data is incorrect")
-	NO_SUCH_CART_EXIST = ERROR_DETAIL(code=1024, message="No such cart exist")
-	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=1025, message="Shipping address is mandatory for Order placement")
-	INVALID_STATUS = ERROR_DETAIL(code=1026, message="No Such status Exist")
-	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=1027, message="Shipping charges changed")
-	PAYMENT_CAN_NOT_NULL = ERROR_DETAIL(code= 1028, message= "Payment can not be null for an order")
-	COUPON_APPLY_FAILED = ERROR_DETAIL(code=1029, message="Coupon application Failed")
-	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 1030, message="Delivery slot not found")
-	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 1031, message="Older Delivery slot found")
-	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=1032, message="Shipment Preview Failed")
-	NO_ORDER_FOUND_ERROR = ERROR_DETAIL(code= 1033, message= "Order does not Exist")
+	# General Error
+	VALIDATION_ERROR = ERROR_DETAIL(code=1001, message="Input data is incorrect")
+	DATABASE_ERROR = ERROR_DETAIL(code=1002, message=None)
+	KEY_MISSING = ERROR_DETAIL(code=1003, message=None)
+	INCORRECT_DATA = ERROR_DETAIL(code=1004, message="Zero quantity can not be added")
+	INVALID_STATUS = ERROR_DETAIL(code=1005, message="No Such status Exist")
+	PAYMENT_CAN_NOT_NULL = ERROR_DETAIL(code= 1006, message= "Payment can not be null for an order")
+	NO_ORDER_FOUND_ERROR = ERROR_DETAIL(code= 1007, message= "Order does not Exist")
+	INTERNAL_ERROR = ERROR_DETAIL(code=1008, message=None)
+
+	# Coupon specific Error
+	DISCOUNT_CHANGED = ERROR_DETAIL(code=2001, message="Discount not applicable")
+	PAYMENT_MODE_NOT_ALLOWED = ERROR_DETAIL(code=2002, message="Selected Payment mode is not applicable for this order")
+	FREEBIE_NOT_ALLOWED = ERROR_DETAIL(code=2003, message="Freebie is not correct")
+	COUPON_NOT_APPLIED_FOR_CHANNEL = ERROR_DETAIL(code=2004, message="Coupon is not applicable for this channel")
+	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=2005, message="Coupon service returning failure status")
+	COUPON_APPLY_FAILED = ERROR_DETAIL(code=2006, message="Coupon application Failed")
+
+	# Product specific Error
+	PRODUCT_OFFER_PRICE_CHANGED = ERROR_DETAIL(code=3001, message="Product price changed")
+	PRODUCT_DISPLAY_PRICE_CHANGED = ERROR_DETAIL(code=3002, message="Product display prices changed")
+	PRODUCT_AVAILABILITY_CHANGED = ERROR_DETAIL(code=3003, message="Product is not available in the given quantity")
+	SUBSCRIPTION_NOT_FOUND = ERROR_DETAIL(code=3004, message="Subscription id is not correct")
+	NOT_AVAILABLE_ERROR = ERROR_DETAIL(code=3005, message="Quantity not available")
+
+	# Cart specific Error
+	CART_EMPTY = ERROR_DETAIL(code=4001, message="Cart is Empty")
+	CART_ITEM_MISSING = ERROR_DETAIL(code=4002, message="Cart items are missing")
+	CART_ZERO_QUANTITY_CAN_NOT_BE_ADDED = ERROR_DETAIL(code=4003, message="Zero quantity can not be added")
+	NO_SUCH_CART_EXIST = ERROR_DETAIL(code=4004, message="No such cart exist")
+	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 4005, message="Non existing item can not be deleted")
+
+	# Delivery Specific Error
+	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 5001, message="Delivery slot not found")
+	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 5002, message="Older Delivery slot found")
+	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=5003, message="Shipment Preview Failed")
+	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=5004, message="Shipping address is mandatory for Order placement")
+	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=5005, message="Shipping charges changed")
+
+
 
 
 def parse_request_data(body):
