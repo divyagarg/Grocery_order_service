@@ -654,7 +654,10 @@ class OrderService:
 					sub_order.delivery_slot = None
 
 				self.save_common_order_data(sub_order)
-				items = db.session.query(CartItem).filter(CartItem.shipment_id == key).all()
+				items = db.session.query(CartItem).filter(
+					CartItem.cart_item_id.in_(self.shipment_id_to_item_ids_dict[key])).filter(
+					CartItem.cart_id == self.cart_reference_id).all()
+
 				order_item_list = list()
 				self.create_order_item_obj(sub_order.order_reference_id, items, order_item_list)
 				for each_item in items:
