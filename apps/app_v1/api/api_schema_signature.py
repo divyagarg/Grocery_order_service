@@ -454,3 +454,44 @@ UPDATE_DELIVERY_SLOT = {
 	}
 
 }
+
+CHECK_COUPON_SCHEMA = {
+	"area_id": {
+		FUNCTIONS: [{String: {}}]
+	},
+	"customer_id": {
+		FUNCTIONS: [{String: {}}]
+	},
+	"products":{
+		FUNCTIONS: [
+			{List: {}}
+		],
+		SCHEMA: {
+			"item_id": {
+				FUNCTIONS: [{String: {}}]
+			},
+			"subscription_id": {
+				FUNCTIONS: [{String: {}}]
+			},
+			"coupon_code":{
+				REQUIRED : False,
+				FUNCTIONS: [{String: {}}]
+			},
+			"quantity":{
+				FUNCTIONS: [{Integer: {}}]
+			}
+		}
+	},
+	"channel":{
+		FUNCTIONS: [{String: {}}]
+	},
+	"coupon_codes":{
+		FUNCTIONS: [
+			{List: {}}
+		]
+	},
+	"payment_mode":{
+		REQUIRED: False,
+		FUNCTIONS: [{String: {}}]
+	}
+}

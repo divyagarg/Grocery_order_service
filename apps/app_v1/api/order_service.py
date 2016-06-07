@@ -6,6 +6,7 @@ import datetime
 import time
 
 from apps.app_v1.api.cart_service import CartService
+from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService
 import config
 from sqlalchemy import func, distinct
@@ -468,25 +469,17 @@ class OrderService:
 				coupon_codes = map(str, self.promo_codes)
 				req_data["coupon_codes"] = coupon_codes
 
-		header = {
-			'X-API-USER': current_app.config['X_API_USER'],
-			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
-			'Content-type': 'application/json'
-		}
-
-		response = requests.post(url=current_app.config['COUPON_CHECK_URL'], data=json.dumps(req_data),
-								 headers=header)
+		response = CouponService.call_check_coupon_api(req_data)
 		json_data = json.loads(response.text)
-		Logger.info(
-			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
-				g.UUID, json.dumps(req_data), json_data))
 		return json_data
 
 	def compare_discounts_and_freebies(self, response_data):
 		if response_data['success']:
 			if self.total_discount != float(response_data['totalDiscount']):
+				Logger.error("[%s] Cart discount is [%s] but now discount is [%s]" %(g.UUID, self.total_discount, response_data['totalDiscount']))
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 			if self.total_cashback != float(response_data['totalCashback']):
+				Logger.error("[%s] Cart cashback is [%s] but now cashback is [%s]" %(g.UUID, self.total_cashback, response_data['totalCashback']))
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 			freebie_coupon_code_list = list()
 			if self.selected_freebies is not None:
@@ -928,18 +921,8 @@ class OrderService:
 				coupon_codes = map(str, self.promo_codes)
 				req_data["coupon_codes"] = coupon_codes
 
-		header = {
-			'X-API-USER': current_app.config['X_API_USER'],
-			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
-			'Content-type': 'application/json'
-		}
-
-		response = requests.post(url=current_app.config['COUPOUN_APPLY_URL'], data=json.dumps(req_data),
-								 headers=header)
+		response = CouponService.apply_coupon(req_data)
 		json_data = json.loads(response.text)
-		Logger.info(
-			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
-				g.UUID, json.dumps(req_data), json_data))
 		if not json_data['success']:
 			error_msg = json_data['error'].get('error')
 			ERROR.COUPON_APPLY_FAILED.message = error_msg

@@ -1,5 +1,6 @@
 import json
 from apps.app_v1.api.cart_service import CartService
+from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService
 from apps.app_v1.api.order_service import OrderService
 from apps.app_v1.api.payment_service import PaymentInfo
@@ -124,10 +125,10 @@ def delivery_info():
 @jsonify
 @logrequest
 def slot():
+	g.UUID = uuid.uuid4()
 	logger.info(
 		'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>' % (
 			g.UUID, '/slot', str(request.url), json.dumps(request.data)))
-	g.UUID = uuid.uuid4()
 	try:
 		delivery_service = DeliveryService()
 		response = delivery_service.update_slot(request.data)
@@ -181,4 +182,12 @@ def change_user():
 	cart_service = CartService()
 	response = cart_service.change_user(request.data)
 	logger.info('[%s] END OF CALL [%s]' % (g.UUID, json.dumps(response)))
+	return flask.jsonify(response)
+
+@app_v1.route('/check_coupon', methods=['POST'])
+def check_coupon():
+	g.UUID = uuid.uuid4()
+	logger.info('START CALL [%s] [%s]: Request url = [%s], arguments = [%s]' %(g.UUID, '/check_coupon', str(request.url), json.dumps(request.data)))
+	response = CouponService.check_coupon_api(request.data)
+	logger.info('[%s] END OF CALL [%s]' %(g.UUID, json.dumps(response)))
 	return flask.jsonify(response)

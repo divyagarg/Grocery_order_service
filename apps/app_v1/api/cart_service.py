@@ -1,3 +1,4 @@
+from apps.app_v1.api.coupon_service import CouponService
 import config
 
 __author__ = 'divyagarg'
@@ -519,7 +520,7 @@ class CartService:
 	def update_cart_total_amounts(self, cart):
 		cart.total_display_price = 0.0
 		cart.total_offer_price = 0.0
-		cart.total_discount = 0.0
+		cart.total_discount = self.total_discount
 		for each_cart_item in self.item_id_to_existing_item_dict.values():
 			unit_offer_price = each_cart_item.offer_price
 			unit_display_price = each_cart_item.display_price
@@ -529,11 +530,11 @@ class CartService:
 			cart.total_offer_price += (float(unit_offer_price) * quantity)
 			if item_level_discount is None:
 				item_level_discount = 0.0
-			cart.total_discount = float(cart.total_discount) + float(item_level_discount)
+			# cart.total_discount = float(cart.total_discount) + float(item_level_discount)
 
 		self.total_display_price = cart.total_display_price
 		self.total_price = cart.total_offer_price
-		self.total_discount = cart.total_discount
+		# self.total_discount = cart.total_discount
 
 		self.total_shipping_charges = get_shipping_charges(self.total_price, self.total_discount)
 		cart.total_shipping_charges = self.total_shipping_charges
@@ -558,14 +559,8 @@ class CartService:
 		elif 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
 			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
 
-		header = {
-			'X-API-USER': current_app.config['X_API_USER'],
-			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
-			'Content-type': 'application/json'
-		}
+		response = CouponService.call_check_coupon_api(req_data)
 
-		response = requests.post(url=url, data=json.dumps(req_data),
-								 headers=header)
 		if response.status_code == 200 and "coupon_codes" in req_data and cart is not None:
 			cart.promo_codes = json.dumps(req_data["coupon_codes"])
 		json_data = json.loads(response.text)
