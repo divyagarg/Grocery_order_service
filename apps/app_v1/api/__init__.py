@@ -50,6 +50,7 @@ class ERROR(object):
 	CART_ZERO_QUANTITY_CAN_NOT_BE_ADDED = ERROR_DETAIL(code=4003, message="Zero quantity can not be added")
 	NO_SUCH_CART_EXIST = ERROR_DETAIL(code=4004, message="No such cart exist")
 	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 4005, message="Non existing item can not be deleted")
+	CHANGE_USER_NOT_POSSIBLE = ERROR_DETAIL(code= 4006, message="Change User is not possible as no cart Exist")
 
 	# Delivery Specific Error
 	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 5001, message="Delivery slot not found")

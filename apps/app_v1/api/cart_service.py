@@ -521,6 +521,7 @@ class CartService:
 		cart.total_display_price = 0.0
 		cart.total_offer_price = 0.0
 		cart.total_discount = self.total_discount
+		cart.total_cashback = self.total_cashback
 		for each_cart_item in self.item_id_to_existing_item_dict.values():
 			unit_offer_price = each_cart_item.offer_price
 			unit_display_price = each_cart_item.display_price
@@ -554,11 +555,13 @@ class CartService:
 		if 'payment_mode' in data:
 			req_data['payment_mode'] = payment_modes_dict[data.get('payment_mode')]
 			url + config.COUPON_QUERY_PARAM
-		if 'promo_codes' in data and data.get('promo_codes') == []:
-			cart.promo_codes = None
-		elif 'promo_codes' in data and hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') != []:
-			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
-
+		if 'promo_codes' in data:
+			if data.get('promo_codes') == []:
+				cart.promo_codes = None
+			elif hasattr(data.get('promo_codes'), '__iter__') and data.get('promo_codes') !=[]:
+				req_data["coupon_codes"] = map(str, data.get('promo_codes'))
+		elif cart is not None and cart.promo_codes is not None:
+			req_data["coupon_codes"] = json.loads(cart.promo_codes)
 		response = CouponService.call_check_coupon_api(req_data)
 
 		if response.status_code == 200 and "coupon_codes" in req_data and cart is not None:
@@ -1000,7 +1003,8 @@ class CartService:
 					data['order_type'] = 0
 					return self.update_cart(cart2, data)
 				else:
-					self.remove_cart(cart2.cart_reference_uuid)
+					if cart2 is not None:
+						self.remove_cart(cart2.cart_reference_uuid)
 					# replace old_user by new_user
 					cart1.user_id = new_user
 					# return Cart1
@@ -1009,6 +1013,9 @@ class CartService:
 					return self.update_cart(cart1, data)
 			else:
 				# return Cart2
+				if cart2 is None:
+
+					return create_error_response(ERROR.CHANGE_USER_NOT_POSSIBLE)
 				data['order_source_reference'] = cart2.order_source_reference
 				data['order_type'] = 0
 				return self.update_cart(cart2, data)

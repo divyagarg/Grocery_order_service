@@ -189,7 +189,7 @@ class PaymentInfo(JsonUtility):
 				payment_data['payment_gateway'] = payment.payment_gateway
 				payment_data['payment_method'] = payment.payment_method
 				payment_data['pg_txn_id'] = payment.pg_txn_id
-				payment_data['txn_date'] = payment.txn_date
+				payment_data['txn_date'] = str(payment.txn_date)
 				payment_data['txn_amt'] = payment.txn_amt
 				payment_data['bank_txn_id'] = payment.bank_txn_id
 				payment_data['status'] = payment.status

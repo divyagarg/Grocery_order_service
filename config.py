@@ -48,6 +48,7 @@ class DevelopmentConfig(Config):
 	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
 	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/apply"
 	SHIPMENT_PREVIEW_URL = "http://pyservice01.staging.askme.com:9981/fulfilments/v1/order/getShipmentOptions"
+	PAYMENT_SERVICE_URL = "http://pyservice01.staging.askme.com:13000/payment_service/api/paas/v1/paymentstatus"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 	KAFKA_TOPIC = 'grocery_orderservice_staging'
@@ -75,6 +76,7 @@ class TestingConfig(Config):
 	SHIPMENT_PREVIEW_URL = "http://pyservice01.staging.askme.com:9981/fulfilments/v1/order/getShipmentOptions"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
+	PAYMENT_SERVICE_URL = "http://pyservice01.staging.askme.com:13000/payment_service/api/paas/v1/paymentstatus"
 
 
 class StagingConfig(Config):
