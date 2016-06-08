@@ -43,10 +43,7 @@ class CouponService:
 		}
 		if 'payment_mode' in request_data:
 			url = url + config.COUPON_QUERY_PARAM
-		response = requests.post(url=url, data=json.dumps(request_data), headers=header)
-		Logger.info(
-			"[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
-				g.UUID, json.dumps(request_data), json.loads(response.text)))
+		response = requests.post(url=url, data=json.dumps(request_data), headers=header,timeout= current_app.config['API_TIMEOUT'])
 		return response
 
 	@staticmethod
@@ -57,7 +54,5 @@ class CouponService:
 			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
 			'Content-type': 'application/json'
 		}
-		response = requests.post(url=url, data=json.dumps(request_data), headers=header)
-		Logger.info("[%s] Request to check Coupon data passed is: [%s] and response is: [%s]" % (
-			g.UUID, json.dumps(request_data), json.loads(response.text)))
+		response = requests.post(url=url, data=json.dumps(request_data), headers=header,timeout= current_app.config['API_TIMEOUT'])
 		return response

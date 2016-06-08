@@ -2,6 +2,7 @@ import json
 import logging
 import random
 import time
+
 from apps.app_v1.models.models import Address, Payment
 from config import APP_NAME
 import config
@@ -28,6 +29,9 @@ class ERROR(object):
 	PAYMENT_CAN_NOT_NULL = ERROR_DETAIL(code= 1006, message= "Payment can not be null for an order")
 	NO_ORDER_FOUND_ERROR = ERROR_DETAIL(code= 1007, message= "Order does not Exist")
 	INTERNAL_ERROR = ERROR_DETAIL(code=1008, message=None)
+	PAYMENT_SERVICE_IS_DOWN = ERROR_DETAIL(code=1009, message="Payment service is temporary unavailable")
+	PAYMENT_API_TIMEOUT = ERROR_DETAIL(code=1010, message="Payment API timeout")
+
 
 	# Coupon specific Error
 	DISCOUNT_CHANGED = ERROR_DETAIL(code=2001, message="Discount not applicable")
@@ -36,6 +40,8 @@ class ERROR(object):
 	COUPON_NOT_APPLIED_FOR_CHANNEL = ERROR_DETAIL(code=2004, message="Coupon is not applicable for this channel")
 	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=2005, message="Coupon service returning failure status")
 	COUPON_APPLY_FAILED = ERROR_DETAIL(code=2006, message="Coupon application Failed")
+	COUPON_SERVICE_DOWN = ERROR_DETAIL(code=2007, message="Coupon service is temporary unavailable")
+	COUPON_API_TIMEOUT = ERROR_DETAIL(code=2008, message="Coupon API Request timeout")
 
 	# Product specific Error
 	PRODUCT_OFFER_PRICE_CHANGED = ERROR_DETAIL(code=3001, message="Product price changed")
@@ -43,6 +49,8 @@ class ERROR(object):
 	PRODUCT_AVAILABILITY_CHANGED = ERROR_DETAIL(code=3003, message="Product is not available in the given quantity")
 	SUBSCRIPTION_NOT_FOUND = ERROR_DETAIL(code=3004, message="Subscription id is not correct")
 	NOT_AVAILABLE_ERROR = ERROR_DETAIL(code=3005, message="Quantity not available")
+	PRODUCT_CATALOG_SERVICE_DOWN = ERROR_DETAIL(code=3006, message="Product catalog service is temporary unavailable")
+	PRODUCT_API_TIMEOUT = ERROR_DETAIL(code=3007, message="Product API Request timeout")
 
 	# Cart specific Error
 	CART_EMPTY = ERROR_DETAIL(code=4001, message="Cart is Empty")
@@ -53,12 +61,13 @@ class ERROR(object):
 	CHANGE_USER_NOT_POSSIBLE = ERROR_DETAIL(code= 4006, message="Change User is not possible as no cart Exist")
 
 	# Delivery Specific Error
-	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 5001, message="Delivery slot not found")
-	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code= 5002, message="Older Delivery slot found")
+	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code=5001, message="Delivery slot not found")
+	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code=5002, message="Older Delivery slot found")
 	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=5003, message="Shipment Preview Failed")
 	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=5004, message="Shipping address is mandatory for Order placement")
 	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=5005, message="Shipping charges changed")
-
+	FULFILLMENT_SERVICE_DOWN = ERROR_DETAIL(code=5006, message="Fulfillment Service is temporary unavailable")
+	FULFILLMENT_API_TIMEOUT = ERROR_DETAIL(code=5007, message="Fulfilment API Request timeout")
 
 
 
@@ -193,6 +202,19 @@ class OrderNotFoundException(Exception):
 	def __init__(self, error_detail):
 		self.code = error_detail.code
 		super(OrderNotFoundException, self).__init__(error_detail.message)
+
+class ServiceUnAvailableException(Exception):
+	code = None
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(ServiceUnAvailableException, self).__init__(error_detail.message)
+
+class RequestTimeoutException(Exception):
+	code = None
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(RequestTimeoutException, self).__init__(error_detail.message)
+
 
 def get_shipping_charges(total_price, total_discount):
 		total_shipping_charges =0.0

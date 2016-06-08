@@ -1,12 +1,14 @@
 import json
-from utils.jsonutils.json_utility import JsonUtility
 import logging
+
+from requests.exceptions import ConnectTimeout
+from utils.jsonutils.json_utility import JsonUtility
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.models.models import MasterOrder, Address, Payment, db
 import requests
 from flask import g, current_app
 from config import APP_NAME
-from apps.app_v1.api import ERROR
+from apps.app_v1.api import ERROR, ServiceUnAvailableException
 
 __author__ = 'amit.bansal'
 
@@ -168,7 +170,7 @@ class PaymentInfo(JsonUtility):
 				if current_app.config.get("PAYMENT_AUTH_KEY"):
 					headers['Authorization'] = current_app.config.get("PAYMENT_AUTH_KEY")
 
-				request = requests.post(url=url, data=json.dumps(data), headers=headers)
+				request = requests.post(url=url, data=json.dumps(data), headers=headers, timeout= current_app.config['API_TIMEOUT'])
 				if request.status_code == 200:
 					response = json.loads(request.text)
 					if response['status'] == "success":
@@ -180,7 +182,12 @@ class PaymentInfo(JsonUtility):
 					else:
 						raise Exception(response['error']["message"])
 				else:
-					raise Exception("could not get payment details")
+					if request.status_code == 404:
+						Logger.error("[%s] Payment service is down" %g.UUID)
+						raise ServiceUnAvailableException(ERROR.PAYMENT_SERVICE_IS_DOWN)
+					else:
+						Logger.error("[%s] Exception occured in Payment service" %g.UUID)
+						raise Exception("could not get payment details")
 
 			response = {}
 			payment_details = list()
@@ -197,10 +204,15 @@ class PaymentInfo(JsonUtility):
 
 			response['payment_details'] = payment_details
 			response['payment_status'] = order_data.payment_status
-			# Logger.info("[%s] Response for Get Payment Detail API is: [%s]" %(g.UUID, json.dumps(response)))
 			return create_data_response(data=response)
 
+		except ConnectTimeout:
+			Logger.error("[%s] Timeout exception for payment api" % g.UUID)
+			return create_error_response(ERROR.PAYMENT_API_TIMEOUT)
+		except ServiceUnAvailableException:
+			Logger.error("[%s] Payment service is down" %g.UUID)
+			return create_error_response(ERROR.PAYMENT_SERVICE_IS_DOWN)
 		except Exception as e:
 			Logger.error('{%s} Exception occured ' % g.UUID, exc_info=True)
-			ERROR.INTERNAL_ERROR.message = e.message
+			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)

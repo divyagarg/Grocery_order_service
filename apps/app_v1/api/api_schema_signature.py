@@ -20,7 +20,6 @@ CREATE_CART_SCHEMA = {
 		]
 	},
 	"order_source_reference": {
-		REQUIRED: True,
 		FUNCTIONS: [
 			{Contained: {"contained_in": [d.value for d in ORDER_SOURCE_REFERENCE]}}
 		]
@@ -486,6 +485,7 @@ CHECK_COUPON_SCHEMA = {
 		FUNCTIONS: [{String: {}}]
 	},
 	"coupon_codes":{
+		REQUIRED : False,
 		FUNCTIONS: [
 			{List: {}}
 		]

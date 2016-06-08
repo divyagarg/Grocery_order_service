@@ -1,5 +1,6 @@
 from apps.app_v1.api.coupon_service import CouponService
 import config
+from requests.exceptions import ConnectTimeout
 
 __author__ = 'divyagarg'
 import datetime
@@ -7,8 +8,10 @@ import logging
 import json
 import uuid
 import requests
+
 from apps.app_v1.api import parse_request_data, RequiredFieldMissing, EmptyCartException, IncorrectDataException, \
-	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException, get_shipping_charges
+	CouponInvalidException, SubscriptionNotFoundException, QuantityNotAvailableException, get_shipping_charges, \
+	ServiceUnAvailableException
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models import order_types, payment_modes_dict
 from apps.app_v1.models.models import Cart, CartItem, Address, OrderShipmentDetail
@@ -50,12 +53,19 @@ def calculate_price_api(req_data):
 	request_data = json.dumps(req_data)
 	Logger.info("[%s] Request data for calculate price API is [%s]" % (g.UUID, request_data))
 	response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=request_data,
-							 headers={'Content-type': 'application/json'})
+							 headers={'Content-type': 'application/json'}, timeout= current_app.config['API_TIMEOUT'])
+	if response.status_code != 200:
+		if response.status_code == 404:
+			Logger.error("[%s] Catalog search API is down" % g.UUID)
+			raise ServiceUnAvailableException(ERROR.PRODUCT_CATALOG_SERVICE_DOWN)
+		else:
+			Logger.error("[%s] Error from product catalog service" % g.UUID)
+			ERROR.INTERNAL_ERROR.message =  response.reason
+			raise Exception(ERROR.INTERNAL_ERROR)
 	json_data = json.loads(response.text)
 	Logger.info("[%s] Response got from calculate Price API is [%s]" % (g.UUID, json.dumps(json_data)))
-	if response.status_code != 200:
-		ERROR.INTERNAL_ERROR.message = json_data['msg']
-		raise Exception(ERROR.INTERNAL_ERROR)
+
+
 	return json_data['results']
 
 
@@ -90,6 +100,7 @@ class CartService:
 				return self.update_cart(cart, request_data)
 			else:
 				return self.create_cart(request_data)
+
 		except IncorrectDataException as ide:
 			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)
@@ -132,6 +143,10 @@ class CartService:
 				self.is_cart_empty = True
 				err = ERROR.CART_EMPTY
 				break
+			except ConnectTimeout:
+				Logger.error("[%s] Timeout exception for product catalog api" %g.UUID)
+				err = ERROR.PRODUCT_API_TIMEOUT
+				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in updating cart items [%s]" % (g.UUID, str(e)), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(e)
@@ -148,9 +163,17 @@ class CartService:
 				try:
 					self.check_for_coupons_applicable(data, cart)
 
+				except ServiceUnAvailableException as se:
+					Logger.error("[%s] Coupon service is unavailable" % g.UUID)
+					err = se
+					break
+				except ConnectTimeout:
+					Logger.error("[%s] Timeout exception for coupon api" %g.UUID)
+					err = ERROR.COUPON_API_TIMEOUT
+					break
 				except SubscriptionNotFoundException as snfe:
 					Logger.error("[%s] Exception occured in fetching catalog info [%s]" % (g.UUID, str(snfe)))
-					err = ERROR.SUBSCRIPTION_NOT_FOUND
+					err = snfe
 					break
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
@@ -263,6 +286,10 @@ class CartService:
 			try:
 				self.get_price_and_update_in_cart_item(data)
 
+			except ServiceUnAvailableException as se:
+				Logger.error("[%s] Product catalog service is unavailable" % g.UUID)
+				err = se
+				break
 			except SubscriptionNotFoundException as snfe:
 				Logger.error("[%s] Subscript not found for data  [%s] [%s]" % (g.UUID, str(snfe)))
 				err = ERROR.SUBSCRIPTION_NOT_FOUND
@@ -271,10 +298,14 @@ class CartService:
 				Logger.error("[%s] Quantity is not available [%s]" % (g.UUID, str(qnae)))
 				err = ERROR.PRODUCT_AVAILABILITY_CHANGED
 				break
+			except ConnectTimeout:
+				Logger.error("[%s] Timeout exception for product price api" % g.UUID)
+				err = ERROR.PRODUCT_API_TIMEOUT
+				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in getting price and update in cart item [%s]" % (g.UUID, str(e)),
+				Logger.error("[%s] Exception occurred in getting price and update in cart item [%s]" % (g.UUID, str(e.message)),
 							 exc_info=True)
-				ERROR.INTERNAL_ERROR.message = str(e)
+				ERROR.INTERNAL_ERROR.message = str(e.message)
 				err = ERROR.INTERNAL_ERROR
 				break
 
@@ -284,6 +315,10 @@ class CartService:
 				self.update_discounts_item_level(response_data, self.cart_items)
 				self.fetch_freebie_details_and_update(response_data.get('benefits', []),
 													  order_types.get(data['order_type']))
+			except ServiceUnAvailableException as se:
+				Logger.error("[%s] Coupon service is unavailable" % g.UUID)
+				err = se
+				break
 			except SubscriptionNotFoundException as snfe:
 				Logger.error("[%s] Exception occured in fetching catalog info [%s]" % (g.UUID, str(snfe)))
 				err = ERROR.SUBSCRIPTION_NOT_FOUND
@@ -292,9 +327,13 @@ class CartService:
 				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(cie)))
 				err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
 				break
+			except ConnectTimeout:
+				Logger.error("[%s] Timeout exception for coupon api" % g.UUID)
+				err = ERROR.COUPON_API_TIMEOUT
+				break
 			except Exception as e:
-				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(e)))
-				ERROR.INTERNAL_ERROR.message = str(e)
+				Logger.error("[%s] Exception occurred in checking coupons for cart item [%s]" % (g.UUID, str(e.message)))
+				ERROR.INTERNAL_ERROR.message = str(e.message)
 				err = ERROR.INTERNAL_ERROR
 				break
 
@@ -563,8 +602,15 @@ class CartService:
 		elif cart is not None and cart.promo_codes is not None:
 			req_data["coupon_codes"] = json.loads(cart.promo_codes)
 		response = CouponService.call_check_coupon_api(req_data)
-
-		if response.status_code == 200 and "coupon_codes" in req_data and cart is not None:
+		if response.status_code != 200:
+				if response.status_code == 404:
+					Logger.error("[%s] Coupon service is temporarily unavailable" %g.UUID)
+					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
+				else:
+					Logger.error("[%s] Coupon service is returning error" %g.UUID)
+					ERROR.INTERNAL_ERROR.message = "Error in coupon service"
+					raise Exception(ERROR.INTERNAL_ERROR)
+		if "coupon_codes" in req_data and cart is not None:
 			cart.promo_codes = json.dumps(req_data["coupon_codes"])
 		json_data = json.loads(response.text)
 		Logger.info(
@@ -733,6 +779,7 @@ class CartService:
 				return self.add_item_to_existing_cart_no_price_cal(cart, request_data)
 			else:
 				return self.create_cart_no_price_cal(request_data)
+
 		except IncorrectDataException as ide:
 			Logger.error("[%s] Validation Error [%s]" % (g.UUID, str(ide.message)))
 			return create_error_response(ide)
@@ -843,10 +890,6 @@ class CartService:
 			except IncorrectDataException:
 				Logger.error("[%s] Non existing item can not be deleted" % g.UUID)
 				err = ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED
-				break
-			except SubscriptionNotFoundException:
-				Logger.error("[%s] Subscription is not valid" % g.UUID)
-				err = ERROR.SUBSCRIPTION_NOT_FOUND
 				break
 			except EmptyCartException:
 				Logger.error("[%s] Cart has become empty" % g.UUID)

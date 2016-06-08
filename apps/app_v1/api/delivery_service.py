@@ -9,10 +9,11 @@ from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail, CartIt
 from config import APP_NAME
 from flask import g, current_app
 import requests
+from requests.exceptions import ConnectTimeout
 from sqlalchemy import func, distinct
 from utils.jsonutils.output_formatter import create_data_response, create_error_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, NoShippingAddressFoundException, \
-	NoDeliverySlotException, ShipmentPreviewException
+	NoDeliverySlotException, ShipmentPreviewException, ServiceUnAvailableException
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
@@ -64,6 +65,14 @@ class DeliveryService:
 			Logger.error("[%s] No such cart Exist [%s]" % (g.UUID, str(nsce)))
 			db.session.rollback()
 			return create_error_response(ERROR.NO_SUCH_CART_EXIST)
+		except ServiceUnAvailableException as se:
+			Logger.error("[%s]Fulfillment service is temorarily unavailable " % g.UUID)
+			db.session.rollback()
+			return create_error_response(ERROR.FULFILLMENT_SERVICE_DOWN)
+		except ConnectTimeout:
+			Logger.error("[%s] Timeout exception for fulfillment api" % g.UUID)
+			db.session.rollback()
+			return create_error_response(ERROR.FULFILLMENT_API_TIMEOUT)
 		except ShipmentPreviewException as spe:
 			Logger.error("[%s] hipment preview responded with Error [%s]" % (g.UUID, str(spe)))
 			db.session.rollback()
@@ -78,10 +87,15 @@ class DeliveryService:
 		req_data = self.create_shipment_preview_request_data(request_data)
 		url = current_app.config['SHIPMENT_PREVIEW_URL']
 		Logger.info("request data for shipment preview API is [%s]" % (json.dumps(req_data)))
-		response = requests.post(url=url, data=json.dumps(req_data), headers={'Content-type': 'application/json'})
+		response = requests.post(url=url, data=json.dumps(req_data), headers={'Content-type': 'application/json'}, 	timeout= current_app.config['API_TIMEOUT'])
 		Logger.info("[%s] Response got from get shipment preview API is [%s]" % (g.UUID, response))
 		if response.status_code != 200:
-			raise ShipmentPreviewException(ERROR.SHIPMENT_PREVIEW_FAILED)
+			if response.status_code == 404:
+				Logger.error("[%s] Fulfillment service is down" %g.UUID)
+				raise ServiceUnAvailableException(ERROR.FULFILLMENT_SERVICE_DOWN)
+			else:
+				Logger.error("[%s] Exception occurred in fulfilment service" %g.UUID)
+				raise ShipmentPreviewException(ERROR.SHIPMENT_PREVIEW_FAILED)
 		json_data = json.loads(response.text)
 		Logger.info("[%s] Shipment Preview Response: [%s]" % (
 			g.UUID, json_data))
@@ -161,13 +175,12 @@ class DeliveryService:
 
 	def update_slot(self, body):
 		try:
-			Logger.info("[%s]************************* Update Delivery Slots Start **************************" % g.UUID)
 			Logger.info("[%s] Update Slot API request body [%s]" % (g.UUID, body))
 			request_data = parse_request_data(body)
 			validate(request_data, UPDATE_DELIVERY_SLOT)
 			self.update_delivery_slot(request_data)
 			db.session.commit()
-			Logger.info("[%s]************************* Update Delivery Slots Start **************************" % g.UUID)
+
 			return create_data_response(data="success")
 		except Exception as e:
 			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)

@@ -9,6 +9,7 @@ from apps.app_v1.api.cart_service import CartService
 from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService
 import config
+from requests.exceptions import ConnectTimeout
 from sqlalchemy import func, distinct
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
@@ -24,7 +25,8 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
 	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, \
 	get_address, \
-	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException
+	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
+	ServiceUnAvailableException
 from utils.jsonutils.json_schema_validator import validate
 from dateutil.tz import tzlocal
 
@@ -176,6 +178,14 @@ class OrderService:
 				Logger.error("[%s] Data was stale, price has changed [%s]" % (g.UUID, json.dumps(request_data)))
 				err = pce
 				break
+			except ServiceUnAvailableException as se:
+				Logger.error("[%s] Product catalog API is unavailable" %g.UUID)
+				err = se
+				break
+			except ConnectTimeout:
+				Logger.error("[%s] Request timeout for product catalog" % g.UUID)
+				err = ERROR.PRODUCT_API_TIMEOUT
+				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in calculating and validating prices of subscriptions [%s]" % (
 					g.UUID, str(e)), exc_info=True)
@@ -202,6 +212,14 @@ class OrderService:
 			except CouponInvalidException as cie:
 				Logger.error("[%s]Coupon Not valid  [%s]" % (g.UUID, str(cie.message)))
 				err = cie
+				break
+			except ServiceUnAvailableException as se:
+				Logger.error("[%s] Coupon service is unavailable" %g.UUID)
+				err = se
+				break
+			except ConnectTimeout:
+				Logger.error("[%s] Timeout exception for coupon api" % g.UUID)
+				err = ERROR.COUPON_API_TIMEOUT
 				break
 			except Exception as e:
 				Logger.error("[%s] Exception occurred in checking discounts [%s]" % (g.UUID, str(e)), exc_info=True)
@@ -367,10 +385,17 @@ class OrderService:
 			"count": list_of_item_ids.__len__(),
 			"offset": 0
 		}
+		headers = {'Content-type': 'application/json'}
 		Logger.info("[%s] Request data for calculate price while creating order is [%s]" % (g.UUID, req_data))
-		response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'],
-								 data=json.dumps(req_data),
-								 headers={'Content-type': 'application/json'})
+		response = requests.post(url=current_app.config['PRODUCT_CATALOGUE_URL'], data=json.dumps(req_data), headers=headers, timeout= current_app.config['API_TIMEOUT'])
+		if response.status_code != 200:
+			if response.status_code == 404:
+				Logger.error("[%s] Catalog search API is down" %g.UUID)
+				raise ServiceUnAvailableException(ERROR.PRODUCT_CATALOG_SERVICE_DOWN)
+			else:
+				Logger.error("[%s] Error from product catalog service" %g.UUID)
+				ERROR.INTERNAL_ERROR.message = "Product catalog return error"
+				raise Exception(ERROR.INTERNAL_ERROR)
 		json_data = json.loads(response.text)
 		Logger.info("[%s] Calculate Price API Request [%s], Response [%s]" % (
 			g.UUID, json.dumps(req_data), json.dumps(json_data)))
@@ -470,6 +495,14 @@ class OrderService:
 				req_data["coupon_codes"] = coupon_codes
 
 		response = CouponService.call_check_coupon_api(req_data)
+		if response.status_code != 200:
+				if response.status_code == 404:
+					Logger.error("[%s] Coupon service is temporarily unavailable" %g.UUID)
+					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
+				else:
+					Logger.error("[%s] Coupon service is returning error" %g.UUID)
+					ERROR.INTERNAL_ERROR.message = "Error in coupon service"
+					raise Exception(ERROR.INTERNAL_ERROR)
 		json_data = json.loads(response.text)
 		return json_data
 
@@ -489,12 +522,16 @@ class OrderService:
 				benefit_list = list()
 				for each_benefit in response_data['benefits']:
 					benefit_list.append(each_benefit.get('couponCode'))
-			if freebie_coupon_code_list.__len__() > 0:
-				self.apply_coupon_code_list = freebie_coupon_code_list
-				if self.promo_codes is not None:
-					self.apply_coupon_code_list = self.apply_coupon_code_list + self.promo_codes
 				if not all(x in benefit_list for x in freebie_coupon_code_list):
 					raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_ALLOWED)
+			if freebie_coupon_code_list.__len__() > 0:
+				self.apply_coupon_code_list = freebie_coupon_code_list
+
+			if self.promo_codes is not None:
+				if self.apply_coupon_code_list is not None:
+					self.apply_coupon_code_list = self.apply_coupon_code_list + self.promo_codes
+				else:
+					self.apply_coupon_code_list = self.promo_codes
 
 			item_discount_dict = {}
 			for item in response_data['products']:
@@ -922,6 +959,14 @@ class OrderService:
 				req_data["coupon_codes"] = coupon_codes
 
 		response = CouponService.apply_coupon(req_data)
+		if response.status_code != 200:
+				if response.status_code == 404:
+					Logger.error("[%s] Coupon service is down" %g.UUID)
+					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
+				else:
+					Logger.error("[%s] Exception in coupon apply API" % g.UUID)
+					ERROR.INTERNAL_ERROR.message = "Error in coupon apply API"
+					raise Exception(ERROR.INTERNAL_ERROR)
 		json_data = json.loads(response.text)
 		if not json_data['success']:
 			error_msg = json_data['error'].get('error')
