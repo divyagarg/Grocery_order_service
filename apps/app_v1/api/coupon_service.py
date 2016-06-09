@@ -16,7 +16,7 @@ __author__ = 'divyagarg'
 Logger = logging.getLogger(APP_NAME)
 
 
-class CouponService:
+class CouponService(object):
 
 	def __init__(self):
 		pass
@@ -29,7 +29,7 @@ class CouponService:
 			response = CouponService.call_check_coupon_api(request_data)
 			return json.loads(response.text)
 		except Exception as e:
-			Logger.error('[%s] Exception occured while checking coupon [%s]' % (g.UUID, str(e)), exc_info=True)
+			Logger.error('[%s] Exception occured while checking coupon [%s]' , g.UUID, str(e), exc_info=True)
 			ERROR.INTERNAL_ERROR.message = str(e)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 

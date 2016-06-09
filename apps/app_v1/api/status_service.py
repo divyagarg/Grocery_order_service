@@ -5,7 +5,7 @@ from apps.app_v1.api import ERROR
 __author__ = 'divyagarg'
 
 
-class StatusService:
+class StatusService(object):
 	@staticmethod
 	def get_status_id(value):
 		status = Status.query.filter_by(status_code=value).first()

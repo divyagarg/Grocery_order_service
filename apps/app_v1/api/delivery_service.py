@@ -2,21 +2,21 @@ import json
 import logging
 import random
 import time
-
-from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS, UPDATE_DELIVERY_SLOT
-from apps.app_v1.models import db
-from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail, CartItem
-from config import APP_NAME
 from flask import g, current_app
 import requests
 from requests.exceptions import ConnectTimeout
 from sqlalchemy import func, distinct
+from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS, UPDATE_DELIVERY_SLOT
+from apps.app_v1.models import db
+from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail, CartItem
+from config import APP_NAME
 from utils.jsonutils.output_formatter import create_data_response, create_error_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, NoShippingAddressFoundException, \
 	NoDeliverySlotException, ShipmentPreviewException, ServiceUnAvailableException
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
+
 Logger = logging.getLogger(APP_NAME)
 
 
@@ -27,7 +27,37 @@ def create_shipment_id():
 	return shipment_id
 
 
-class DeliveryService:
+def update_delivery_slot(request_data):
+	delivery_slots_list = request_data.get('delivery_slots')
+	for each_slot in delivery_slots_list:
+		shipment_id = each_slot.get('shipment_id')
+		timerange = {"start_datetime": each_slot.get('start_datetime'),
+					 "end_datetime": each_slot.get('end_datetime')}
+		Logger.info("[%s] Shipment Id [%s], timerange = [%s]", g.UUID, shipment_id, timerange)
+		order_shipment = OrderShipmentDetail.query.filter_by(shipment_id=shipment_id).first()
+		if order_shipment is None:
+			raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
+		order_shipment.delivery_slot = json.dumps(timerange)
+		db.session.add(order_shipment)
+
+
+def update_slot(body):
+	try:
+		Logger.info("[%s] Update Slot API request body [%s]", g.UUID, body)
+		request_data = parse_request_data(body)
+		validate(request_data, UPDATE_DELIVERY_SLOT)
+		update_delivery_slot(request_data)
+		db.session.commit()
+
+		return create_data_response(data="success")
+	except Exception as exception:
+		Logger.error("[%s] Exception occurred in getting delivery Info [%s]", g.UUID, str(exception), exc_info=True)
+		db.session.rollback()
+		ERROR.INTERNAL_ERROR.message = str(exception)
+		return create_error_response(ERROR.INTERNAL_ERROR)
+
+
+class DeliveryService(object):
 	def __init__(self):
 
 		self.cart = None
@@ -40,12 +70,12 @@ class DeliveryService:
 			if cart is None:
 				raise NoSuchCartExistException(ERROR.NO_SUCH_CART_EXIST)
 			else:
-				Logger.info("Cart is not none in get delivery info [%s]" % cart.cart_reference_uuid)
+				Logger.info("Cart is not none in get delivery info [%s]", cart.cart_reference_uuid)
 				count = db.session.query(func.count(distinct(OrderShipmentDetail.shipment_id))).filter(
 					OrderShipmentDetail.cart_id == cart.cart_reference_uuid).group_by(
 					OrderShipmentDetail.cart_id).count()
 				if count > 0:
-					Logger.info("Count is not zero in get delivery info [%s]" % count)
+					Logger.info("Count is not zero in get delivery info [%s]", count)
 					cart_items_list = CartItem.query.filter_by(cart_id=cart.cart_reference_uuid).all()
 					for each_cart_item in cart_items_list:
 						each_cart_item.shipment_id = None
@@ -62,43 +92,42 @@ class DeliveryService:
 			db.session.commit()
 			return create_data_response(data=shipment_preview_response)
 		except NoSuchCartExistException as nsce:
-			Logger.error("[%s] No such cart Exist [%s]" % (g.UUID, str(nsce)))
+			Logger.error("[%s] No such cart Exist [%s]", g.UUID, str(nsce))
 			db.session.rollback()
 			return create_error_response(ERROR.NO_SUCH_CART_EXIST)
-		except ServiceUnAvailableException as se:
-			Logger.error("[%s]Fulfillment service is temorarily unavailable " % g.UUID)
+		except ServiceUnAvailableException:
+			Logger.error("[%s]Fulfillment service is temporarily unavailable " , g.UUID)
 			db.session.rollback()
 			return create_error_response(ERROR.FULFILLMENT_SERVICE_DOWN)
 		except ConnectTimeout:
-			Logger.error("[%s] Timeout exception for fulfillment api" % g.UUID)
+			Logger.error("[%s] Timeout exception for fulfillment api" , g.UUID)
 			db.session.rollback()
 			return create_error_response(ERROR.FULFILLMENT_API_TIMEOUT)
 		except ShipmentPreviewException as spe:
-			Logger.error("[%s] hipment preview responded with Error [%s]" % (g.UUID, str(spe)))
+			Logger.error("[%s] shipment preview responded with Error [%s]" , g.UUID, str(spe))
 			db.session.rollback()
 			return create_error_response(ERROR.SHIPMENT_PREVIEW_FAILED)
-		except Exception as e:
-			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
+		except Exception as exception:
+			Logger.error("[%s] Exception occurred in getting delivery Info [%s]", g.UUID, str(exception), exc_info=True)
 			db.session.rollback()
-			ERROR.INTERNAL_ERROR.message = str(e)
+			ERROR.INTERNAL_ERROR.message = str(exception)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
 	def get_shipment_preview(self, request_data):
 		req_data = self.create_shipment_preview_request_data(request_data)
 		url = current_app.config['SHIPMENT_PREVIEW_URL']
-		Logger.info("request data for shipment preview API is [%s]" % (json.dumps(req_data)))
+		Logger.info("request data for shipment preview API is [%s]" , json.dumps(req_data))
 		response = requests.post(url=url, data=json.dumps(req_data), headers={'Content-type': 'application/json'}, 	timeout= current_app.config['API_TIMEOUT'])
-		Logger.info("[%s] Response got from get shipment preview API is [%s]" % (g.UUID, response))
+		Logger.info("[%s] Response got from get shipment preview API is [%s]" , g.UUID, response)
 		if response.status_code != 200:
 			if response.status_code == 404:
-				Logger.error("[%s] Fulfillment service is down" %g.UUID)
+				Logger.error("[%s] Fulfillment service is down", g.UUID)
 				raise ServiceUnAvailableException(ERROR.FULFILLMENT_SERVICE_DOWN)
 			else:
-				Logger.error("[%s] Exception occurred in fulfilment service" %g.UUID)
+				Logger.error("[%s] Exception occurred in fulfilment service", g.UUID)
 				raise ShipmentPreviewException(ERROR.SHIPMENT_PREVIEW_FAILED)
 		json_data = json.loads(response.text)
-		Logger.info("[%s] Shipment Preview Response: [%s]" % (
-			g.UUID, json_data))
+		Logger.info("[%s] Shipment Preview Response: [%s]",	g.UUID, json_data)
 		if not json_data['success']:
 			ERROR.INTERNAL_ERROR.message = "Shipment preview API returning failure as response"
 			raise Exception(ERROR.INTERNAL_ERROR)
@@ -170,33 +199,5 @@ class DeliveryService:
 
 		order_data = {"order_items": order_items}
 		request_data = {"fulfilment_request_object": fulfilment_request_object, "order_data": order_data}
-		Logger.info("[%s] Request data for shipment preview is [%s]" % (g.UUID, json.dumps(request_data)))
+		Logger.info("[%s] Request data for shipment preview is [%s]", g.UUID, json.dumps(request_data))
 		return request_data
-
-	def update_slot(self, body):
-		try:
-			Logger.info("[%s] Update Slot API request body [%s]" % (g.UUID, body))
-			request_data = parse_request_data(body)
-			validate(request_data, UPDATE_DELIVERY_SLOT)
-			self.update_delivery_slot(request_data)
-			db.session.commit()
-
-			return create_data_response(data="success")
-		except Exception as e:
-			Logger.error("[%s] Exception occurred in getting delivery Info [%s]" % (g.UUID, str(e)), exc_info=True)
-			db.session.rollback()
-			ERROR.INTERNAL_ERROR.message = str(e)
-			return create_error_response(ERROR.INTERNAL_ERROR)
-
-	def update_delivery_slot(self, request_data):
-		delivery_slots_list = request_data.get('delivery_slots')
-		for each_slot in delivery_slots_list:
-			shipment_id = each_slot.get('shipment_id')
-			timerange = {"start_datetime": each_slot.get('start_datetime'),
-						 "end_datetime": each_slot.get('end_datetime')}
-			Logger.info("[%s] Shipment Id [%s], timerange = [%s]" % (g.UUID, shipment_id, timerange))
-			order_shipment = OrderShipmentDetail.query.filter_by(shipment_id=shipment_id).first()
-			if order_shipment is None:
-				raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
-			order_shipment.delivery_slot = json.dumps(timerange)
-			db.session.add(order_shipment)
