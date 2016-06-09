@@ -171,10 +171,6 @@ class CartService:
 					Logger.error("[%s] Timeout exception for coupon api" %g.UUID)
 					err = ERROR.COUPON_API_TIMEOUT
 					break
-				except SubscriptionNotFoundException as snfe:
-					Logger.error("[%s] Exception occured in fetching catalog info [%s]" % (g.UUID, str(snfe)))
-					err = snfe
-					break
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
 					err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
