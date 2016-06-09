@@ -179,6 +179,11 @@ class CartService:
 					Logger.error('[%s] Coupon can not be applied [%s]' % (g.UUID, str(cie)), exc_info=True)
 					err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
 					break
+				except Exception as e:
+					Logger.error("[%s] Exception occurred in coupin service [%s]" % (g.UUID, str(e)), exc_info=True)
+					ERROR.INTERNAL_ERROR.message = str(e)
+					err = ERROR.INTERNAL_ERROR
+					break
 
 			# 4 Shipping address
 			try:
@@ -608,8 +613,9 @@ class CartService:
 					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
 				else:
 					Logger.error("[%s] Coupon service is returning error" %g.UUID)
-					ERROR.INTERNAL_ERROR.message = "Error in coupon service"
-					raise Exception(ERROR.INTERNAL_ERROR)
+					error_msg =json.loads(response.text)['errors'][0]
+					ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
+					raise CouponInvalidException(ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
 		if "coupon_codes" in req_data and cart is not None:
 			cart.promo_codes = json.dumps(req_data["coupon_codes"])
 		json_data = json.loads(response.text)
