@@ -3,11 +3,11 @@ import logging
 import traceback
 import uuid
 import datetime
-import time
+
 
 from apps.app_v1.api.cart_service import CartService
 from apps.app_v1.api.coupon_service import CouponService
-from apps.app_v1.api.delivery_service import DeliveryService
+from apps.app_v1.api.delivery_service import DeliveryService, validate_delivery_slot
 import config
 from requests.exceptions import ConnectTimeout
 from sqlalchemy import func, distinct
@@ -28,7 +28,7 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
 	ServiceUnAvailableException
 from utils.jsonutils.json_schema_validator import validate
-from dateutil.tz import tzlocal
+
 
 __author__ = 'divyagarg'
 Logger = logging.getLogger(APP_NAME)
@@ -38,19 +38,7 @@ def get_cart(cart_reference_id):
 	return Cart.query.filter_by(cart_reference_uuid=cart_reference_id).first()
 
 
-def validate_delivery_slot(delivery_slot):
-	if delivery_slot is not None:
-		delivery_slot_json = json.loads(delivery_slot)
-		start_time = delivery_slot_json.get('start_datetime')
-		end_time = delivery_slot_json.get('end_datetime')
-		now = datetime.datetime.now(tzlocal())
-		t_start_time = time.strptime(start_time, '%Y-%m-%dT%H:%M:%S+00:00')
-		t_end_time = time.strptime(end_time, '%Y-%m-%dT%H:%M:%S+00:00')
-		if now.day > t_start_time.tm_mday:
-			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
-		elif now.day > t_end_time.tm_mday:
-			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
-		return delivery_slot
+
 
 
 def get_delivery_slot(cart_reference_id):
@@ -59,7 +47,7 @@ def get_delivery_slot(cart_reference_id):
 		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
 	if shipment.delivery_slot is None:
 		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
-	return validate_delivery_slot(shipment.delivery_slot)
+	return validate_delivery_slot(shipment.delivery_slot, 'string')
 
 
 class OrderService:
@@ -650,7 +638,7 @@ class OrderService:
 			order.orderItem = order_item_list
 
 			if self.shipment_id_slot_dict is not None and self.shipment_id_slot_dict.__len__() > 0:
-				order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict.values()[0])
+				order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict.values()[0], 'string')
 			else:
 				order.delivery_slot = None
 			# if self.delivery_slot is not None:
@@ -678,7 +666,7 @@ class OrderService:
 				sub_order.parent_order_id = self.parent_reference_id
 				sub_order.order_reference_id = uuid.uuid1().hex
 				if key in self.shipment_id_slot_dict:
-					sub_order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict[key])
+					sub_order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict[key], 'string')
 				else:
 					sub_order.delivery_slot = None
 

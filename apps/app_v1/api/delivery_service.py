@@ -2,7 +2,9 @@ import json
 import logging
 import random
 import time
+import datetime
 
+from dateutil.tz import tzlocal
 from apps.app_v1.api.api_schema_signature import GET_DELIVERY_DETAILS, UPDATE_DELIVERY_SLOT
 from apps.app_v1.models import db
 from apps.app_v1.models.models import Cart, Address, OrderShipmentDetail, CartItem
@@ -13,12 +15,30 @@ from requests.exceptions import ConnectTimeout
 from sqlalchemy import func, distinct
 from utils.jsonutils.output_formatter import create_data_response, create_error_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, NoShippingAddressFoundException, \
-	NoDeliverySlotException, ShipmentPreviewException, ServiceUnAvailableException
+	NoDeliverySlotException, ShipmentPreviewException, ServiceUnAvailableException, OlderDeliverySlotException
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
 Logger = logging.getLogger(APP_NAME)
 
+
+def validate_delivery_slot(delivery_slot, type):
+
+	if delivery_slot is not None:
+		if type == 'string':
+			delivery_slot_json = json.loads(delivery_slot)
+		elif type == 'dict':
+			delivery_slot_json = delivery_slot
+		start_time = delivery_slot_json.get('start_datetime')
+		end_time = delivery_slot_json.get('end_datetime')
+		now = datetime.datetime.now(tzlocal())
+		t_start_time = time.strptime(start_time, '%Y-%m-%dT%H:%M:%S+00:00')
+		t_end_time = time.strptime(end_time, '%Y-%m-%dT%H:%M:%S+00:00')
+		if now.day > t_start_time.tm_mday:
+			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+		elif now.day > t_end_time.tm_mday:
+			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+		return delivery_slot
 
 def create_shipment_id():
 	longtime = str(int(time.time()))
@@ -191,6 +211,7 @@ class DeliveryService:
 	def update_delivery_slot(self, request_data):
 		delivery_slots_list = request_data.get('delivery_slots')
 		for each_slot in delivery_slots_list:
+			validate_delivery_slot(each_slot, 'dict')
 			shipment_id = each_slot.get('shipment_id')
 			timerange = {"start_datetime": each_slot.get('start_datetime'),
 						 "end_datetime": each_slot.get('end_datetime')}

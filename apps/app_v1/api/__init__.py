@@ -62,7 +62,7 @@ class ERROR(object):
 
 	# Delivery Specific Error
 	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code=5001, message="Delivery slot not found")
-	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code=5002, message="Older Delivery slot found")
+	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code=5002, message="Older Delivery slot can not be updated")
 	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=5003, message="Shipment Preview Failed")
 	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=5004, message="Shipping address is mandatory for Order placement")
 	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=5005, message="Shipping charges changed")
