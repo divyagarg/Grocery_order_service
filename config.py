@@ -112,9 +112,7 @@ class ProductionConfig(Config):
 	DATABASE_NAME = 'grocery_order_service'
 	DATABASE_URI = 'mysql+pymysql://OrderEngine:OrderEngine1234@orderengineproduction.c0wj8qdslqom.ap-southeast-1.rds.amazonaws.com/'
 	SECRET_KEY = 'hard to guess string'
-	# KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
-	# KAFKA_TOPIC = 'fulfillment_staging'
-	# KAKFA_GROUP = 'fulfillmentservice_group'
+
 	SQLALCHEMY_DATABASE_URI = DATABASE_URI + DATABASE_NAME
 	SQLALCHEMY_TRACK_MODIFICATIONS = False
 	SQLALCHEMY_POOL_SIZE = 100
@@ -127,6 +125,9 @@ class ProductionConfig(Config):
 	PAYMENT_AUTH_KEY = "553dd18b3199a533a9000001616c2be33cd24735432775949282dc3a"
 	X_API_USER = "askmegrocery"
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
+
+	KAFKA_HOSTS= ['kafka01.production.askmebazaar.com:9092', 'kafka02.production.askmebazaar.com:9092','kafka03.production.askmebazaar.com:9092']
+	KAFKA_TOPIC = 'grocery_orderservice_staging'
 
 
 config = {
