@@ -152,7 +152,7 @@ def get_response_from_check_coupons_api(cart_items, data, cart):
 		else:
 			Logger.error("[%s] Coupon service is returning error", g.UUID)
 			ERROR.INTERNAL_ERROR.message = "Error in coupon service"
-			raise Exception(ERROR.INTERNAL_ERROR)
+			raise CouponInvalidException(ERROR.INTERNAL_ERROR)
 	if "coupon_codes" in req_data and cart is not None:
 		cart.promo_codes = json.dumps(req_data["coupon_codes"])
 	json_data = json.loads(response.text)
