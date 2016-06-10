@@ -337,11 +337,12 @@ class OrderService(object):
 				break
 			except CouponInvalidException as cie:
 				Logger.error("[%s]Coupon Not valid  [%s]", g.UUID, str(cie.message))
-				err = cie
+				ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = cie.message
+				err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
 				break
-			except ServiceUnAvailableException as se:
+			except ServiceUnAvailableException:
 				Logger.error("[%s] Coupon service is unavailable", g.UUID)
-				err = se
+				err = ERROR.COUPON_SERVICE_DOWN
 				break
 			except ConnectTimeout:
 				Logger.error("[%s] Timeout exception for coupon api", g.UUID)
@@ -591,10 +592,10 @@ class OrderService(object):
 				if response.status_code == 404:
 					Logger.error("[%s] Coupon service is temporarily unavailable", g.UUID)
 					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
-				else:
-					Logger.error("[%s] Coupon service is returning error", g.UUID)
-					ERROR.INTERNAL_ERROR.message = "Error in coupon service"
-					raise Exception(ERROR.INTERNAL_ERROR)
+				elif response.status_code == 400:
+					ERROR.INTERNAL_ERROR.message = json.loads(response.text)['errors'][0]
+					Logger.error("[%s] Coupon service is returning error", g.UUID, ERROR.INTERNAL_ERROR.message)
+					raise CouponInvalidException(ERROR.INTERNAL_ERROR)
 		json_data = json.loads(response.text)
 		return json_data
 
@@ -953,10 +954,10 @@ class OrderService(object):
 				if response.status_code == 404:
 					Logger.error("[%s] Coupon service is down", g.UUID)
 					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
-				else:
-					Logger.error("[%s] Exception in coupon apply API", g.UUID)
-					ERROR.INTERNAL_ERROR.message = "Error in coupon apply API"
-					raise Exception(ERROR.INTERNAL_ERROR)
+				elif response.status_code == 400:
+					ERROR.COUPON_APPLY_FAILED.message = json.loads(response.text)['errors'][0]
+					Logger.error("[%s] Exception in coupon apply API", g.UUID, ERROR.COUPON_APPLY_FAILED.message)
+					raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)
 		json_data = json.loads(response.text)
 		if not json_data['success']:
 			error_msg = json_data['error'].get('error')

@@ -149,9 +149,9 @@ def get_response_from_check_coupons_api(cart_items, data, cart):
 			Logger.error("[%s] Coupon service is temporarily unavailable",
 						 g.UUID)
 			raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
-		else:
-			Logger.error("[%s] Coupon service is returning error", g.UUID)
-			ERROR.INTERNAL_ERROR.message = "Error in coupon service"
+		elif response.status_code == 400:
+			Logger.error("[%s] Coupon service is returning error [%s]", g.UUID, json.loads(response.text)['errors'][0])
+			ERROR.INTERNAL_ERROR.message = json.loads(response.text)['errors'][0]
 			raise CouponInvalidException(ERROR.INTERNAL_ERROR)
 	if "coupon_codes" in req_data and cart is not None:
 		cart.promo_codes = json.dumps(req_data["coupon_codes"])
@@ -367,11 +367,12 @@ class CartService(object):
 				except CouponInvalidException as cie:
 					Logger.error('[%s] Coupon can not be applied [%s]',
 								 g.UUID, str(cie), exc_info=True)
+					ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = cie.message
 					err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
 					break
-				except Exception as e:
-					Logger.error("[%s] Exception occurred in coupin service [%s]" % (g.UUID, str(e)), exc_info=True)
-					ERROR.INTERNAL_ERROR.message = str(e)
+				except Exception as exception:
+					Logger.error("[%s] Exception occurred in coupin service [%s]" % (g.UUID, str(exception)), exc_info=True)
+					ERROR.INTERNAL_ERROR.message = str(exception)
 					err = ERROR.INTERNAL_ERROR
 					break
 
@@ -910,9 +911,9 @@ class CartService(object):
 				db.session.add_all(self.item_id_to_existing_item_dict.values())
 				db.session.commit()
 				error_msg = response_data['error'].get('error')
-				ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = error_msg
+				ERROR.INTERNAL_ERROR.message = error_msg
 				raise CouponInvalidException(
-					ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS)
+					ERROR.INTERNAL_ERROR)
 			else:
 				Logger.info(
 					"[%s] Updating discount to 0 because of coupon error [%s]",
