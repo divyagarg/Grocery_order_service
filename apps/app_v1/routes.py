@@ -11,7 +11,7 @@ from utils.jsonutils.output_formatter import create_error_response
 from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService, update_slot
 from apps.app_v1.api.order_service import OrderService, \
-	get_count_of_orders_of_user
+	get_count_of_orders_of_user, check_if_cod_possible_for_order
 from . import app_v1
 from apps.app_v1.api import ERROR
 from lib.decorators import jsonify, logrequest
@@ -180,10 +180,20 @@ def change_user():
 	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
+
 @app_v1.route('/check_coupon', methods=['POST'])
 def check_coupon():
 	g.UUID = uuid.uuid4()
 	logger.info('START CALL [%s] [%s]: Request url = [%s], arguments = [%s]', g.UUID, '/check_coupon', str(request.url), json.dumps(request.data))
 	response = CouponService.check_coupon_api(request.data)
+	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	return flask.jsonify(response)
+
+
+@app_v1.route('/check_cod/<order_id>', methods = ['GET'])
+def check_cod(order_id):
+	g.UUID = uuid.uuid4()
+	logger.info('START CALL [%s] Request url = [%s], arguments = [%s], order_id = [%s]', g.UUID, str(request.url), json.dumps(request.data), order_id)
+	response = check_if_cod_possible_for_order(order_id)
 	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)

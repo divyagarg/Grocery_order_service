@@ -3,12 +3,12 @@ import logging
 import traceback
 import uuid
 import datetime
+
 from flask import g, current_app
 import requests
 from sqlalchemy import func, distinct
 from requests.exceptions import ConnectTimeout
 from apps.app_v1.api.cart_service import remove_cart
-
 from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService, validate_delivery_slot
 import config
@@ -25,9 +25,8 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, \
 	get_address, \
 	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
-	ServiceUnAvailableException
+	ServiceUnAvailableException, OrderNotFoundException
 from utils.jsonutils.json_schema_validator import validate
-
 
 __author__ = 'divyagarg'
 Logger = logging.getLogger(APP_NAME)
@@ -57,6 +56,61 @@ def get_count_of_orders_of_user(user_id):
 		return create_error_response(ERROR.INTERNAL_ERROR)
 
 	return create_data_response({"count": count})
+
+
+def check_if_cod_possible_for_order(order_id):
+	try:
+		if order_id is None:
+			Logger.error("[%s] Order id can not be null", g.UUID)
+			return create_error_response(ERROR.VALIDATION_ERROR)
+		master_order = MasterOrder.query.filter_by(order_id = order_id).first()
+		if master_order is None:
+			Logger.error("[%s] Order does not exist for order Id:[%s]", g.UUID, order_id)
+			return create_error_response(ERROR.NO_ORDER_FOUND_ERROR)
+		if master_order.promo_codes is None:
+			return create_data_response({"message": "COD is allowed"})
+
+		orders = Order.query.filter_by(parent_order_id=order_id).all()
+		req_data = {}
+		if orders.__len__() > 0:
+			req_data["area_id"] = str(orders[0].geo_id)
+			req_data["customer_id"] = orders[0].user_id
+			req_data["channel"] = orders[0].order_source_reference
+			req_data["coupon_codes"]= json.loads(orders[0].promo_codes)
+			req_data["payment_mode"]= "COD"
+
+			if orders.__len__() == 1:
+				req_data["products"] = [
+						{"item_id": str(each_order_item.item_id),
+						 "subscription_id": str(each_order_item.item_id),
+						 "quantity": each_order_item.quantity,
+						}
+						for each_order_item in orders[0].orderItem]
+			elif orders.__len__() > 1:
+				product_list = list()
+				for each_order in orders:
+					for order_item in each_order.orderIten:
+						product ={
+							"item_id": str(order_item.item_id),
+							 "subscription_id": str(order_item.item_id),
+							 "quantity": order_item.quantity,
+						}
+						product_list.append(product)
+				req_data["products"] = product_list
+
+
+			response = CouponService.call_check_coupon_api(req_data)
+			if response.status_code == 200:
+				return create_data_response({"message": "COD is allowed"})
+			elif response.status_code == 400:
+				ERROR.PAYMENT_MODE_NOT_ALLOWED.message = "Coupon code is not valid for COD"
+				return create_error_response(ERROR.PAYMENT_MODE_NOT_ALLOWED)
+			response_json =  json.loads(response.text)
+
+	except Exception as exception:
+		Logger.error('[%s] Exception occured while checking if cod is possible on order [%s]',g.UUID, str(exception), exc_info=True)
+		ERROR.INTERNAL_ERROR.message = str(exception)
+		return create_error_response(ERROR.INTERNAL_ERROR)
 
 
 def compare_prices_of_items_objects(item_id_to_item_obj_dict, order_item_dict):

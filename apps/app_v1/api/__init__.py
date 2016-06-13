@@ -35,7 +35,7 @@ class ERROR(object):
 
 	# Coupon specific Error
 	DISCOUNT_CHANGED = ERROR_DETAIL(code=2001, message="Discount not applicable")
-	PAYMENT_MODE_NOT_ALLOWED = ERROR_DETAIL(code=2002, message="Selected Payment mode is not applicable for this order")
+	PAYMENT_MODE_NOT_ALLOWED = ERROR_DETAIL(code=2002, message="Coupon code is not valid for given paymentMode")
 	FREEBIE_NOT_ALLOWED = ERROR_DETAIL(code=2003, message="Freebie is not correct")
 	COUPON_NOT_APPLIED_FOR_CHANNEL = ERROR_DETAIL(code=2004, message="Coupon is not applicable for this channel")
 	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=2005, message="Coupon service returning failure status")
