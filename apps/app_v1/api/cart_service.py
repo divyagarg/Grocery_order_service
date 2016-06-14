@@ -271,6 +271,7 @@ class CartService(object):
 		self.deleted_cart_items = None
 		self.shipping_address = None
 		self.total_cashback = 0.0
+		self.payment_mode_allowed = None
 
 	def create_or_update_cart(self, body):
 		try:
@@ -281,7 +282,7 @@ class CartService(object):
 			cart = get_cart_for_geo_user_id(request_data['geo_id'], \
 											request_data['user_id'])
 			if cart is not None:
-				return self.update_cart(cart, request_data)
+				return self.update_cart(cart, request_data, 0)
 			else:
 				return self.create_cart(request_data)
 
@@ -295,7 +296,7 @@ class CartService(object):
 			ERROR.INTERNAL_ERROR.message = str(exception)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
-	def update_cart(self, cart, data):
+	def update_cart(self, cart, data, operation):
 		Logger.info(
 			"[%s]***********************Update Cart Started********************",
 			g.UUID)
@@ -304,7 +305,7 @@ class CartService(object):
 		while True:
 			# 1 Item update(Added, removed, update)
 			try:
-				self.update_cart_items(data, cart)
+				self.update_cart_items(data, cart, operation)
 
 			except IncorrectDataException:
 				Logger.error("[%s] Non existing item can not be deleted",\
@@ -675,6 +676,7 @@ class CartService(object):
 		}
 		if cart.promo_codes is not None:
 			response_json["promo_codes"] = json.loads(cart.promo_codes)
+			response_json["allowed_payment_modes"] = self.payment_mode_allowed
 		if cart.selected_freebee_items is not None:
 			response_json["selected_freebee_code"] = json.loads(
 				cart.selected_freebee_items)
@@ -714,7 +716,7 @@ class CartService(object):
 				order_item_dict["title"] = item.title
 				order_item_dict["image_url"] = item.image_url
 				items.append(order_item_dict)
-			response_json["orderitems"].append(items)
+			response_json["orderitems"] = items
 
 		elif self.item_id_to_existing_item_dict.values().__len__() != 0:
 			items = list()
@@ -728,7 +730,7 @@ class CartService(object):
 				order_item_dict["title"] = item.title
 				order_item_dict["image_url"] = item.image_url
 				items.append(order_item_dict)
-			response_json["orderitems"].append(items)
+			response_json["orderitems"] = items
 		Logger.info("[%s] Response for create/update cart is: [%s]",
 					g.UUID, json.dumps(response_json))
 		return response_json
@@ -738,6 +740,8 @@ class CartService(object):
 		if response_data['success']:
 			self.total_discount = float(response_data['totalDiscount'])
 			self.total_cashback = float(response_data['totalCashback'])
+			if response_data['paymentMode'] is not None:
+				self.payment_mode_allowed = response_data['paymentMode']
 			# TODO : optimize two loops to one.
 			for item in response_data['products']:
 				item_discount_dict[item['itemid']] = item
@@ -817,7 +821,7 @@ class CartService(object):
 
 		return address
 
-	def update_cart_items(self, data, cart):
+	def update_cart_items(self, data, cart, operation):
 
 		self.item_id_to_existing_item_dict = {}
 		for existing_cart_item in cart.cartItem:
@@ -827,47 +831,69 @@ class CartService(object):
 		no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 		self.deleted_cart_items = {}
 		if 'orderitems' in data and data['orderitems'].__len__() > 0:
-
-			for data_item in data['orderitems']:
-
-				if data_item['quantity'] == 0 and no_of_left_items_in_cart > 0:
-
-					existing_cart_item = self.item_id_to_existing_item_dict.get(
-						data_item['item_uuid'])
+			if operation == 0:
+				for data_item in data['orderitems']:
+					if data_item['quantity'] == 0 and no_of_left_items_in_cart > 0:
+						existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					if existing_cart_item is None:
-						raise IncorrectDataException(
-							ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
-					del self.item_id_to_existing_item_dict[
-						data_item['item_uuid']]
-					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
-					self.deleted_cart_items[
-						data_item['item_uuid']] = existing_cart_item
+						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
+						del self.item_id_to_existing_item_dict[data_item['item_uuid']]
+						no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
+						self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
 
-				elif data_item[
-					'quantity'] == 0 and no_of_left_items_in_cart == 0:
-					Logger.info("[%s] Cart is empty", g.UUID)
-					raise EmptyCartException(ERROR.CART_EMPTY)
+					elif data_item['quantity'] == 0 and no_of_left_items_in_cart == 0:
+						Logger.info("[%s] Cart is empty", g.UUID)
+						raise EmptyCartException(ERROR.CART_EMPTY)
 
-				elif data_item[
-					'item_uuid'] in self.item_id_to_existing_item_dict:
-					existing_cart_item = self.item_id_to_existing_item_dict.get(
-						data_item['item_uuid'])
-					existing_cart_item.quantity = data_item['quantity']
-					existing_cart_item.promo_codes = data_item.get(
-						'promo_codes')
+					elif data_item[
+						'item_uuid'] in self.item_id_to_existing_item_dict:
+						existing_cart_item = self.item_id_to_existing_item_dict.get(
+							data_item['item_uuid'])
+						existing_cart_item.quantity = data_item['quantity']
+						existing_cart_item.promo_codes = data_item.get(
+							'promo_codes')
 
-				elif data_item[
-					'item_uuid'] not in self.item_id_to_existing_item_dict and \
-								data_item['quantity'] > 0:
-					new_cart_item = CartItem()
-					new_cart_item.cart_id = cart.cart_reference_uuid
-					new_cart_item.cart_item_id = data_item['item_uuid']
-					new_cart_item.quantity = data_item['quantity']
-					new_cart_item.promo_codes = data_item.get('promo_codes')
-					new_cart_item.item_discount = 0.0
-					self.item_id_to_existing_item_dict[
-						int(data_item['item_uuid'])] = new_cart_item
-					no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
+					elif data_item[
+						'item_uuid'] not in self.item_id_to_existing_item_dict and \
+									data_item['quantity'] > 0:
+						new_cart_item = CartItem()
+						new_cart_item.cart_id = cart.cart_reference_uuid
+						new_cart_item.cart_item_id = data_item['item_uuid']
+						new_cart_item.quantity = data_item['quantity']
+						new_cart_item.promo_codes = data_item.get('promo_codes')
+						new_cart_item.item_discount = 0.0
+						self.item_id_to_existing_item_dict[
+							int(data_item['item_uuid'])] = new_cart_item
+						no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
+
+			elif operation == 1:
+				for data_item in data['orderitems']:
+					if data_item['item_uuid'] in self.item_id_to_existing_item_dict and data_item['quantity']>0:
+						existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
+						existing_cart_item.quantity += data_item['quantity']
+
+					elif data_item['item_uuid'] not in self.item_id_to_existing_item_dict and data_item['quantity']>0:
+						new_cart_item = CartItem()
+						new_cart_item.cart_id = cart.cart_reference_uuid
+						new_cart_item.cart_item_id = data_item['item_uuid']
+						new_cart_item.quantity = data_item['quantity']
+						new_cart_item.promo_codes = data_item.get('promo_codes')
+						new_cart_item.item_discount = 0.0
+						self.item_id_to_existing_item_dict[
+							int(data_item['item_uuid'])] = new_cart_item
+
+			elif operation == 2:
+				for data_item in data['orderitems']:
+					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
+					if existing_cart_item is None:
+						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
+					if data_item['quantity'] >= existing_cart_item.quantity:
+						existing_cart_item.quantity = 0
+					else:
+						existing_cart_item.quantity -= data_item['quantity']
+					if existing_cart_item.quantity == 0:
+						del self.item_id_to_existing_item_dict[data_item['item_uuid']]
+						self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
 
 		request_items = list()
 		for cart_item in self.item_id_to_existing_item_dict.values():
@@ -1217,7 +1243,7 @@ class CartService(object):
 					data[
 						'order_source_reference'] = cart2.order_source_reference
 					data['order_type'] = 0
-					return self.update_cart(cart2, data)
+					return self.update_cart(cart2, data, 0)
 				else:
 					if cart2 is not None:
 						remove_cart(cart2.cart_reference_uuid)
@@ -1227,7 +1253,7 @@ class CartService(object):
 					data[
 						'order_source_reference'] = cart1.order_source_reference
 					data['order_type'] = 0
-					return self.update_cart(cart1, data)
+					return self.update_cart(cart1, data, 0)
 			else:
 				# return Cart2
 				if cart2 is None:
@@ -1235,10 +1261,58 @@ class CartService(object):
 						ERROR.CHANGE_USER_NOT_POSSIBLE)
 				data['order_source_reference'] = cart2.order_source_reference
 				data['order_type'] = 0
-				return self.update_cart(cart2, data)
+				return self.update_cart(cart2, data, 0)
 
 		except Exception as exception:
 			Logger.error('[%s] Exception occured while change_user [%s]',
 						 g.UUID, str(exception), exc_info=True)
+			ERROR.INTERNAL_ERROR.message = str(exception)
+			return create_error_response(ERROR.INTERNAL_ERROR)
+
+	def add_to_cart(self, body):
+		try:
+			Logger.info("[%s] Add To Cart request body [%s]", \
+						g.UUID, body)
+			request_data = parse_request_data(body)
+			validate(request_data, CREATE_CART_SCHEMA)
+			cart = get_cart_for_geo_user_id(request_data['geo_id'], \
+											request_data['user_id'])
+			if cart is not None:
+				return self.update_cart(cart, request_data, 1)
+			else:
+				Logger.error("[%s] Cart does not exist for geo_id: [%s] and user_id: [%s]", g.UUID, request_data['geo_id'], request_data['user_id'])
+				return create_error_response(ERROR.NO_SUCH_CART_EXIST)
+
+		except IncorrectDataException as ide:
+			Logger.error("[%s] Validation Error [%s]",
+						 g.UUID, str(ide.message))
+			return create_error_response(ide)
+		except Exception as exception:
+			Logger.error('[%s] Exception occured while creating/updating\
+						cart [%s]', g.UUID, str(exception), exc_info=True)
+			ERROR.INTERNAL_ERROR.message = str(exception)
+			return create_error_response(ERROR.INTERNAL_ERROR)
+
+	def remove_from_cart(self, body):
+		try:
+			Logger.info("[%s] Remove from cart request body [%s]", \
+						g.UUID, body)
+			request_data = parse_request_data(body)
+			validate(request_data, CREATE_CART_SCHEMA)
+			cart = get_cart_for_geo_user_id(request_data['geo_id'], \
+											request_data['user_id'])
+			if cart is not None:
+				return self.update_cart(cart, request_data, 2)
+			else:
+				Logger.error("[%s] Cart does not exist for geo_id: [%s] and user_id: [%s]", g.UUID, request_data['geo_id'], request_data['user_id'])
+				return create_error_response(ERROR.NO_SUCH_CART_EXIST)
+
+		except IncorrectDataException as ide:
+			Logger.error("[%s] Validation Error [%s]",
+						 g.UUID, str(ide.message))
+			return create_error_response(ide)
+		except Exception as exception:
+			Logger.error('[%s] Exception occured while creating/updating\
+						cart [%s]', g.UUID, str(exception), exc_info=True)
 			ERROR.INTERNAL_ERROR.message = str(exception)
 			return create_error_response(ERROR.INTERNAL_ERROR)

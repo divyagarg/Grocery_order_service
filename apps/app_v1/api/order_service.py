@@ -1,7 +1,6 @@
 import json
 import logging
 import traceback
-import uuid
 import datetime
 
 from flask import g, current_app
@@ -25,7 +24,7 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, \
 	get_address, \
 	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
-	ServiceUnAvailableException, OrderNotFoundException
+	ServiceUnAvailableException
 from utils.jsonutils.json_schema_validator import validate
 
 __author__ = 'divyagarg'
@@ -35,6 +34,7 @@ Logger = logging.getLogger(APP_NAME)
 def get_cart(cart_reference_id):
 	return Cart.query.filter_by(cart_reference_uuid=cart_reference_id).first()
 
+
 def get_delivery_slot(cart_reference_id):
 	shipment = OrderShipmentDetail.query.filter_by(cart_id=cart_reference_id).first()
 	if shipment is None:
@@ -42,6 +42,7 @@ def get_delivery_slot(cart_reference_id):
 	if shipment.delivery_slot is None:
 		raise NoDeliverySlotException(ERROR.NO_DELIVERY_SLOT_ERROR)
 	return validate_delivery_slot(shipment.delivery_slot, 'string')
+
 
 def get_count_of_orders_of_user(user_id):
 	try:
@@ -56,6 +57,26 @@ def get_count_of_orders_of_user(user_id):
 		return create_error_response(ERROR.INTERNAL_ERROR)
 
 	return create_data_response({"count": count})
+
+
+def convert_order_to_cod(body):
+	try:
+		request_data = parse_request_data(body)
+		order_id = request_data.get('order_id')
+		response = check_if_cod_possible_for_order(order_id= order_id)
+		if response.get('status'):
+			master_order = MasterOrder.query.filter_by(order_id = order_id).first()
+			master_order.payment_mode = payment_modes_dict[0]
+			db.session.add(master_order)
+			db.session.commit()
+			return create_data_response(data= "Converted Order to COD")
+		else:
+			return response
+	except Exception as exception:
+		Logger.error('[%s] Exception occured while converting order to COD [%s]',g.UUID, str(exception), exc_info=True)
+		ERROR.INTERNAL_ERROR.message = str(exception)
+		return create_error_response(ERROR.INTERNAL_ERROR)
+
 
 
 def check_if_cod_possible_for_order(order_id):
@@ -105,8 +126,6 @@ def check_if_cod_possible_for_order(order_id):
 			elif response.status_code == 400:
 				ERROR.PAYMENT_MODE_NOT_ALLOWED.message = "Coupon code is not valid for COD"
 				return create_error_response(ERROR.PAYMENT_MODE_NOT_ALLOWED)
-			response_json =  json.loads(response.text)
-
 	except Exception as exception:
 		Logger.error('[%s] Exception occured while checking if cod is possible on order [%s]',g.UUID, str(exception), exc_info=True)
 		ERROR.INTERNAL_ERROR.message = str(exception)
@@ -300,6 +319,7 @@ class OrderService(object):
 		self.shipment_preview_present = None
 		self.shipment_id_to_item_ids_dict = {}
 		self.delivery_slot = None
+		self.final_order_ids = list()
 
 	def createorder(self, body):
 		error = True
@@ -471,7 +491,15 @@ class OrderService(object):
 		else:
 			try:
 				db.session.commit()
-				response = {'order_id': self.parent_reference_id}
+				response = {}
+				if self.final_order_ids.__len__() == 0:
+					response['master_order_id'] = self.parent_reference_id
+					response['shipments'] = [{"id": self.parent_reference_id}]
+				else:
+					response['master_order_id'] = self.parent_reference_id
+					response['shipments'] = [{ "id": each_shipment}
+											 for each_shipment in self.final_order_ids]
+
 
 				if self.total_cashback > 0.0:
 					response['total_cashback'] = self.total_cashback
@@ -711,7 +739,7 @@ class OrderService(object):
 				self.create_shipment_item_ids_dict_from_preview_response(shipments_list)
 			else:
 				self.split_order = False
-		elif order_shipment_details.__len__() > 0:
+		elif order_shipment_details.__len__() > 1:
 			self.shipment_preview_present = True
 			self.split_order = True
 			self.create_shipment_item_ids_dict_from_cart(order_shipment_details)
@@ -790,7 +818,7 @@ class OrderService(object):
 		if not self.split_order:
 			order = Order()
 			order.parent_order_id = self.parent_reference_id
-			order.order_reference_id = order.parent_order_id
+			order.order_reference_id = self.parent_reference_id
 			order_item_list = list()
 			create_order_item_obj(self.parent_reference_id, self.item_id_to_item_obj_dict.values(),
 									   order_item_list)
@@ -823,7 +851,8 @@ class OrderService(object):
 				# total cashback was coming as None so intializing with 0
 				sub_order.total_cashback = 0.0
 				sub_order.parent_order_id = self.parent_reference_id
-				sub_order.order_reference_id = uuid.uuid1().hex
+				sub_order.order_reference_id = generate_reference_order_id
+				self.final_order_ids.append(sub_order.order_reference_id)
 				if key in self.shipment_id_slot_dict:
 					sub_order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict[key], 'string')
 				else:

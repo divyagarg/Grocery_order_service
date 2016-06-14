@@ -11,7 +11,8 @@ from utils.jsonutils.output_formatter import create_error_response
 from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService, update_slot
 from apps.app_v1.api.order_service import OrderService, \
-	get_count_of_orders_of_user, check_if_cod_possible_for_order
+	get_count_of_orders_of_user, check_if_cod_possible_for_order, \
+	convert_order_to_cod
 from . import app_v1
 from apps.app_v1.api import ERROR
 from lib.decorators import jsonify, logrequest
@@ -195,5 +196,32 @@ def check_cod(order_id):
 	g.UUID = uuid.uuid4()
 	logger.info('START CALL [%s] Request url = [%s], arguments = [%s], order_id = [%s]', g.UUID, str(request.url), json.dumps(request.data), order_id)
 	response = check_if_cod_possible_for_order(order_id)
+	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	return flask.jsonify(response)
+
+
+@app_v1.route('/convert_cod', methods = ['POST'])
+def convert_cod():
+	g.UUID = uuid.uuid4()
+	logger.info('START CALL [%s] Request url = [%s], arguments = [%s], order_id = [%s]', g.UUID, str(request.url), json.dumps(request.data))
+	response = convert_order_to_cod(request.data)
+	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	return flask.jsonify(response)
+
+
+@app_v1.route('/add_item_to_cart', methods = ['POST'])
+def add_to_cart():
+	g.UUID = uuid.uuid4()
+	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]' , g.UUID, str(request.url), json.dumps(request.data))
+	response = CartService().add_to_cart(request.data)
+	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	return flask.jsonify(response)
+
+
+@app_v1.route('/remove_from_cart', methods = ['POST'])
+def remove_from_cart():
+	g.UUID = uuid.uuid4()
+	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]' , g.UUID, str(request.url), json.dumps(request.data))
+	response = CartService().remove_from_cart(request.data)
 	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
