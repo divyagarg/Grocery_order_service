@@ -835,8 +835,8 @@ class CartService(object):
 				for data_item in data['orderitems']:
 					if data_item['quantity'] == 0 and no_of_left_items_in_cart > 0:
 						existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
-					if existing_cart_item is None:
-						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
+						if existing_cart_item is None:
+							raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
 						del self.item_id_to_existing_item_dict[data_item['item_uuid']]
 						no_of_left_items_in_cart = self.item_id_to_existing_item_dict.values().__len__()
 						self.deleted_cart_items[data_item['item_uuid']] = existing_cart_item
