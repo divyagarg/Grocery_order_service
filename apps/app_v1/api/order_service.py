@@ -788,7 +788,7 @@ class OrderService(object):
 		order.promo_codes = self.promo_codes
 		order.payment_mode = self.payment_mode
 		order.payment_status = "pending"
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == \
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value) if self.payment_mode == \
 																							 payment_modes_dict[0] \
 			else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
 
@@ -893,7 +893,7 @@ class OrderService(object):
 		order.order_source_reference = self.order_source_reference
 		order.promo_codes = json.dumps(self.promo_codes)
 		order.delivery_slot = order.delivery_slot
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.APPROVED_STATUS.value) if self.payment_mode == \
+		order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value) if self.payment_mode == \
 																							 payment_modes_dict[
 																								 0] else StatusService.get_status_id(
 			ORDER_STATUS.PENDING_STATUS.value)
