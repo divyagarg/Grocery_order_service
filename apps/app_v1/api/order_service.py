@@ -18,6 +18,7 @@ from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment
 from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, OrderShipmentDetail, \
 	MasterOrder, CartItem
 from config import APP_NAME
+from utils.jsonutils.json_utility import json_serial
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
@@ -26,6 +27,9 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
 	ServiceUnAvailableException
 from utils.jsonutils.json_schema_validator import validate
+
+from utils.kafka_utils.kafka_publisher import Publisher
+
 
 __author__ = 'divyagarg'
 Logger = logging.getLogger(APP_NAME)
@@ -466,21 +470,16 @@ class OrderService(object):
 				break
 			# 8 Order History
 
-			# 9 Save in old system/ publish on kafka
-			# try:
-			# 	if not self.split_order:
-			# 		message = self.create_publisher_message(self.order)
-			# 		# Publisher.publish_message(self.order.order_reference_id, json.dumps(message, default=json_serial))
-			# 	else:
-			# 		for each_order in self.order_list:
-			# 			message = self.create_publisher_message(each_order)
-			# 			# Publisher.publish_message(each_order.order_reference_id, json.dumps(message, default=json_serial))
-			#
-			# except Exception as exception:
-			# 	Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(exception)))
-			# 	ERROR.INTERNAL_ERROR.message = str(exception)
-			# 	err = ERROR.INTERNAL_ERROR
-			# 	break
+			# 9 publish on kafka
+			try:
+				self.publish_create_order()
+			except Exception as exception:
+			 	Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(exception)))
+			 	ERROR.INTERNAL_ERROR.message = str(exception)
+			 	err = ERROR.INTERNAL_ERROR
+			 	break
+
+			# 10 Save in old system
 
 			error = False
 			break
@@ -841,6 +840,7 @@ class OrderService(object):
 			order.total_payble_amount = self.total_offer_price - self.total_discount + order.total_shipping
 
 			self.order = order
+			self.order_list.append(order)
 			db.session.add(order)
 			db.session.add_all(order_item_list)
 			return order.order_reference_id
@@ -1051,3 +1051,56 @@ class OrderService(object):
 		request_data = {'geo_id': self.geo_id, 'user_id': self.user_id}
 		delivery_service = DeliveryService()
 		return delivery_service.get_shipment_preview(request_data)
+
+	def publish_create_order(self):
+		message = {}
+		message["master_order_id"] = self.parent_reference_id
+		message["order_source"] =  self.order_source_reference
+		message["user_id"] = self.user_id
+		message["created_at"] = ""
+		message["geo_id"] =  self.geo_id
+
+		message["total_offer_price"] = self.total_offer_price
+		message["total_shipping_amount"] = self.total_shipping_charges
+		message["total_discount"] = self.total_discount
+		message["total_payable_amount"] = self.total_payble_amount
+		coupons = list()
+		for promo_code in self.promo_codes:
+			coupon = { "code" : promo_code, "coupon_type": "Flat"}
+			coupons.append(coupon)
+		message["coupon_used"] = coupons
+		message["status"] = "Confirmed"
+		message["payment_mode"] = self.payment_mode
+
+		message["sub_orders"] = list()
+		for order in self.order_list:
+			sub_order = {}
+			sub_order["sub_order_id"] = order.order_reference_id
+			sub_order["item_count"] = len(order.orderItem)
+			sub_order["total_mrp"] = order.total_display_price
+			sub_order["total_offer_price"] = order.total_offer_price
+			sub_order["total_shipping_amount"] = order.total_shipping
+			sub_order["total_discount"] = order.total_discount
+			sub_order["status"] = order.status_id
+
+			sub_order["total_payable_amount"] = order.total_payble_amount
+			sub_order["freebies"] = order.freebie
+			sub_order["delivery_type"] = 0
+			#sub_order["delivery_slot"] = order.delivery_slot
+			sub_order['item_list'] = list()
+			for order_item in order.orderItem:
+				item = {}
+				item['shipping_price'] = order_item.shipping_charge
+				item['dealer_price'] = order_item.transfer_price
+				item['customer_offer_price'] = order_item.offer_price
+				item['mrp'] = order_item.display_price
+				item['item_discount'] = order_item.item_discount
+				item['item_id'] = order_item.item_id
+				item['quantity'] = order_item.quantity
+				item['product_name'] = order_item.title
+				item['image_url'] = order_item.image_url
+				sub_order['item_list'].append(item)
+
+			message["sub_orders"].append(sub_order)
+
+		Publisher.publish_message(self.parent_reference_id, json.dumps(message, default=json_serial))
