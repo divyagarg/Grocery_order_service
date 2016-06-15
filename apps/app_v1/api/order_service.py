@@ -1053,26 +1053,31 @@ class OrderService(object):
 		return delivery_service.get_shipment_preview(request_data)
 
 	def publish_create_order(self):
-		message = {}
-		message["master_order_id"] = self.parent_reference_id
-		message["order_source"] =  self.order_source_reference
-		message["user_id"] = self.user_id
-		message["created_at"] = ""
-		message["geo_id"] =  self.geo_id
 
-		message["total_offer_price"] = self.total_offer_price
-		message["total_shipping_amount"] = self.total_shipping_charges
-		message["total_discount"] = self.total_discount
-		message["total_payable_amount"] = self.total_payble_amount
+		message = {}
+		message["msg_type"] = "create_order"
+		message['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		data = {}
+		data["master_order_id"] = self.parent_reference_id
+		data["order_source"] =  self.order_source_reference
+		data["user_id"] = self.user_id
+		data["created_at"] = ""
+		data["geo_id"] =  self.geo_id
+		data["order_type"] = 0
+
+		data["total_offer_price"] = self.total_offer_price
+		data["total_shipping_amount"] = self.total_shipping_charges
+		data["total_discount"] = self.total_discount
+		data["total_payable_amount"] = self.total_payble_amount
 		coupons = list()
 		for promo_code in self.promo_codes:
 			coupon = { "code" : promo_code, "coupon_type": "Flat"}
 			coupons.append(coupon)
-		message["coupon_used"] = coupons
-		message["status"] = "Confirmed"
-		message["payment_mode"] = self.payment_mode
+		data["coupon_used"] = coupons
+		data["status"] = "Confirmed"
+		data["payment_mode"] = self.payment_mode
 
-		message["sub_orders"] = list()
+		data["sub_orders"] = list()
 		for order in self.order_list:
 			sub_order = {}
 			sub_order["sub_order_id"] = order.order_reference_id
@@ -1101,6 +1106,8 @@ class OrderService(object):
 				item['image_url'] = order_item.image_url
 				sub_order['item_list'].append(item)
 
-			message["sub_orders"].append(sub_order)
+			data["sub_orders"].append(sub_order)
+
+		message["data"] = data
 
 		Publisher.publish_message(self.parent_reference_id, json.dumps(message, default=json_serial))
