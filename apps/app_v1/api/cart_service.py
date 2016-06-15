@@ -1280,8 +1280,7 @@ class CartService(object):
 			if cart is not None:
 				return self.update_cart(cart, request_data, 1)
 			else:
-				Logger.error("[%s] Cart does not exist for geo_id: [%s] and user_id: [%s]", g.UUID, request_data['geo_id'], request_data['user_id'])
-				return create_error_response(ERROR.NO_SUCH_CART_EXIST)
+				return self.create_cart(request_data)
 
 		except IncorrectDataException as ide:
 			Logger.error("[%s] Validation Error [%s]",
