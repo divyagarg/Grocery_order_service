@@ -1070,9 +1070,10 @@ class OrderService(object):
 		data["total_discount"] = self.total_discount
 		data["total_payable_amount"] = self.total_payble_amount
 		coupons = list()
-		for promo_code in self.promo_codes:
-			coupon = { "code" : promo_code, "coupon_type": "Flat"}
-			coupons.append(coupon)
+		if self.promo_codes is not None:
+			for promo_code in self.promo_codes:
+				coupon = { "code" : promo_code, "coupon_type": "Flat"}
+				coupons.append(coupon)
 		data["coupon_used"] = coupons
 		data["status"] = "Confirmed"
 		data["payment_mode"] = self.payment_mode
