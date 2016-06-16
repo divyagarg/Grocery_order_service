@@ -27,7 +27,7 @@ CREATE_CART_SCHEMA = {
 	"promo_codes": {
 		REQUIRED: False,
 		FUNCTIONS: [
-			{List: {"min_length": 1}}
+			{List: {}}
 		]
 	},
 	"payment_mode": {
