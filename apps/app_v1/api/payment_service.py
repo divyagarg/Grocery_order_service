@@ -203,21 +203,21 @@ def update_payment_details(request):
 		# update payment and send order to OPS-Panel
 		response = None
 		"""
-ops_panel_request = PushToOpsPanel(order_id=pure_json['order_id'], payments=payment_objs)
-Logger.info('{%s} updating payment status for order : {%s} '%(g.UUID, pure_json['order_id']))
-ops_panel_request.update_payment(pure_json)
+		ops_panel_request = PushToOpsPanel(order_id=pure_json['order_id'], payments=payment_objs)
+		Logger.info('{%s} updating payment status for order : {%s} '%(g.UUID, pure_json['order_id']))
+		ops_panel_request.update_payment(pure_json)
 
-response_text = ops_panel_request.get_response().text
-Logger.info('{%s} response text for update order {%s}'%(g.UUID, response_text))
-response = json.loads(response_text)
-if str(response['status']).lower() == 'success':
-response_obj = response
-else:
-Logger.error('{%s} Order updation failed for order {%s} '%(g.UUID, pure_json['order_id']), exc_info=True)
-raise Exception(str(response['message']))
+		response_text = ops_panel_request.get_response().text
+		Logger.info('{%s} response text for update order {%s}'%(g.UUID, response_text))
+		response = json.loads(response_text)
+		if str(response['status']).lower() == 'success':
+		response_obj = response
+		else:
+		Logger.error('{%s} Order updation failed for order {%s} '%(g.UUID, pure_json['order_id']), exc_info=True)
+		raise Exception(str(response['message']))
 
-response = response_obj
-"""
+		response = response_obj
+		"""
 		# create response data here
 		db.session.commit()
 		Logger.info("[%s] Response for Update Payment Detail API is: [%s]",
