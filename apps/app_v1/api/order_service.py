@@ -1075,8 +1075,10 @@ class OrderService(object):
 				coupon = { "code" : promo_code, "coupon_type": "Flat"}
 				coupons.append(coupon)
 		data["coupon_used"] = coupons
-		data["status"] = "Confirmed"
+		data["status"] = 1
 		data["payment_mode"] = self.payment_mode
+
+		data["total_mrp"] = 0
 
 		data["sub_orders"] = list()
 		for order in self.order_list:
@@ -1084,6 +1086,7 @@ class OrderService(object):
 			sub_order["sub_order_id"] = order.order_reference_id
 			sub_order["item_count"] = len(order.orderItem)
 			sub_order["total_mrp"] = order.total_display_price
+			data["total_mrp"] = data["total_mrp"] + order.total_display_price
 			sub_order["total_offer_price"] = order.total_offer_price
 			sub_order["total_shipping_amount"] = order.total_shipping
 			sub_order["total_discount"] = order.total_discount
@@ -1105,6 +1108,8 @@ class OrderService(object):
 				item['quantity'] = order_item.quantity
 				item['product_name'] = order_item.title
 				item['image_url'] = order_item.image_url
+				item['final_item_price'] = (order_item.offer_price * order_item.quantity)\
+									  + order_item.shipping_charge - order_item.item_discount
 				sub_order['item_list'].append(item)
 
 			data["sub_orders"].append(sub_order)
