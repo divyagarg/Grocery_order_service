@@ -527,13 +527,14 @@ class CartService(object):
 
 			# 3. check coupons
 			try:
-				response_data = get_response_from_check_coupons_api(
-					self.cart_items, data, cart)
-				self.update_discounts_item_level(response_data,
-												 self.cart_items)
-				self.fetch_freebie_details_and_update(
-					response_data.get('benefits', []),
-					order_types.get(data['order_type']))
+				if self.cart_items is not None and self.cart_items.__len__()>0:
+					response_data = get_response_from_check_coupons_api(
+						self.cart_items, data, cart)
+					self.update_discounts_item_level(response_data,
+													 self.cart_items)
+					self.fetch_freebie_details_and_update(
+						response_data.get('benefits', []),
+						order_types.get(data['order_type']))
 			except ServiceUnAvailableException as se:
 				Logger.error("[%s] Coupon service is unavailable", g.UUID)
 				err = ERROR.COUPON_SERVICE_DOWN
@@ -923,36 +924,37 @@ class CartService(object):
 					existing_cart_item.image_url = cart_item.get('imageURL')
 
 	def check_for_coupons_applicable(self, data, cart):
-		response_data = get_response_from_check_coupons_api(
-			self.item_id_to_existing_item_dict.values(), data,
-			cart)
-		if "error" in response_data:
-			if 'promo_codes' in data and hasattr(data.get('promo_codes'),
-												 '__iter__') and data.get(
-					'promo_codes') != []:
-				remove_discounts(
-					self.item_id_to_existing_item_dict.values(), cart)
+		if self.item_id_to_existing_item_dict.values() is not None and self.item_id_to_existing_item_dict.values().__len__()>0:
+			response_data = get_response_from_check_coupons_api(
+				self.item_id_to_existing_item_dict.values(), data,
+				cart)
+			if "error" in response_data:
+				if 'promo_codes' in data and hasattr(data.get('promo_codes'),
+													 '__iter__') and data.get(
+						'promo_codes') != []:
+					remove_discounts(
+						self.item_id_to_existing_item_dict.values(), cart)
 
-				db.session.add(cart)
-				db.session.add_all(self.item_id_to_existing_item_dict.values())
-				db.session.commit()
-				error_msg = response_data['error'].get('error')
-				ERROR.INTERNAL_ERROR.message = error_msg
-				raise CouponInvalidException(
-					ERROR.INTERNAL_ERROR)
+					db.session.add(cart)
+					db.session.add_all(self.item_id_to_existing_item_dict.values())
+					db.session.commit()
+					error_msg = response_data['error'].get('error')
+					ERROR.INTERNAL_ERROR.message = error_msg
+					raise CouponInvalidException(
+						ERROR.INTERNAL_ERROR)
+				else:
+					Logger.info(
+						"[%s] Updating discount to 0 because of coupon error [%s]",
+						g.UUID, response_data.get('error'))
+					remove_discounts(
+						self.item_id_to_existing_item_dict.values(), cart)
 			else:
-				Logger.info(
-					"[%s] Updating discount to 0 because of coupon error [%s]",
-					g.UUID, response_data.get('error'))
-				remove_discounts(
-					self.item_id_to_existing_item_dict.values(), cart)
-		else:
 
-			self.fetch_freebie_details_and_update(response_data['benefits'],
-												  order_types[
-													  data.get('order_type')])
-			self.update_discounts_item_level(response_data,
-											 self.item_id_to_existing_item_dict.values())
+				self.fetch_freebie_details_and_update(response_data['benefits'],
+													  order_types[
+														  data.get('order_type')])
+				self.update_discounts_item_level(response_data,
+												 self.item_id_to_existing_item_dict.values())
 
 	def update_address(self, data, cart):
 		if data.get('shipping_address') is not None:
