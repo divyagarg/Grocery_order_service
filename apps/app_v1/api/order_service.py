@@ -1061,7 +1061,7 @@ class OrderService(object):
 		data["master_order_id"] = self.parent_reference_id
 		data["order_source"] =  self.order_source_reference
 		data["user_id"] = self.user_id
-		data["created_at"] = ""
+		data["created_at"] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 		data["geo_id"] =  self.geo_id
 		data["order_type"] = 0
 
