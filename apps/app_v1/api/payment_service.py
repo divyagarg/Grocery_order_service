@@ -17,6 +17,13 @@ __author__ = 'amit.bansal'
 
 Logger = logging.getLogger(APP_NAME)
 
+PAYMENT_METHOD = {
+	   "CC"  : 0,
+	   "DC"  : 1,
+	   "NB"  : 2,
+	   "PPI" : 3,
+	   "COD" : 4
+	}
 
 def get_order_prices(request):
 	try:
@@ -244,7 +251,7 @@ def publish_update_payment(pure_json, order_id):
 	message['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 	data = {}
 	data["master_order_id"] = order_id
-	data["payment_status"] = pure_json['status']
+	data["payment_status"] = 0 if pure_json['status'] == "success" else 1
 	data["txn_date"] = pure_json.get('txnDate', None)
 	data["txn_type"] = 0
 	data["pg_txn_Id"] = pure_json.get('pgTxnId', None)
@@ -254,17 +261,17 @@ def publish_update_payment(pure_json, order_id):
 	if "childTxns" in pure_json:
 		for childTxn in pure_json["childTxns"]:
 			payment_detail = {}
-			payment_detail["mode"] = childTxn.get('paymentMode', None)
+			payment_detail["mode"] =  PAYMENT_METHOD.get(childTxn.get('paymentMode'))
 			payment_detail["gateway"] = childTxn.get('bankGateway', None)
-			payment_detail["status"] = childTxn.get('status', 'pending')
+			payment_detail["status"] = 0 if childTxn.get('status')  == "success" else 1
 			payment_detail["pg_txn_id"] = childTxn.get('pgTxnId', None)
 			payment_detail["amount"] = childTxn.get('txnAmount', 0.0)
 			data["payment_details"].append(payment_detail)
 	else:
 		payment_detail = {}
-		payment_detail["mode"] = pure_json.get('paymentMode', None)
+		payment_detail["mode"] = PAYMENT_METHOD.get(pure_json.get('paymentMode'))
 		payment_detail["gateway"] = pure_json.get('bankGateway', None)
-		payment_detail["status"] = pure_json.get('status', 'pending')
+		payment_detail["status"] = 0 if pure_json['status'] == "success" else 1
 		payment_detail["pg_txn_id"] = pure_json.get('pgTxnId', None)
 		payment_detail["amount"] = pure_json.get('txnAmount', 0.0)
 		data["payment_details"].append(payment_detail)
