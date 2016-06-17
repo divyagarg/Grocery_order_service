@@ -654,31 +654,32 @@ class OrderService(object):
 				product["quantity"] = self.item_id_to_item_json_dict[key].get('quantity')
 				product["coupon_code"] = self.item_id_to_item_json_dict[key].get('promo_codes')
 				product_list.append(product)
-		req_data = {
-			"area_id": str(self.geo_id),
-			"customer_id": self.user_id,
-			'channel': self.order_source_reference,
-			"products": product_list,
-			"payment_mode": self.payment_mode
-		}
-		if self.promo_codes is not None and self.promo_codes != []:
-			if self.cart_reference_given:
-				req_data["coupon_codes"] = self.promo_codes
-			else:
-				coupon_codes = map(str, self.promo_codes)
-				req_data["coupon_codes"] = coupon_codes
+		if product_list.__len__()>0:
+			req_data = {
+				"area_id": str(self.geo_id),
+				"customer_id": self.user_id,
+				'channel': self.order_source_reference,
+				"products": product_list,
+				"payment_mode": self.payment_mode
+			}
+			if self.promo_codes is not None and self.promo_codes != []:
+				if self.cart_reference_given:
+					req_data["coupon_codes"] = self.promo_codes
+				else:
+					coupon_codes = map(str, self.promo_codes)
+					req_data["coupon_codes"] = coupon_codes
 
-		response = CouponService.call_check_coupon_api(req_data)
-		if response.status_code != 200:
-				if response.status_code == 404:
-					Logger.error("[%s] Coupon service is temporarily unavailable", g.UUID)
-					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
-				elif response.status_code == 400:
-					ERROR.INTERNAL_ERROR.message = json.loads(response.text)['errors'][0]
-					Logger.error("[%s] Coupon service is returning error", g.UUID, ERROR.INTERNAL_ERROR.message)
-					raise CouponInvalidException(ERROR.INTERNAL_ERROR)
-		json_data = json.loads(response.text)
-		return json_data
+			response = CouponService.call_check_coupon_api(req_data)
+			if response.status_code != 200:
+					if response.status_code == 404:
+						Logger.error("[%s] Coupon service is temporarily unavailable", g.UUID)
+						raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
+					elif response.status_code == 400:
+						ERROR.INTERNAL_ERROR.message = json.loads(response.text)['errors'][0]
+						Logger.error("[%s] Coupon service is returning error", g.UUID, ERROR.INTERNAL_ERROR.message)
+						raise CouponInvalidException(ERROR.INTERNAL_ERROR)
+			json_data = json.loads(response.text)
+			return json_data
 
 	def compare_discounts_and_freebies(self, response_data):
 		if response_data['success']:
@@ -1016,36 +1017,38 @@ class OrderService(object):
 				product = {"item_id": str(key), "subscription_id": str(key),
 						   "quantity": self.item_id_to_item_json_dict[key].get('quantity')}
 				product_list.append(product)
-		req_data = {
-			"area_id": str(self.geo_id),
-			"customer_id": self.user_id,
-			'channel': self.order_source_reference,
-			"products": product_list,
-			"payment_mode": self.payment_mode,
-			"order_id": self.parent_reference_id
-		}
-		if self.apply_coupon_code_list is not None and self.apply_coupon_code_list != []:
-			if self.cart_reference_given:
-				req_data["coupon_codes"] = self.apply_coupon_code_list
 
-			else:
-				coupon_codes = map(str, self.promo_codes)
-				req_data["coupon_codes"] = coupon_codes
+		if product_list.__len__() > 0:
+			req_data = {
+				"area_id": str(self.geo_id),
+				"customer_id": self.user_id,
+				'channel': self.order_source_reference,
+				"products": product_list,
+				"payment_mode": self.payment_mode,
+				"order_id": self.parent_reference_id
+			}
+			if self.apply_coupon_code_list is not None and self.apply_coupon_code_list != []:
+				if self.cart_reference_given:
+					req_data["coupon_codes"] = self.apply_coupon_code_list
 
-		response = CouponService.apply_coupon(req_data)
-		if response.status_code != 200:
-				if response.status_code == 404:
-					Logger.error("[%s] Coupon service is down", g.UUID)
-					raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
-				elif response.status_code == 400:
-					ERROR.COUPON_APPLY_FAILED.message = json.loads(response.text)['errors'][0]
-					Logger.error("[%s] Exception in coupon apply API", g.UUID, ERROR.COUPON_APPLY_FAILED.message)
-					raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)
-		json_data = json.loads(response.text)
-		if not json_data['success']:
-			error_msg = json_data['error'].get('error')
-			ERROR.COUPON_APPLY_FAILED.message = error_msg
-			raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)
+				else:
+					coupon_codes = map(str, self.promo_codes)
+					req_data["coupon_codes"] = coupon_codes
+
+			response = CouponService.apply_coupon(req_data)
+			if response.status_code != 200:
+					if response.status_code == 404:
+						Logger.error("[%s] Coupon service is down", g.UUID)
+						raise ServiceUnAvailableException(ERROR.COUPON_SERVICE_DOWN)
+					elif response.status_code == 400:
+						ERROR.COUPON_APPLY_FAILED.message = json.loads(response.text)['errors'][0]
+						Logger.error("[%s] Exception in coupon apply API", g.UUID, ERROR.COUPON_APPLY_FAILED.message)
+						raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)
+			json_data = json.loads(response.text)
+			if not json_data['success']:
+				error_msg = json_data['error'].get('error')
+				ERROR.COUPON_APPLY_FAILED.message = error_msg
+				raise CouponInvalidException(ERROR.COUPON_APPLY_FAILED)
 
 	def get_shipment_preview_for_items(self):
 		request_data = {'geo_id': self.geo_id, 'user_id': self.user_id}
