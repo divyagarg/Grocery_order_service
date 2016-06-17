@@ -851,7 +851,7 @@ class OrderService(object):
 				# total cashback was coming as None so intializing with 0
 				sub_order.total_cashback = 0.0
 				sub_order.parent_order_id = self.parent_reference_id
-				sub_order.order_reference_id = generate_reference_order_id
+				sub_order.order_reference_id = generate_reference_order_id()
 				self.final_order_ids.append(sub_order.order_reference_id)
 				if key in self.shipment_id_slot_dict:
 					sub_order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict[key], 'string')
