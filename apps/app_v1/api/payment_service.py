@@ -1,19 +1,29 @@
 import json
 import logging
+import datetime
 
 from requests.exceptions import ConnectTimeout
 from flask import g, current_app
 import requests
+from utils.jsonutils.json_utility import json_serial
 
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.models.models import MasterOrder, Address, Payment, db
 from config import APP_NAME
 from apps.app_v1.api import ERROR, ServiceUnAvailableException
+from utils.kafka_utils.kafka_publisher import Publisher
 
 __author__ = 'amit.bansal'
 
 Logger = logging.getLogger(APP_NAME)
 
+PAYMENT_METHOD = {
+	   "CC"  : 0,
+	   "DC"  : 1,
+	   "NB"  : 2,
+	   "PPI" : 3,
+	   "COD" : 4
+	}
 
 def get_order_prices(request):
 	try:
@@ -218,6 +228,10 @@ def update_payment_details(request):
 
 		response = response_obj
 		"""
+
+		publish_update_payment(pure_json, pure_json['order_id'])
+
+
 		# create response data here
 		db.session.commit()
 		Logger.info("[%s] Response for Update Payment Detail API is: [%s]",
@@ -231,3 +245,37 @@ def update_payment_details(request):
 		return create_error_response(ERROR.INTERNAL_ERROR)
 
 
+def publish_update_payment(pure_json, order_id):
+	message = {}
+	message["msg_type"] = "update_payment"
+	message['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+	data = {}
+	data["master_order_id"] = order_id
+	data["payment_status"] = 0 if pure_json['status'] == "success" else 1
+	data["txn_date"] = pure_json.get('txnDate', None)
+	data["txn_type"] = 0
+	data["pg_txn_Id"] = pure_json.get('pgTxnId', None)
+	data["paid_amount"] = pure_json.get('txnAmount', 0.0)
+	data["payment_details"] = list()
+
+	if "childTxns" in pure_json:
+		for childTxn in pure_json["childTxns"]:
+			payment_detail = {}
+			payment_detail["mode"] =  PAYMENT_METHOD.get(childTxn.get('paymentMode'))
+			payment_detail["gateway"] = childTxn.get('bankGateway', None)
+			payment_detail["status"] = 0 if childTxn.get('status')  == "success" else 1
+			payment_detail["pg_txn_id"] = childTxn.get('pgTxnId', None)
+			payment_detail["amount"] = childTxn.get('txnAmount', 0.0)
+			data["payment_details"].append(payment_detail)
+	else:
+		payment_detail = {}
+		payment_detail["mode"] = PAYMENT_METHOD.get(pure_json.get('paymentMode'))
+		payment_detail["gateway"] = pure_json.get('bankGateway', None)
+		payment_detail["status"] = 0 if pure_json['status'] == "success" else 1
+		payment_detail["pg_txn_id"] = pure_json.get('pgTxnId', None)
+		payment_detail["amount"] = pure_json.get('txnAmount', 0.0)
+		data["payment_details"].append(payment_detail)
+
+	message["data"] = data
+
+	Publisher.publish_message(order_id, json.dumps(message, default=json_serial))
