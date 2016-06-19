@@ -26,23 +26,23 @@ class Base(db.Model, JsonUtility):
 
 class Status(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	status_code = db.Column(db.String(255), unique=True, nullable=False)
-	status_description = db.Column(db.String(255))
+	status_code = db.Column(db.String(32), unique=True, nullable=False)
+	status_description = db.Column(db.String(128))
 
 
 class Address(db.Model, JsonUtility):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	name = db.Column(db.String(255), nullable=False)
-	mobile = db.Column(db.String(512), nullable=False)
+	name = db.Column(db.String(256), nullable=False)
+	mobile = db.Column(db.String(32), nullable=False)
 	address = db.Column(db.String(512), nullable=False)
-	city = db.Column(db.String(512), nullable=False)
-	pincode = db.Column(db.String(512))
-	state = db.Column(db.String(512), nullable=False)
-	email = db.Column(db.String(512))
+	city = db.Column(db.String(128), nullable=False)
+	pincode = db.Column(db.String(32))
+	state = db.Column(db.String(32), nullable=False)
+	email = db.Column(db.String(128))
 	landmark = db.Column(db.String(512))
 	order = db.relationship('Order', backref='Address')
 	cart = db.relationship('Cart', backref='Address')
-	address_hash = db.Column(db.String(255), nullable=False, unique=True)
+	address_hash = db.Column(db.String(128), nullable=False, unique=True)
 
 	def __hash__(self):
 		raw_string = self.name + self.mobile + self.address
@@ -84,9 +84,9 @@ class Cart(Base):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 	cart_reference_uuid = db.Column(db.String(255), nullable=False, unique=True)
 	geo_id = db.Column(db.BigInteger, nullable=False)
-	user_id = db.Column(db.String(255), nullable=False)
-	order_type = db.Column(db.String(255))
-	order_source_reference = db.Column(db.String(255))
+	user_id = db.Column(db.String(64), nullable=False)
+	order_type = db.Column(db.String(32))
+	order_source_reference = db.Column(db.String(32))
 	promo_codes = db.Column(db.String(255))
 	selected_freebee_items = db.Column(db.String(255))
 	total_offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
@@ -94,8 +94,8 @@ class Cart(Base):
 	total_cashback = db.Column(db.Float(precision='10,2'), default=0.0)
 	total_display_price = db.Column(db.Float(precision='10,2'), default=0.0)
 	total_shipping_charges = db.Column(db.Float(precision='10,2'), default=0.0)
-	shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'))
-	payment_mode = db.Column(db.String(255))
+	shipping_address_ref = db.Column(db.String(128), db.ForeignKey('address.address_hash'))
+	payment_mode = db.Column(db.String(32))
 	Index('cart_geo_user_idx', geo_id, user_id)
 	orderShipmentDetail = db.relationship('OrderShipmentDetail', backref='Cart', cascade = 'all, delete-orphan')
 	cartItem = db.relationship('CartItem', backref='Cart', cascade = 'all, delete-orphan')
@@ -103,7 +103,7 @@ class Cart(Base):
 
 class OrderShipmentDetail(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	shipment_id = db.Column(db.String(255), nullable=False, unique=True)
+	shipment_id = db.Column(db.String(32), nullable=False, unique=True)
 	cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable=False)
 	delivery_slot = db.Column(db.String(255))
 	cartItem = db.relationship('CartItem', backref='OrderShipmentDetail')
@@ -112,7 +112,7 @@ class OrderShipmentDetail(db.Model):
 class CartItem(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 	cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable=False)
-	cart_item_id = db.Column(db.String(255), nullable=False, index=True)
+	cart_item_id = db.Column(db.String(128), nullable=False, index=True)
 	quantity = db.Column(db.Integer, nullable=False)
 	promo_codes = db.Column(db.String(255))
 	offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
@@ -120,29 +120,29 @@ class CartItem(db.Model):
 	item_discount = db.Column(db.Float(precision='10,2'), default=0.0)
 	item_cashback = db.Column(db.Float(precision='10,2'), default=0.0)
 	transfer_price = db.Column(db.Float(precision='10,2'), default=0.0)
-	same_day_delivery = db.Column(db.String(255))
+	same_day_delivery = db.Column(db.String(16))
 	title = db.Column(db.String(255))
 	image_url = db.Column(db.String(255))
-	shipment_id = db.Column(db.String(255), db.ForeignKey('order_shipment_detail.shipment_id'))
+	shipment_id = db.Column(db.String(32), db.ForeignKey('order_shipment_detail.shipment_id'))
 
 class MasterOrder(Base):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	order_id = db.Column(db.String(255), index=True)
+	order_id = db.Column(db.String(64), index=True)
 	geo_id = db.Column(db.BigInteger, nullable=False)
-	user_id = db.Column(db.String(255), nullable=False)
-	order_source = db.Column(db.String(255))
-	order_type = db.Column(db.String(255))
+	user_id = db.Column(db.String(64), nullable=False)
+	order_source = db.Column(db.String(32))
+	order_type = db.Column(db.String(32))
 	promo_codes = db.Column(db.String(255))
-	payment_mode = db.Column(db.String(255))
+	payment_mode = db.Column(db.String(32))
 	total_offer_price = db.Column(db.Float(precision='10,2'), nullable=False)
 	total_display_price = db.Column(db.Float(precision='10,2'))
 	total_discount = db.Column(db.Float(precision='10,2'))
 	total_cashback = db.Column(db.Float(precision='10,2'), default=0.0)
 	total_shipping = db.Column(db.Float(precision='10,2'), default=0.0)
 	total_payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
-	billing_address_ref = db.Column(db.String(255))
+	billing_address_ref = db.Column(db.String(128))
 	status_id = db.Column(db.Integer, db.ForeignKey('status.id'), nullable=False)
-	payment_status = db.Column(db.String(255))
+	payment_status = db.Column(db.String(32))
 	payment = db.relationship('Payment', backref='MasterOrder')
 
 	@staticmethod
@@ -156,15 +156,15 @@ class MasterOrder(Base):
 
 class Order(Base):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	parent_order_id = db.Column(db.String(255), db.ForeignKey('master_order.order_id'), nullable=False, index=True)
-	order_reference_id = db.Column(db.String(255), nullable=False, unique=True)
+	parent_order_id = db.Column(db.String(64), db.ForeignKey('master_order.order_id'), nullable=False, index=True)
+	order_reference_id = db.Column(db.String(64), nullable=False, unique=True)
 	geo_id = db.Column(db.BigInteger, nullable=False)
-	user_id = db.Column(db.String(255), nullable=False)
-	order_type = db.Column(db.String(255))
-	order_source_reference = db.Column(db.String(255))
+	user_id = db.Column(db.String(64), nullable=False)
+	order_type = db.Column(db.String(32))
+	order_source_reference = db.Column(db.String(32))
 	promo_codes = db.Column(db.String(255))
-	shipping_address_ref = db.Column(db.String(255), db.ForeignKey('address.address_hash'), nullable=False)
-	billing_address_ref = db.Column(db.String(255))
+	shipping_address_ref = db.Column(db.String(128), db.ForeignKey('address.address_hash'), nullable=False)
+	billing_address_ref = db.Column(db.String(128))
 	delivery_slot = db.Column(db.String(512))
 	freebie = db.Column(db.String(255))
 	total_offer_price = db.Column(db.Float(precision='10,2'), nullable=False)
@@ -189,7 +189,7 @@ class Order(Base):
 
 class OrderItem(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-	item_id = db.Column(db.String(255), nullable=False, index=True)
+	item_id = db.Column(db.String(128), nullable=False, index=True)
 	quantity = db.Column(db.Integer, nullable=False)
 	display_price = db.Column(db.Float(precision='10,2'), default=0.0)
 	offer_price = db.Column(db.Float(precision='10,2'), default=0.0)
@@ -199,19 +199,19 @@ class OrderItem(db.Model):
 	transfer_price = db.Column(db.Float(precision='10,2'), default=0.0)
 	title = db.Column(db.String(255))
 	image_url = db.Column(db.String(255))
-	order_id = db.Column(db.String(255), db.ForeignKey('order.order_reference_id'), nullable=False)
+	order_id = db.Column(db.String(64), db.ForeignKey('order.order_reference_id'), nullable=False)
 
 
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    payment_method = db.Column(db.String(255), nullable=False)
-    payment_gateway = db.Column(db.String(255))
-    pg_txn_id = db.Column(db.String(255))
-    bank_txn_id = db.Column(db.String(255))
+    payment_method = db.Column(db.String(32), nullable=False)
+    payment_gateway = db.Column(db.String(32))
+    pg_txn_id = db.Column(db.String(32))
+    bank_txn_id = db.Column(db.String(128))
     txn_date =  db.Column(db.DateTime)
     txn_amt =   db.Column(db.Float(precision='10,2'), default=0.0)
-    status = db.Column(db.String(255))
-    order_id = db.Column(db.String(255), db.ForeignKey('master_order.order_id'), nullable=False)
+    status = db.Column(db.String(32))
+    order_id = db.Column(db.String(64), db.ForeignKey('master_order.order_id'), nullable=False)
 
     @classmethod
     def get_payment_details(cls, order_id):
