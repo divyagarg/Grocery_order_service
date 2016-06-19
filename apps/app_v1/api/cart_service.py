@@ -667,7 +667,7 @@ class CartService(object):
 			"orderitems": [],
 			"total_offer_price": self.total_price,
 			"total_display_price": self.total_display_price,
-			"total_payble_price": self.get_total_payble_price(),
+			"total_payable_price": self.get_total_payble_price(),
 			"total_discount": self.total_discount,
 			"total_cashback": self.total_cashback,
 			"total_shipping_charges": self.total_shipping_charges,
