@@ -13,7 +13,7 @@ PORT = 9000
 APP_NAME = 'grocery_order_service'
 
 SHIPPING_COST = 30.0
-SHIPPING_COST_THRESHOLD = 1000
+SHIPPING_COST_THRESHOLD = 250
 PUBLISH_TO_KAFKA = True
 SEARCH_API_SELECT_CLAUSE = ["deliveryDays", "transferPrice", "maxQuantity"]
 COUPON_QUERY_PARAM ="?check_payment_mode=true"
