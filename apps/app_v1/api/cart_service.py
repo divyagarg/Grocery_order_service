@@ -668,12 +668,14 @@ class CartService(object):
 			"total_offer_price": self.total_price,
 			"total_display_price": self.total_display_price,
 			"total_payable_price": self.get_total_payble_price(),
+			"total_payble_price_without_shipping": self.total_price- self.total_discount,
+			"total_saved_amount": (self.total_display_price - self.total_price) + self.total_discount,
 			"total_discount": self.total_discount,
 			"total_cashback": self.total_cashback,
 			"total_shipping_charges": self.total_shipping_charges,
 			"cart_reference_uuid": cart.cart_reference_uuid,
 			"benefits": self.benefits,
-			"cart_items_count": self.get_count_of_items(new_items),
+			"cart_items_count": self.get_count_of_items(new_items)
 		}
 		if cart.promo_codes is not None:
 			response_json["promo_codes"] = json.loads(cart.promo_codes)
