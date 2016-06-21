@@ -668,7 +668,7 @@ class CartService(object):
 			"total_offer_price": self.total_price,
 			"total_display_price": self.total_display_price,
 			"total_payable_price": self.get_total_payble_price(),
-			"total_payble_price_without_shipping": self.total_price- self.total_discount,
+			"total_payable_price_without_shipping": self.total_price- self.total_discount,
 			"total_saved_amount": (self.total_display_price - self.total_price) + self.total_discount,
 			"total_discount": self.total_discount,
 			"total_cashback": self.total_cashback,
