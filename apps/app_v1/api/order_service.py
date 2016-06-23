@@ -826,6 +826,7 @@ class OrderService(object):
 			order.billing_address_ref = address.address_hash
 		elif self.cart_reference_given:
 			order.billing_address_ref = self.shipping_address
+			order.shipping_address_ref = self.shipping_address
 		else:
 			shipping_address = self.shipping_address
 
@@ -834,6 +835,7 @@ class OrderService(object):
 										  shipping_address['pincode'], shipping_address['state'],
 										  shipping_address.get('email'), shipping_address.get('landmark'))
 
+			order.shipping_address_ref = address.address_hash
 			order.billing_address_ref = address.address_hash
 
 		db.session.add(order)
