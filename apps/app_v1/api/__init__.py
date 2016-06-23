@@ -69,6 +69,9 @@ class ERROR(object):
 	FULFILLMENT_SERVICE_DOWN = ERROR_DETAIL(code=5006, message="Fulfillment Service is temporary unavailable")
 	FULFILLMENT_API_TIMEOUT = ERROR_DETAIL(code=5007, message="Fulfilment API Request timeout")
 
+	#OPS-Panel Specific Error
+	OPS_PANEL_DOWN = ERROR_DETAIL(code=6001, message="OPS Panel Service is temporary unavailable")
+
 
 
 def parse_request_data(body):

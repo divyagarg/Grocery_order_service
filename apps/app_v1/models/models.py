@@ -101,6 +101,8 @@ class Cart(Base):
 	cartItem = db.relationship('CartItem', backref='Cart', cascade = 'all, delete-orphan')
 
 
+
+
 class OrderShipmentDetail(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 	shipment_id = db.Column(db.String(32), nullable=False, unique=True)
@@ -133,6 +135,8 @@ class MasterOrder(Base):
 	order_source = db.Column(db.String(32))
 	order_type = db.Column(db.String(32))
 	promo_codes = db.Column(db.String(255))
+	promo_types = db.Column(db.String(255))
+	promo_max_discount = db.Column(db.Float(precision='10,2'))
 	payment_mode = db.Column(db.String(32))
 	total_offer_price = db.Column(db.Float(precision='10,2'), nullable=False)
 	total_display_price = db.Column(db.Float(precision='10,2'))
@@ -144,6 +148,7 @@ class MasterOrder(Base):
 	status_id = db.Column(db.Integer, db.ForeignKey('status.id'), nullable=False)
 	payment_status = db.Column(db.String(32))
 	payment = db.relationship('Payment', backref='MasterOrder')
+	sub_orders = db.relationship('Order', backref='MasterOrder', cascade = 'all, delete-orphan')
 
 	@staticmethod
 	def get_order(order_id):
@@ -163,6 +168,8 @@ class Order(Base):
 	order_type = db.Column(db.String(32))
 	order_source_reference = db.Column(db.String(32))
 	promo_codes = db.Column(db.String(255))
+	promo_types = db.Column(db.String(255))
+	promo_max_discount = db.Column(db.Float(precision='10,2'))
 	shipping_address_ref = db.Column(db.String(128), db.ForeignKey('address.address_hash'), nullable=False)
 	billing_address_ref = db.Column(db.String(128))
 	delivery_slot = db.Column(db.String(512))

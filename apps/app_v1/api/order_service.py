@@ -10,6 +10,7 @@ from requests.exceptions import ConnectTimeout
 from apps.app_v1.api.cart_service import remove_cart
 from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService, validate_delivery_slot
+from apps.app_v1.api.ops_panel_service import OpsPanel
 import config
 from apps.app_v1.api.api_schema_signature import CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE, \
 	CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE
@@ -292,6 +293,8 @@ class OrderService(object):
 		self.order_type = None
 		self.order_source_reference = None
 		self.promo_codes = None
+		self.promo_type = None
+		self.promo_max_discount = None
 		self.shipping_address = None
 		self.billing_address = None
 		self.delivery_type = DELIVERY_TYPE.NORMAL.value
@@ -314,6 +317,7 @@ class OrderService(object):
 
 		self.cart_reference_given = None
 
+		self.master_order = None
 		self.order_list = list()
 		self.split_order = False
 		self.parent_reference_id = None
@@ -480,6 +484,8 @@ class OrderService(object):
 			 	break
 
 			# 10 Save in old system
+			ops_data = OpsPanel.create_order_request(self)
+			OpsPanel.send_order(ops_data)
 
 			error = False
 			break
@@ -560,6 +566,7 @@ class OrderService(object):
 		self.order_type = order_types[data.get('order_type')]
 		self.order_source_reference = data.get('order_source_reference')
 		if 'promo_codes' in data and data.__getitem__('promo_codes').__len__() != 0:
+			self.promo_codes = data.get('promo_codes')
 			self.promo_codes = json.dumps(map(str, data.get('promo_codes')))
 		if data.get('payment_mode') is not None:
 			self.payment_mode = payment_modes_dict[data.get('payment_mode')]
@@ -689,6 +696,18 @@ class OrderService(object):
 			if self.total_cashback != float(response_data['totalCashback']):
 				Logger.error("[%s] Cart cashback is [%s] but now cashback is [%s]", g.UUID, self.total_cashback, response_data['totalCashback'])
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
+
+			#TODO: Assuming only one coupon is allowed
+			for each_benefit in response_data['benefits']:
+				if each_benefit["couponCode"] == self.promo_codes[0]:
+					self.promo_type = each_benefit.get("benefit_type", 0)
+					if self.promo_type == 0:
+					  self.promo_max_discount = each_benefit.get("amount")
+					else:
+					  self.promo_max_discount = each_benefit.get("max_cap")
+					break;
+
+
 			freebie_coupon_code_list = list()
 			if self.selected_freebies is not None:
 
@@ -812,6 +831,7 @@ class OrderService(object):
 			order.billing_address_ref = address.address_hash
 
 		db.session.add(order)
+		self.master_order = order
 
 	def create_and_save_order(self):
 		self.save_master_order()
@@ -1064,7 +1084,7 @@ class OrderService(object):
 		data["master_order_id"] = self.parent_reference_id
 		data["order_source"] =  self.order_source_reference
 		data["user_id"] = self.user_id
-		data["created_at"] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		data["created_at"] = self.master_order.created_on
 		data["geo_id"] =  self.geo_id
 		data["order_type"] = 0
 
