@@ -286,6 +286,7 @@ class OrderService(object):
 	def __init__(self):
 		self.cart = None
 		self.shipment_id_slot_dict = {}
+		self.shipment_id_delivery_type_dict = {}
 		self.cart_reference_id = None
 		self.order_reference_id = None
 		self.geo_id = None
@@ -484,8 +485,8 @@ class OrderService(object):
 			 	break
 
 			# 10 Save in old system
-			ops_data = OpsPanel.create_order_request(self)
-			OpsPanel.send_order(ops_data)
+			#ops_data = OpsPanel.create_order_request(self)
+			#OpsPanel.send_order(ops_data)
 
 			error = False
 			break
@@ -766,6 +767,7 @@ class OrderService(object):
 			self.shipment_preview_present = True
 			self.split_order = False
 
+	#TODO: This fuction should never called as shipments are always created at cart level
 	def create_shipment_item_ids_dict_from_preview_response(self, shipment_list):
 		for i in range(shipment_list.__len__()):
 			subscription_id_list = list()
@@ -776,12 +778,14 @@ class OrderService(object):
 
 			self.shipment_id_to_item_ids_dict[i] = subscription_id_list
 			self.shipment_id_slot_dict[i] = get_default_slot()
+			self.shipment_id_delivery_type_dict[i] = i
 
 	def create_shipment_item_ids_dict_from_cart(self, order_shipment_details):
 		slot_present_in_request = True
 		if self.shipment_id_slot_dict.values().__len__() == 0:
 			slot_present_in_request = False
 		for each_row in order_shipment_details:
+			self.shipment_id_delivery_type_dict[each_row.shipment_id] = each_row.delivery_type
 			if slot_present_in_request is False:
 				self.shipment_id_slot_dict[each_row.shipment_id] = each_row.delivery_slot
 			subscription_id_list = list()
@@ -805,6 +809,8 @@ class OrderService(object):
 		order.order_type = self.order_type
 		order.order_source = self.order_source_reference
 		order.promo_codes = self.promo_codes
+		order.promo_types = self.promo_type
+		order.promo_max_discount = self.promo_max_discount
 		order.payment_mode = self.payment_mode
 		order.payment_status = "pending"
 		order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value) if self.payment_mode == \
@@ -846,6 +852,7 @@ class OrderService(object):
 
 			if self.shipment_id_slot_dict is not None and self.shipment_id_slot_dict.__len__() > 0:
 				order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict.values()[0], 'string')
+				order.delivery_type = self.shipment_id_delivery_type_dict.values()[0]
 			else:
 				order.delivery_slot = None
 			# if self.delivery_slot is not None:
@@ -854,6 +861,7 @@ class OrderService(object):
 			if self.selected_freebies is not None:
 				order.freebie = json.dumps(self.selected_freebies)
 			order.total_discount = self.total_discount
+			order.promo_max_discount = self.promo_max_discount
 			order.total_cashback = self.total_cashback
 			order.total_display_price = self.total_display_price
 			order.total_offer_price = self.total_offer_price
@@ -876,8 +884,10 @@ class OrderService(object):
 				self.final_order_ids.append(sub_order.order_reference_id)
 				if key in self.shipment_id_slot_dict:
 					sub_order.delivery_slot = validate_delivery_slot(self.shipment_id_slot_dict[key], 'string')
+					sub_order.delivery_type = self.shipment_id_delivery_type_dict[key]
 				else:
 					sub_order.delivery_slot = None
+					sub_order.delivery_type = 0 # 0 -> SDD
 
 				self.save_common_order_data(sub_order)
 				items = db.session.query(CartItem).filter(
@@ -902,6 +912,8 @@ class OrderService(object):
 							sub_order.freebie = json.dumps(self.selected_freebies)
 					freebee_given = True
 
+				sub_order.promo_max_discount = self.promo_max_discount * (sub_order.total_payble_amount/self.master_order.total_payble_amount)
+
 				sub_order.orderItem = order_item_list
 				db.session.add(sub_order)
 				db.session.add_all(order_item_list)
@@ -913,6 +925,7 @@ class OrderService(object):
 		order.order_type = self.order_type
 		order.order_source_reference = self.order_source_reference
 		order.promo_codes = json.dumps(self.promo_codes)
+		order.promo_types = self.promo_type
 		order.delivery_slot = order.delivery_slot
 		order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value) if self.payment_mode == \
 																							 payment_modes_dict[

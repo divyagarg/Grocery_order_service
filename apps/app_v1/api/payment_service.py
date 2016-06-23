@@ -218,8 +218,8 @@ def update_payment_details(request):
         publish_update_payment(pure_json, pure_json['order_id'])
 
         # 10 Save in old system
-        ops_data = OpsPanel.update_payment_request(order_data=order_data, payment_data=pure_json)
-        OpsPanel.send_order(ops_data)
+        #ops_data = OpsPanel.update_payment_request(order_data=order_data, payment_data=pure_json)
+        #OpsPanel.send_order(ops_data)
 
 
         # create response data here

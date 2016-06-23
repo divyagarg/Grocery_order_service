@@ -107,6 +107,7 @@ class OrderShipmentDetail(db.Model):
 	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 	shipment_id = db.Column(db.String(32), nullable=False, unique=True)
 	cart_id = db.Column(db.String(255), db.ForeignKey('cart.cart_reference_uuid'), nullable=False)
+	delivery_type = db.Column(db.Integer, default = 0)
 	delivery_slot = db.Column(db.String(255))
 	cartItem = db.relationship('CartItem', backref='OrderShipmentDetail')
 
@@ -144,9 +145,11 @@ class MasterOrder(Base):
 	total_cashback = db.Column(db.Float(precision='10,2'), default=0.0)
 	total_shipping = db.Column(db.Float(precision='10,2'), default=0.0)
 	total_payble_amount = db.Column(db.Float(precision='10,2'), default=0.0)
+	shipping_address_ref = db.Column(db.String(128), db.ForeignKey('address.address_hash'), nullable=False)
 	billing_address_ref = db.Column(db.String(128))
 	status_id = db.Column(db.Integer, db.ForeignKey('status.id'), nullable=False)
 	payment_status = db.Column(db.String(32))
+	ops_panel_status = db.Column(db.Integer, default=0)
 	payment = db.relationship('Payment', backref='MasterOrder')
 	sub_orders = db.relationship('Order', backref='MasterOrder', cascade = 'all, delete-orphan')
 
@@ -172,6 +175,7 @@ class Order(Base):
 	promo_max_discount = db.Column(db.Float(precision='10,2'))
 	shipping_address_ref = db.Column(db.String(128), db.ForeignKey('address.address_hash'), nullable=False)
 	billing_address_ref = db.Column(db.String(128))
+	delivery_type = db.Column(db.Integer, default=0)
 	delivery_slot = db.Column(db.String(512))
 	freebie = db.Column(db.String(255))
 	total_offer_price = db.Column(db.Float(precision='10,2'), nullable=False)

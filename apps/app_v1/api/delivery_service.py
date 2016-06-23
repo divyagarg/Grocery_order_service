@@ -165,6 +165,9 @@ class DeliveryService(object):
 			order_shipment_detail = OrderShipmentDetail()
 			order_shipment_detail.cart_id = self.cart.cart_reference_uuid
 			order_shipment_detail.shipment_id = shipment_id
+			#TODO: first shipment(i=0) means SDD, next shipment(i=1) means NDD
+			order_shipment_detail.delivery_type = i
+			order_shipment_detail.delivery_slot = None
 			db.session.add(order_shipment_detail)
 			shipment_list[i]["shipment_id"] = shipment_id
 
