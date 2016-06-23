@@ -766,6 +766,7 @@ class OrderService(object):
 		elif order_shipment_details.__len__() == 1:
 			self.shipment_preview_present = True
 			self.split_order = False
+			self.create_shipment_item_ids_dict_from_cart(order_shipment_details)
 
 	#TODO: This fuction should never called as shipments are always created at cart level
 	def create_shipment_item_ids_dict_from_preview_response(self, shipment_list):

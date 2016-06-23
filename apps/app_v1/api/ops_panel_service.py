@@ -20,14 +20,17 @@ def format_delivery_slot(delivery_slot):
     if delivery_slot == None:
         return "NNNNNNNN:NN"
 
-    delivery_slot = json.loads(delivery_slot)
+    try:
+        delivery_slot = json.loads(delivery_slot)
 
-    start = datetime.datetime.strptime(delivery_slot["start_datetime"], "%Y-%m-%dT%H:%M:%S")
-    end = datetime.datetime.strptime(delivery_slot["end_datetime"], "%Y-%m-%dT%H:%M:%S")
+        start = datetime.datetime.strptime(delivery_slot["start_datetime"], "%Y-%m-%dT%H:%M:%S+00:00")
+        end = datetime.datetime.strptime(delivery_slot["end_datetime"], "%Y-%m-%dT%H:%M:%S+00:00")
 
-    slot = datetime.datetime.strftime(start, "%Y%m%d%H")[2:10] + datetime.datetime.strftime(end, ":%H")
-    return slot
-
+        slot = datetime.datetime.strftime(start, "%Y%m%d%H")[2:10] + datetime.datetime.strftime(end, ":%H")
+        return slot
+    except Exception as e:
+        Logger.error("[%s] Exception occurred in delivery_slot_format : %s", g.UUID, str(e))
+        return "NNNNNNNN:NN"
 
 
 class OpsPanel(object):
@@ -107,9 +110,9 @@ class OpsPanel(object):
                 "TotalDiscount": order.total_discount,
                 "TotalPayableAmt": order.total_payble_amount,
                 "FreebieItems": order.freebie,
-                "DeliveryType": order_data.delivery_type,
-                "DeliverySlot": format_delivery_slot(order_data.delivery_slot),
-                "CouponMax": order_data.promo_max_discount
+                "DeliveryType": order.delivery_type,
+                "DeliverySlot": format_delivery_slot(order.delivery_slot),
+                "CouponMax": order.promo_max_discount
             }
 
             sub_order['ItemList'] = list()
