@@ -71,10 +71,13 @@ def add_item_to_cart_and_get_count_of_items():
 def get_count_of_orders_of_a_user():
 	g.UUID = uuid.uuid4()
 	logger.info('START CALL [%s]  [%s] : Requested url = <%s> , arguments = <%s>',
-		g.UUID, '/user', str(request.url), json.dumps(request.args['user_id']))
+		g.UUID, '/user', str(request.url), json.dumps(request.args))
 	try:
-		response = get_count_of_orders_of_user(request.args['user_id'])
-		logger.info("[%s] END OF CALL", g.UUID)
+		if request.args.__len__() == 0 :
+			response = create_error_response(ERROR.VALIDATION_ERROR)
+		else:
+			response = get_count_of_orders_of_user(request.args['user_id'])
+		logger.info("[%s] END OF CALL [%s]", g.UUID, json.dumps(response))
 		return response
 	except Exception as exception:
 		logger.error("[%s] Exception occured in getting count of orders of a user [%s]", g.UUID, str(exception),
@@ -195,7 +198,10 @@ def check_coupon():
 def check_cod():
 	g.UUID = uuid.uuid4()
 	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
-	response = check_if_cod_possible_for_order(request.args['order_id'])
+	if request.args.__len__() == 0:
+		response = create_error_response(ERROR.VALIDATION_ERROR)
+	else:
+		response = check_if_cod_possible_for_order(request.args['order_id'])
 	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
