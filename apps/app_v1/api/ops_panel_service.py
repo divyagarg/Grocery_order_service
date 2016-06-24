@@ -113,7 +113,7 @@ class OpsPanel(object):
                 "TotalShippingAmt": order.total_shipping,
                 "TotalDiscount": order.total_discount,
                 "TotalPayableAmt": order.total_payble_amount,
-                "FreebieItems": order.freebie,
+                "FreebieItems": [] if order.freebie is None else order.freebie,
                 "DeliveryType": order.delivery_type,
                 "DeliverySlot": format_delivery_slot(order.delivery_slot),
                 "CouponMax": order.promo_max_discount
@@ -201,7 +201,7 @@ class OpsPanel(object):
                 "TotalShippingAmt": order.total_shipping,
                 "TotalDiscount": order.total_discount,
                 "TotalPayableAmt": order.total_payble_amount,
-                "FreebieItems": order.freebie,
+                "FreebieItems": [] if order.freebie is None else order.freebie,
                 "DeliveryType": order.delivery_type,
                 "DeliverySlot": format_delivery_slot(order.delivery_slot),
                 "CouponMax": order.promo_max_discount
