@@ -828,26 +828,26 @@ class OrderService(object):
 																							 payment_modes_dict[0] \
 			else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
 
+		if self.cart_reference_given:
+			order.shipping_address_ref = self.shipping_address
+		else:
+			shipping_address = self.shipping_address
+			address = Address.get_address(shipping_address['name'], shipping_address['mobile'],
+										  shipping_address['address'], shipping_address['city'],
+										  shipping_address['pincode'], shipping_address['state'],
+										  shipping_address.get('email'), shipping_address.get('landmark'))
+			order.shipping_address_ref = address.address_hash
+
 		if self.billing_address is not None:
+
 			billing_address = self.billing_address
 			address = Address.get_address(billing_address['name'], billing_address['mobile'],
 										  billing_address['address'], billing_address['city'],
 										  billing_address['pincode'], billing_address['state'],
 										  billing_address.get('email'), billing_address.get('landmark'))
 			order.billing_address_ref = address.address_hash
-		elif self.cart_reference_given:
-			order.billing_address_ref = self.shipping_address
-			order.shipping_address_ref = self.shipping_address
 		else:
-			shipping_address = self.shipping_address
-
-			address = Address.get_address(shipping_address['name'], shipping_address['mobile'],
-										  shipping_address['address'], shipping_address['city'],
-										  shipping_address['pincode'], shipping_address['state'],
-										  shipping_address.get('email'), shipping_address.get('landmark'))
-
-			order.shipping_address_ref = address.address_hash
-			order.billing_address_ref = address.address_hash
+			order.billing_address_ref = order.shipping_address_ref
 
 		db.session.add(order)
 		self.master_order = order
