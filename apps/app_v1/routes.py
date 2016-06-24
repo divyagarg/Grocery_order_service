@@ -65,15 +65,15 @@ def add_item_to_cart_and_get_count_of_items():
 		return create_error_response(ERROR.INTERNAL_ERROR)
 
 
-@app_v1.route('/user/<user_id>', methods=['GET'])
+@app_v1.route('/user', methods=['GET'])
 @jsonify
 @logrequest
-def get_count_of_orders_of_a_user(user_id):
+def get_count_of_orders_of_a_user():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s]  [%s] : Requested url = <%s> , arguments = <%s>, user_id =<%s>',
-		g.UUID, '/user', str(request.url), json.dumps(request.data), user_id)
+	logger.info('START CALL [%s]  [%s] : Requested url = <%s> , arguments = <%s>',
+		g.UUID, '/user', str(request.url), json.dumps(request.args['user_id']))
 	try:
-		response = get_count_of_orders_of_user(user_id)
+		response = get_count_of_orders_of_user(request.args['user_id'])
 		logger.info("[%s] END OF CALL", g.UUID)
 		return response
 	except Exception as exception:
