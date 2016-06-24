@@ -21,7 +21,7 @@ COUPON_QUERY_PARAM ="?check_payment_mode=true"
 class Config:
 	DEBUG = False
 	TESTING = False
-	API_TIMEOUT = 10
+	API_TIMEOUT = 20
 	def __init__(self):
 		pass
 
