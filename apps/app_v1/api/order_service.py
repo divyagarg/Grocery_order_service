@@ -494,7 +494,7 @@ class OrderService(object):
 				   self.master_order.ops_panel_status = 1
 			except Exception as e:
 				self.master_order.ops_panel_status = 2
-				Logger.error("[%s] Exception occured in sending [%s]" %(g.UUID, str(e)))
+				Logger.error("[%s] Exception occured in pusing order to OPS Panel [%s]" %(g.UUID, str(e)))
 
 
 			error = False
