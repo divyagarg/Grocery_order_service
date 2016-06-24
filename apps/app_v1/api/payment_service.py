@@ -200,7 +200,6 @@ def update_payment_details(request):
 
         # update payment_status in order table
         order_data.payment_status = pure_json['status']
-        db.session.add(order_data)
 
         if "childTxns" in pure_json:
             for child in pure_json["childTxns"]:
@@ -217,10 +216,16 @@ def update_payment_details(request):
 
         publish_update_payment(pure_json, pure_json['order_id'])
 
-        # 10 Save in old system
-        #ops_data = OpsPanel.update_payment_request(order_data=order_data, payment_data=pure_json)
-        #OpsPanel.send_order(ops_data)
+        #10 Save in old system
+        try:
+			ops_data = OpsPanel.update_payment_request(order_data=order_data, payment_data=pure_json)
+			OpsPanel.send_order(ops_data)
+			order_data.ops_panel_status = 1
+        except Exception as e:
+            order_data.ops_panel_status = 2
+            Logger.error("[%s] Exception occured in sending [%s]" %(g.UUID, str(e)))
 
+        db.session.add(order_data)
 
         # create response data here
         db.session.commit()

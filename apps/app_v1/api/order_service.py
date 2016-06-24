@@ -485,8 +485,15 @@ class OrderService(object):
 			 	break
 
 			# 10 Save in old system
-			#ops_data = OpsPanel.create_order_request(self)
-			#OpsPanel.send_order(ops_data)
+			try:
+				if self.payment_mode == "COD":
+				   ops_data = OpsPanel.create_order_request(self)
+				   OpsPanel.send_order(ops_data)
+				   self.master_order.ops_panel_status = 1
+			except Exception as e:
+				self.master_order.ops_panel_status = 2
+				Logger.error("[%s] Exception occured in sending [%s]" %(g.UUID, str(e)))
+
 
 			error = False
 			break

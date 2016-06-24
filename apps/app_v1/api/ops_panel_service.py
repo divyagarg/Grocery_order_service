@@ -61,7 +61,7 @@ class OpsPanel(object):
 
         except Exception as e:
             Logger.error("[%s] Exception occurred in OPS Panel service", g.UUID)
-            return False
+            raise e
 
 
     @staticmethod
