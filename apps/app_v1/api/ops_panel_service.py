@@ -44,11 +44,13 @@ class OpsPanel(object):
             headers = {"Content-type": "application/json"}
 
             #print(json.dumps(data))
+            Logger.info("[%s] Request data for OpsPanel send_order is [%s]", g.UUID, json.dumps(data))
 
             request = requests.post(url=url, data=json.dumps(data), headers=headers, timeout=current_app.config['API_TIMEOUT'])
 
             if request.status_code == 200:
                 response = json.loads(request.text)
+                Logger.info("[%s] Response data for OpsPanel send_order is [%s]", g.UUID, json.dumps(response))
                 if response['Success'] == True:
                     return True
                 else:
@@ -63,7 +65,6 @@ class OpsPanel(object):
                     raise Exception("could not push order to ops panel")
 
         except Exception as e:
-            Logger.error("[%s] Exception occurred in OPS Panel service", g.UUID)
             raise e
 
 
