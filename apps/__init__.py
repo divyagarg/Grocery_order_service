@@ -1,4 +1,5 @@
 import logging
+import os
 
 from flask import Flask
 import lib.log as log
@@ -15,7 +16,9 @@ def create_app(config_name):
 	config[config_name].init_app(app)
 	log.setup_logging(config[config_name])
 	initialize_db(app)
-	Publisher.init(app)
+
+	if os.environ.get('HOSTENV') != "production":
+		Publisher.init(app)
 
 	from apps.app_v1.routes import app_v1 as v1_router
 	app.register_blueprint(v1_router, url_prefix='/grocery_orderapi/v1')

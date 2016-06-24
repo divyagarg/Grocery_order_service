@@ -1,6 +1,7 @@
 import json
 import logging
 import datetime
+import os
 
 from requests.exceptions import ConnectTimeout
 from flask import g, current_app
@@ -214,7 +215,8 @@ def update_payment_details(request):
         # update payment and send order to OPS-Panel
         response = None
 
-        publish_update_payment(pure_json, pure_json['order_id'])
+        if os.environ.get('HOSTENV') != "production":
+           publish_update_payment(pure_json, pure_json['order_id'])
 
         #10 Save in old system
         try:

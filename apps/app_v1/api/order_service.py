@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import traceback
 import datetime
 
@@ -476,13 +477,14 @@ class OrderService(object):
 			# 8 Order History
 
 			# 9 publish on kafka
-			try:
-				self.publish_create_order()
-			except Exception as exception:
-			 	Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(exception)))
-			 	ERROR.INTERNAL_ERROR.message = str(exception)
-			 	err = ERROR.INTERNAL_ERROR
-			 	break
+			if os.environ.get('HOSTENV') != "production":
+				try:
+					self.publish_create_order()
+				except Exception as exception:
+					Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(exception)))
+					ERROR.INTERNAL_ERROR.message = str(exception)
+					err = ERROR.INTERNAL_ERROR
+					break
 
 			# 10 Save in old system
 			try:
