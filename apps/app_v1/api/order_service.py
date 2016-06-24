@@ -706,14 +706,15 @@ class OrderService(object):
 				raise DiscountHasChangedException(ERROR.DISCOUNT_CHANGED)
 
 			#TODO: Assuming only one coupon is allowed
-			for each_benefit in response_data['benefits']:
-				if each_benefit["couponCode"] == self.promo_codes[0]:
-					self.promo_type = each_benefit.get("benefit_type", 0)
-					if self.promo_type == 0:
-					  self.promo_max_discount = each_benefit.get("amount")
-					else:
-					  self.promo_max_discount = each_benefit.get("max_cap")
-					break;
+			if self.promo_codes is not None:
+				for each_benefit in response_data['benefits']:
+					if each_benefit["couponCode"] == self.promo_codes[0]:
+						self.promo_type = each_benefit.get("benefit_type", 0)
+						if self.promo_type == 0:
+						  self.promo_max_discount = each_benefit.get("amount")
+						else:
+						  self.promo_max_discount = each_benefit.get("max_cap")
+						break;
 
 
 			freebie_coupon_code_list = list()

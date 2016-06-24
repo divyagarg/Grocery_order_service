@@ -133,7 +133,7 @@ class ProductionConfig(Config):
 	KAFKA_HOSTS= ['kafka01.production.askmebazaar.com:9092', 'kafka02.production.askmebazaar.com:9092','kafka03.production.askmebazaar.com:9092']
 	KAFKA_TOPIC = 'grocery_orderservice_prod'
 
-	OPS_PANEL_CREATE_ORDER_URL = "http://uat.api.askmegrocery.com/api/generateorder"
+	OPS_PANEL_CREATE_ORDER_URL = "http://api.askmegrocery.com/api/GenerateOrder"
 
 
 config = {

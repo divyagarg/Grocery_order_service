@@ -43,6 +43,8 @@ class OpsPanel(object):
             url = current_app.config['OPS_PANEL_CREATE_ORDER_URL']
             headers = {"Content-type": "application/json"}
 
+            #print(json.dumps(data))
+
             request = requests.post(url=url, data=json.dumps(data), headers=headers, timeout=current_app.config['API_TIMEOUT'])
 
             if request.status_code == 200:
@@ -50,6 +52,7 @@ class OpsPanel(object):
                 if response['Success'] == True:
                     return True
                 else:
+                    #print(response)
                     raise Exception(response['Errors'][0]["errorMsg"])
             else:
                 if request.status_code == 404:
@@ -88,8 +91,9 @@ class OpsPanel(object):
                "Landmark": shipping_address.landmark
              }
 
+        #print(type(order_data.promo_codes))
         data["CouponUsed"] = [{
-                "Code" :  order_data.promo_codes,
+                "Code" :  order_data.promo_codes[0],
                 "CouponType": "Flat" if order_data.promo_type == 0 else "Percent",
                 "CouponMax": order_data.promo_max_discount
             }]
@@ -138,7 +142,7 @@ class OpsPanel(object):
 
         data["PaymentDetails"] = {
             "Status" :  1 if order_data.payment_mode == 0 else 0,  # 1->Confirmed, 0->prepaid pending
-            "PaymanetModes": [
+            "PaymentModes": [
                 {
                     "Mode": 19 if order_data.payment_mode == 0 else 20,  # 19->COD, 20 -> Prepaid
                     "Status": "21",
@@ -176,7 +180,7 @@ class OpsPanel(object):
              }
 
         data["CouponUsed"] = [{
-                "Code" :  order_data.promo_codes,
+                "Code" :  order_data.promo_codes[0],
                 "CouponType": "Flat" if order_data.promo_type == 0 else "Percent",
                 "CouponMax": order_data.promo_max_discount
             }]
