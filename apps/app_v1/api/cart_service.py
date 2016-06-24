@@ -96,7 +96,7 @@ def get_freebie_details(freebies_id_list, order_type):
 
 	freebie_detail_list = list()
 	for each_freebie_id in freebies_id_list:
-		freebie_json = {'id': each_freebie_id,
+		freebie_json = {'id': str(each_freebie_id),
 						'title': order_item_price_dict.get(
 							each_freebie_id).get('title'),
 						'image_url': order_item_price_dict.get(
