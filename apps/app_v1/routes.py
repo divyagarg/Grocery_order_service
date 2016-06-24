@@ -191,11 +191,11 @@ def check_coupon():
 	return flask.jsonify(response)
 
 
-@app_v1.route('/check_cod/<order_id>', methods = ['GET'])
-def check_cod(order_id):
+@app_v1.route('/check_cod', methods = ['GET'])
+def check_cod():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] Request url = [%s], arguments = [%s], order_id = [%s]', g.UUID, str(request.url), json.dumps(request.data), order_id)
-	response = check_if_cod_possible_for_order(order_id)
+	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
+	response = check_if_cod_possible_for_order(request.args['order_id'])
 	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
