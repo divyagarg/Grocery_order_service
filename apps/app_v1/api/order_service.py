@@ -789,7 +789,7 @@ class OrderService(object):
 
 			self.shipment_id_to_item_ids_dict[i] = subscription_id_list
 			self.shipment_id_slot_dict[i] = get_default_slot()
-			self.shipment_id_delivery_type_dict[i] = i
+			self.shipment_id_delivery_type_dict[i] = 0 if shipment_list[i].get('IS_LAST_MILE_ONLY') is True else 1
 
 	def create_shipment_item_ids_dict_from_cart(self, order_shipment_details):
 		slot_present_in_request = True
