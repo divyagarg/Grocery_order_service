@@ -53,6 +53,6 @@ class PAYMENT_MODE(Enum):
 
 payment_modes_dict = {}
 payment_modes_dict[0] = 'COD'
-payment_modes_dict[1] = 'PREPAID'
-payment_modes_dict[2] = 'SODEXO'
-payment_modes_dict[3] = 'TICKET'
+payment_modes_dict[1] = 'Prepaid'
+payment_modes_dict[2] = 'Sodexo'
+payment_modes_dict[3] = 'Ticket'

@@ -39,11 +39,13 @@ class CouponService(object):
 		header = {
 			'X-API-USER': current_app.config['X_API_USER'],
 			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
-			'Content-type': 'application/json'
+			'content-type': 'application/json'
 		}
 		if 'payment_mode' in request_data:
 			url = url + config.COUPON_QUERY_PARAM
+		Logger.info('[%s] Request for check coupon is [%s]', g.UUID, json.dumps(request_data))
 		response = requests.post(url=url, data=json.dumps(request_data), headers=header,timeout= current_app.config['API_TIMEOUT'])
+		Logger.info('[%s] Response got is [%s]', g.UUID, json.dumps(response.text))
 		return response
 
 	@staticmethod
