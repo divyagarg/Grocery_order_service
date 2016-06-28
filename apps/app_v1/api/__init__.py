@@ -31,7 +31,7 @@ class ERROR(object):
 	INTERNAL_ERROR = ERROR_DETAIL(code=1008, message=None)
 	PAYMENT_SERVICE_IS_DOWN = ERROR_DETAIL(code=1009, message="Payment service is temporary unavailable")
 	PAYMENT_API_TIMEOUT = ERROR_DETAIL(code=1010, message="Payment API timeout")
-	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=1011, message="Coupon service returning failure status")
+
 	COUPON_SERVICE_DOWN = ERROR_DETAIL(code=1012, message="Coupon service is temporary unavailable")
 	COUPON_API_TIMEOUT = ERROR_DETAIL(code=1013, message="Coupon API Request timeout")
 	PRODUCT_CATALOG_SERVICE_DOWN = ERROR_DETAIL(code=1014, message="Product catalog service is temporary unavailable")
@@ -49,6 +49,7 @@ class ERROR(object):
 	COUPON_NOT_APPLIED_FOR_CHANNEL = ERROR_DETAIL(code=2004, message="Coupon is not applicable for this channel")
 	COUPON_APPLY_FAILED = ERROR_DETAIL(code=2005, message="Coupon can not applied")
 	FREEBIE_NOT_APPLICABLE = ERROR_DETAIL(code=2006, message="Freebie is not applicable on the current cart items")
+	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=2007, message="Coupon service returning failure status")
 
 	# Product specific Error
 	PRODUCT_OFFER_PRICE_CHANGED = ERROR_DETAIL(code=3001, message="Product price changed")

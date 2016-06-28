@@ -570,6 +570,7 @@ class CartService(object):
 				Logger.error(
 					"[%s] Exception occurred in checking coupons for cart item [%s]",
 					g.UUID, str(cie))
+				ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS.message = cie.message
 				err = ERROR.COUPON_SERVICE_RETURNING_FAILURE_STATUS
 				break
 			except ConnectTimeout:
