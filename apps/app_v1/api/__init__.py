@@ -31,47 +31,47 @@ class ERROR(object):
 	INTERNAL_ERROR = ERROR_DETAIL(code=1008, message=None)
 	PAYMENT_SERVICE_IS_DOWN = ERROR_DETAIL(code=1009, message="Payment service is temporary unavailable")
 	PAYMENT_API_TIMEOUT = ERROR_DETAIL(code=1010, message="Payment API timeout")
-
+	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=1011, message="Coupon service returning failure status")
+	COUPON_SERVICE_DOWN = ERROR_DETAIL(code=1012, message="Coupon service is temporary unavailable")
+	COUPON_API_TIMEOUT = ERROR_DETAIL(code=1013, message="Coupon API Request timeout")
+	PRODUCT_CATALOG_SERVICE_DOWN = ERROR_DETAIL(code=1014, message="Product catalog service is temporary unavailable")
+	PRODUCT_API_TIMEOUT = ERROR_DETAIL(code=1015, message="Product API Request timeout")
+	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=1016, message="Shipment Preview Failed")
+	FULFILLMENT_SERVICE_DOWN = ERROR_DETAIL(code=1017, message="Fulfillment Service is temporary unavailable")
+	FULFILLMENT_API_TIMEOUT = ERROR_DETAIL(code=1018, message="Fulfilment API Request timeout")
+	#OPS-Panel Specific Error
+	OPS_PANEL_DOWN = ERROR_DETAIL(code=1019, message="OPS Panel Service is temporary unavailable")
 
 	# Coupon specific Error
 	DISCOUNT_CHANGED = ERROR_DETAIL(code=2001, message="Discount not applicable")
 	PAYMENT_MODE_NOT_ALLOWED = ERROR_DETAIL(code=2002, message="Coupon code is not valid for given paymentMode")
 	FREEBIE_NOT_ALLOWED = ERROR_DETAIL(code=2003, message="Freebie is not correct")
 	COUPON_NOT_APPLIED_FOR_CHANNEL = ERROR_DETAIL(code=2004, message="Coupon is not applicable for this channel")
-	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=2005, message="Coupon service returning failure status")
-	COUPON_APPLY_FAILED = ERROR_DETAIL(code=2006, message="Coupon application Failed")
-	COUPON_SERVICE_DOWN = ERROR_DETAIL(code=2007, message="Coupon service is temporary unavailable")
-	COUPON_API_TIMEOUT = ERROR_DETAIL(code=2008, message="Coupon API Request timeout")
-	FREEBIE_NOT_APPLICABLE = ERROR_DETAIL(code=2003, message="Freebie is not applicable now")
+	COUPON_APPLY_FAILED = ERROR_DETAIL(code=2005, message="Coupon can not applied")
+	FREEBIE_NOT_APPLICABLE = ERROR_DETAIL(code=2006, message="Freebie is not applicable on the current cart items")
 
 	# Product specific Error
 	PRODUCT_OFFER_PRICE_CHANGED = ERROR_DETAIL(code=3001, message="Product price changed")
-	PRODUCT_DISPLAY_PRICE_CHANGED = ERROR_DETAIL(code=3002, message="Product display prices changed")
-	PRODUCT_AVAILABILITY_CHANGED = ERROR_DETAIL(code=3003, message="Product is not available in the given quantity")
+	PRODUCT_DISPLAY_PRICE_CHANGED = ERROR_DETAIL(code=3002, message="Product display price changed")
+	PRODUCT_AVAILABILITY_CHANGED = ERROR_DETAIL(code=3003, message="Requested quantoty of the product is not available")
 	SUBSCRIPTION_NOT_FOUND = ERROR_DETAIL(code=3004, message="Subscription id is not correct")
-	NOT_AVAILABLE_ERROR = ERROR_DETAIL(code=3005, message="Quantity not available")
-	PRODUCT_CATALOG_SERVICE_DOWN = ERROR_DETAIL(code=3006, message="Product catalog service is temporary unavailable")
-	PRODUCT_API_TIMEOUT = ERROR_DETAIL(code=3007, message="Product API Request timeout")
+
 
 	# Cart specific Error
 	CART_EMPTY = ERROR_DETAIL(code=4001, message="Cart is Empty")
 	CART_ITEM_MISSING = ERROR_DETAIL(code=4002, message="Cart items are missing")
 	CART_ZERO_QUANTITY_CAN_NOT_BE_ADDED = ERROR_DETAIL(code=4003, message="Zero quantity can not be added")
 	NO_SUCH_CART_EXIST = ERROR_DETAIL(code=4004, message="No such cart exist")
-	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 4005, message="Non existing item can not be deleted")
-	CHANGE_USER_NOT_POSSIBLE = ERROR_DETAIL(code= 4006, message="Change User is not possible as no cart Exist")
+	NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED = ERROR_DETAIL(code= 4005, message="Item is already deleted from Cart")
+	CHANGE_USER_NOT_POSSIBLE = ERROR_DETAIL(code= 4006, message="Change User is not possible as cart does not Exist")
 
 	# Delivery Specific Error
 	NO_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code=5001, message="Delivery slot not found")
 	OLDER_DELIVERY_SLOT_ERROR = ERROR_DETAIL(code=5002, message="Older Delivery slot can not be updated")
-	SHIPMENT_PREVIEW_FAILED = ERROR_DETAIL(code=5003, message="Shipment Preview Failed")
-	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=5004, message="Shipping address is mandatory for Order placement")
-	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=5005, message="Shipping charges changed")
-	FULFILLMENT_SERVICE_DOWN = ERROR_DETAIL(code=5006, message="Fulfillment Service is temporary unavailable")
-	FULFILLMENT_API_TIMEOUT = ERROR_DETAIL(code=5007, message="Fulfilment API Request timeout")
+	NO_SHIPPING_ADDRESS_FOUND = ERROR_DETAIL(code=5003, message="Shipping address is mandatory for Order placement")
+	SHIPPING_CHARGES_CHANGED = ERROR_DETAIL(code=5004, message="Shipping charges changed")
 
-	#OPS-Panel Specific Error
-	OPS_PANEL_DOWN = ERROR_DETAIL(code=6001, message="OPS Panel Service is temporary unavailable")
+
 
 
 
