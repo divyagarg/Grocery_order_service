@@ -11,7 +11,8 @@ import config
 from apps.app_v1.api import parse_request_data, RequiredFieldMissing,\
 	EmptyCartException, IncorrectDataException,	CouponInvalidException,\
 	SubscriptionNotFoundException, QuantityNotAvailableException,\
-	 get_shipping_charges, ServiceUnAvailableException
+	 get_shipping_charges, ServiceUnAvailableException, \
+	FreebieNotApplicableException
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models import order_types, payment_modes_dict
 from apps.app_v1.models.models import Cart, CartItem, Address, OrderShipmentDetail
@@ -251,6 +252,24 @@ def check_prices_of_item(request_items, data):
 	return order_item_price_dict
 
 
+def check_freebie_is_applicable(benefits, cart):
+	if (benefits is None or benefits == []) and cart is not None and cart.selected_freebee_items is not None:
+		raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_APPLICABLE)
+	for each_benefit in benefits:
+			if each_benefit.get('type') == 0 or each_benefit.get('type') == 1:
+				freebies_id_list = each_benefit['freebies'][0]
+				if freebies_id_list is not None and freebies_id_list.__len__() > 0:
+					if cart is not None and cart.selected_freebee_items is not None:
+						selected_freebies = json.loads(cart.selected_freebee_items)
+						selected_freebie_item_id = selected_freebies[0].get('id')
+						# Typecasting selected freebie item id t int as coupon service returns freebie items ids as int
+						if int(selected_freebie_item_id) not in freebies_id_list:
+							raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_APPLICABLE)
+				else:
+					raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_APPLICABLE)
+			elif cart is not None and cart.selected_freebee_items is not None:
+					raise FreebieNotApplicableException(ERROR.FREEBIE_NOT_APPLICABLE)
+
 class CartService(object):
 	def __init__(self):
 		"""
@@ -350,6 +369,25 @@ class CartService(object):
 				cart.payment_mode = payment_modes_dict[
 					data.get('payment_mode')]
 
+			# Selected Freebie
+			try:
+				if data.get('selected_freebee_code') is not None and data.get(
+						'selected_freebee_code') != []:
+					cart.selected_freebee_items = json.dumps(
+						data.get('selected_freebee_code'))
+				elif data.get(
+						'selected_freebee_code') is not None and data.get(
+						'selected_freebee_code') == []:
+					cart.selected_freebee_items = None
+			except Exception as exception:
+				Logger.error(
+					'[%s] Selected Freebee code could not be set in cart [%s]',
+					g.UUID, str(exception),
+					exc_info=True)
+				ERROR.INTERNAL_ERROR.message = str(exception)
+				err = ERROR.INTERNAL_ERROR
+				break
+
 			# 3 Check coupons (Cart Level or Item level)
 			if not self.is_cart_empty:
 				try:
@@ -396,24 +434,7 @@ class CartService(object):
 				ERROR.INTERNAL_ERROR.message = str(exception)
 				err = ERROR.INTERNAL_ERROR
 				break
-			# Selected Freebie
-			try:
-				if data.get('selected_freebee_code') is not None and data.get(
-						'selected_freebee_code') != []:
-					cart.selected_freebee_items = json.dumps(
-						data.get('selected_freebee_code'))
-				elif data.get(
-						'selected_freebee_code') is not None and data.get(
-						'selected_freebee_code') == []:
-					cart.selected_freebee_items = None
-			except Exception as exception:
-				Logger.error(
-					'[%s] Selected Freebee code could not be set in cart [%s]',
-					g.UUID, str(exception),
-					exc_info=True)
-				ERROR.INTERNAL_ERROR.message = str(exception)
-				err = ERROR.INTERNAL_ERROR
-				break
+
 
 			# 6 Save cart
 			try:
@@ -534,7 +555,7 @@ class CartService(object):
 													 self.cart_items)
 					self.fetch_freebie_details_and_update(
 						response_data.get('benefits', []),
-						order_types.get(data['order_type']))
+						order_types.get(data['order_type']), cart)
 			except ServiceUnAvailableException as se:
 				Logger.error("[%s] Coupon service is unavailable", g.UUID)
 				err = ERROR.COUPON_SERVICE_DOWN
@@ -554,6 +575,10 @@ class CartService(object):
 			except ConnectTimeout:
 				Logger.error("[%s] Timeout exception for coupon api", g.UUID)
 				err = ERROR.COUPON_API_TIMEOUT
+				break
+			except FreebieNotApplicableException as fna:
+				Logger.error("[%s] Exception occured Freebie became unapplicable [%s]", g.UUID, str(fna))
+				err = ERROR.FREEBIE_NOT_APPLICABLE
 				break
 			except Exception as exception:
 				Logger.error(
@@ -954,7 +979,7 @@ class CartService(object):
 
 				self.fetch_freebie_details_and_update(response_data['benefits'],
 													  order_types[
-														  data.get('order_type')])
+														  data.get('order_type')], cart)
 				self.update_discounts_item_level(response_data,
 												 self.item_id_to_existing_item_dict.values())
 
@@ -1209,14 +1234,34 @@ class CartService(object):
 					Logger.info("[%s] Cart is empty", g.UUID)
 					raise EmptyCartException(ERROR.CART_EMPTY)
 
-	def fetch_freebie_details_and_update(self, benefits, order_type):
+	def fetch_freebie_details_and_update(self, benefits, order_type, cart):
 		benefit_list = list()
+		check_freebie_is_applicable(benefits, cart)
 		for each_benefit in benefits:
 			if each_benefit.get('type') == 0 or each_benefit.get('type') == 1:
+				"""
+					{
+					  "couponCode": "freebie_noida",
+					  "items": [
+						"1151594",
+						"2007982"
+					  ],
+					  "paymentMode": [],
+					  "freebies": [
+						[
+						  1151594
+						]
+					  ],
+					  "custom": null,
+					  "benefit_type": 2,
+					  "max_cap": null,
+					  "type": 1,
+					  "channel": []
+					}
+				"""
 				freebies_id_list = each_benefit['freebies'][0]
 				if freebies_id_list is not None and freebies_id_list.__len__() > 0:
-					freebee_detail_list = get_freebie_details(
-						freebies_id_list, order_type)
+					freebee_detail_list = get_freebie_details(freebies_id_list, order_type)
 					benefit = dict(freebies=freebee_detail_list,
 								   type=each_benefit.get('type'),
 								   couponCode=each_benefit.get('couponCode'))

@@ -3,7 +3,7 @@ import logging
 import random
 import time
 
-from apps.app_v1.models.models import Address, Payment
+from apps.app_v1.models.models import Address, Payment, Order
 from config import APP_NAME
 import config
 from flask import g
@@ -42,6 +42,7 @@ class ERROR(object):
 	COUPON_APPLY_FAILED = ERROR_DETAIL(code=2006, message="Coupon application Failed")
 	COUPON_SERVICE_DOWN = ERROR_DETAIL(code=2007, message="Coupon service is temporary unavailable")
 	COUPON_API_TIMEOUT = ERROR_DETAIL(code=2008, message="Coupon API Request timeout")
+	FREEBIE_NOT_APPLICABLE = ERROR_DETAIL(code=2003, message="Freebie is not applicable now")
 
 	# Product specific Error
 	PRODUCT_OFFER_PRICE_CHANGED = ERROR_DETAIL(code=3001, message="Product price changed")
@@ -243,3 +244,7 @@ def get_address(address_hash):
 def get_payment(order_id):
 	payment = Payment.query.filter_by(order_id = order_id).first()
 	return payment
+
+def get_order(order_id):
+	order = Order.query.filter_by(order_reference_id = order_id).first()
+	return order

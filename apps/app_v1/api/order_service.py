@@ -223,66 +223,6 @@ def create_address_dict(address):
 def get_default_slot():
 	return None
 
-
-def create_publisher_message(order):
-	data = {}
-	data['parent_order_id'] = order.parent_order_id
-	data['order_id'] = order.order_reference_id
-	data['status_code'] = StatusService.get_status_code(order.status_id)
-	data['geo_id'] = order.geo_id
-	data['user_id'] = order.user_id
-	data['order_type'] = order.order_type
-	data['order_source_reference'] = order.order_reference_id
-	# data['delivery_type'] = order.delivery_type
-	data['delivery_slot'] = order.delivery_slot
-	data['freebie'] = order.freebie
-	data['total_offer_price'] = order.total_offer_price
-	data['total_display_price'] = order.total_display_price
-	data['total_discount'] = order.total_discount
-	data['total_shipping_charges'] = order.total_shipping
-	data['total_payble_amount'] = order.total_payble_amount
-	data['promo_codes'] = order.promo_codes
-	data['created_at'] = order.created_on
-	payment = get_payment(order.parent_order_id)
-	if payment is not None:
-		data['payment_mode'] = payment.payment_mode
-	else:
-		raise PaymentCanNotBeNullException(ERROR.PAYMENT_CAN_NOT_NULL)
-	address = get_address(order.shipping_address_ref)
-	if address is None:
-		raise NoShippingAddressFoundException(ERROR.NO_SHIPPING_ADDRESS_FOUND)
-	data['shipping_address'] = create_address_dict(address)
-
-	if order.shipping_address_ref == order.billing_address_ref:
-		data['billing_address'] = data['shipping_address']
-	else:
-		billing_address = get_address(order.billing_address_ref)
-		data['billing_address'] = create_address_dict(billing_address)
-
-	order_item_list = list()
-	for item in order.orderItem:
-		order_item = {}
-		order_item['item_id'] = item.item_id
-		order_item['quantity'] = item.quantity
-		order_item['display_price'] = item.display_price
-		order_item['offer_price'] = item.offer_price
-		order_item['shipping_charge'] = item.shipping_charge
-		order_item['item_discount'] = item.item_discount
-		order_item['transfer_price'] = item.transfer_price
-		order_item['title'] = item.title
-		order_item['image_url'] = item.image_url
-		order_item_list.append(order_item)
-
-	data['order_items'] = order_item_list
-
-	publishing_message = {}
-	publishing_message['msg_type'] = 'create_order'
-	publishing_message['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-	publishing_message['data'] = data
-	print(publishing_message)
-	return publishing_message
-
-
 class OrderService(object):
 	def __init__(self):
 		self.cart = None
