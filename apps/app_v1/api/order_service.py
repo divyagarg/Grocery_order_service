@@ -421,7 +421,7 @@ class OrderService(object):
 				try:
 					self.publish_create_order()
 				except Exception as exception:
-					Logger.error("[%s] Exception occured in publishing kafka message [%s]" %(g.UUID, str(exception)))
+					Logger.error("[%s] Exception occured in publishing kafka message [%s]", g.UUID, str(exception), exc_info = True)
 					ERROR.INTERNAL_ERROR.message = str(exception)
 					err = ERROR.INTERNAL_ERROR
 					break
@@ -434,7 +434,7 @@ class OrderService(object):
 				   self.master_order.ops_panel_status = 1
 			except Exception as e:
 				self.master_order.ops_panel_status = 2
-				Logger.error("[%s] Exception occured in pusing order to OPS Panel [%s]" %(g.UUID, str(e)))
+				Logger.error("[%s] Exception occured in pusing order to OPS Panel [%s]", g.UUID, str(e), exc_info=True)
 
 
 			error = False
