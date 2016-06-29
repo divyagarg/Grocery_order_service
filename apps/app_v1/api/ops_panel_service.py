@@ -182,7 +182,7 @@ class OpsPanel(object):
 
         data["CouponUsed"] = [{
                 "Code" :  order_data.promo_codes[0],
-                "CouponType": "Flat" if order_data.promo_type == 0 else "Percent",
+                "CouponType": "Flat" if order_data.promo_types == 0 else "Percent",
                 "CouponMax": order_data.promo_max_discount
             }]
 
@@ -231,7 +231,7 @@ class OpsPanel(object):
 
         data["PaymentDetails"] = {
             "Status" :  1 if payment_data.get('status') == "success" else 0,  # 1->Confirmed, 0->prepaid pending
-            "PaymanetModes": [
+            "PaymentModes": [
                 {
                     "Mode": 20,  # 19->COD, 20 -> Prepaid
                     "Status": "0" if payment_data.get('status') == "success" else "21",
