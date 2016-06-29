@@ -28,7 +28,7 @@ Logger = logging.getLogger(APP_NAME)
 
 
 def get_cart_for_geo_user_id(geo_id, user_id):
-	return Cart().query.filter_by(geo_id=int(geo_id), user_id=user_id).first()
+	return Cart.query.filter_by(geo_id=int(geo_id), user_id=user_id).first()
 
 
 def check_if_calculate_price_api_response_is_correct_or_quantity_is_available\
