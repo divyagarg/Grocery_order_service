@@ -214,17 +214,19 @@ class OrderItem(db.Model):
 
 
 class Payment(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    payment_method = db.Column(db.String(32), nullable=False)
-    payment_gateway = db.Column(db.String(32))
-    pg_txn_id = db.Column(db.String(32))
-    bank_txn_id = db.Column(db.String(128))
-    txn_date =  db.Column(db.DateTime)
-    txn_amt =   db.Column(db.Float(precision='10,2'), default=0.0)
-    status = db.Column(db.String(32))
-    order_id = db.Column(db.String(64), db.ForeignKey('master_order.order_id'), nullable=False)
+	id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+	payment_method = db.Column(db.String(32), nullable=False)
+	payment_gateway = db.Column(db.String(32))
+	pg_txn_id = db.Column(db.String(32))
+	pass_txn_id = db.Column(db.String(32))
+	bank_txn_id = db.Column(db.String(128))
+	txn_date =  db.Column(db.DateTime)
+	txn_amt =   db.Column(db.Float(precision='10,2'), default=0.0)
+	total_amt =   db.Column(db.Float(precision='10,2'), default=0.0)
+	status = db.Column(db.String(32))
+	order_id = db.Column(db.String(64), db.ForeignKey('master_order.order_id'), nullable=False)
 
-    @classmethod
-    def get_payment_details(cls, order_id):
-        payments = Payment.query.filter_by(order_id=order_id).all()
-        return payments
+	@classmethod
+	def get_payment_details(cls, order_id):
+		payments = Payment.query.filter_by(order_id=order_id).all()
+		return payments
