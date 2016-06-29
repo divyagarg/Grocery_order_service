@@ -93,12 +93,13 @@ class OpsPanel(object):
              }
 
         #print(type(order_data.promo_codes))
+
         if order_data.promo_codes is not None:
             data["CouponUsed"] = [{
                     "Code" :  order_data.promo_codes[0],
                     "CouponType": "Flat" if order_data.promo_type == 0 else "Percent",
-                    "CouponMax": order_data.promo_max_discount
-                }]
+                    "CouponMax": order_data.promo_max_discount if order_data.promo_max_discount is not None else order_data.total_discount
+            }]
 
         if order_data.payment_mode == "COD": # 0 -> COD, 1->Prepaid
            data["OrderStatus"] =  "0" # 0 -> Confirmed, 1->Pending
@@ -118,7 +119,7 @@ class OpsPanel(object):
                 "FreebieItems": [] if order.freebie is None else order.freebie,
                 "DeliveryType": order.delivery_type,
                 "DeliverySlot": format_delivery_slot(order.delivery_slot),
-                "CouponMax": order.promo_max_discount
+                "CouponMax": order.promo_max_discount if order.promo_max_discount is not None else order.total_discount
             }
 
             sub_order['ItemList'] = list()
@@ -181,12 +182,14 @@ class OpsPanel(object):
                "Landmark": shipping_address.landmark
              }
 
+
         if order_data.promo_codes is not None:
             data["CouponUsed"] = [{
                     "Code" :  order_data.promo_codes[0],
                     "CouponType": "Flat" if order_data.promo_types == 0 else "Percent",
-                    "CouponMax": order_data.promo_max_discount
-                }]
+                    "CouponMax": order_data.promo_max_discount if order_data.promo_max_discount is not None else order_data.total_discount
+            }]
+
 
 
         if order_data.payment_mode == "COD": # 0 -> COD, 1->Prepaid
@@ -207,7 +210,7 @@ class OpsPanel(object):
                 "FreebieItems": [] if order.freebie is None else order.freebie,
                 "DeliveryType": order.delivery_type,
                 "DeliverySlot": format_delivery_slot(order.delivery_slot),
-                "CouponMax": order.promo_max_discount
+                "CouponMax": order.promo_max_discount if order.promo_max_discount is not None else order.total_discount
             }
 
             sub_order['ItemList'] = list()
