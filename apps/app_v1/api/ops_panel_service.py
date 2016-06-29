@@ -93,11 +93,12 @@ class OpsPanel(object):
              }
 
         #print(type(order_data.promo_codes))
-        data["CouponUsed"] = [{
-                "Code" :  order_data.promo_codes[0],
-                "CouponType": "Flat" if order_data.promo_type == 0 else "Percent",
-                "CouponMax": order_data.promo_max_discount
-            }]
+        if order_data.promo_codes is not None:
+            data["CouponUsed"] = [{
+                    "Code" :  order_data.promo_codes[0],
+                    "CouponType": "Flat" if order_data.promo_type == 0 else "Percent",
+                    "CouponMax": order_data.promo_max_discount
+                }]
 
         if order_data.payment_mode == "COD": # 0 -> COD, 1->Prepaid
            data["OrderStatus"] =  "0" # 0 -> Confirmed, 1->Pending
@@ -180,11 +181,12 @@ class OpsPanel(object):
                "Landmark": shipping_address.landmark
              }
 
-        data["CouponUsed"] = [{
-                "Code" :  order_data.promo_codes[0],
-                "CouponType": "Flat" if order_data.promo_types == 0 else "Percent",
-                "CouponMax": order_data.promo_max_discount
-            }]
+        if order_data.promo_codes is not None:
+            data["CouponUsed"] = [{
+                    "Code" :  order_data.promo_codes[0],
+                    "CouponType": "Flat" if order_data.promo_types == 0 else "Percent",
+                    "CouponMax": order_data.promo_max_discount
+                }]
 
 
         if order_data.payment_mode == "COD": # 0 -> COD, 1->Prepaid
