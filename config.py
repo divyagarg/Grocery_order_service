@@ -128,7 +128,7 @@ class ProductionConfig(Config):
 	PAYMENT_SERVICE_URL = "https://api.askme.com/payment_service/api/paas/v1/paymentstatus"
 	PAYMENT_AUTH_KEY = "553dd18b3199a533a9000001616c2be33cd24735432775949282dc3a"
 	X_API_USER = "askmegrocery"
-	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
+	X_API_TOKEN = "ZDA2OWE2OGEwODcwMTFlNjhiMjcyNGEwNzRmMTUwZjI"
 
 	KAFKA_HOSTS= ['kafka01.production.askmebazaar.com:9092', 'kafka02.production.askmebazaar.com:9092','kafka03.production.askmebazaar.com:9092']
 	KAFKA_TOPIC = 'grocery_orderservice_prod'
