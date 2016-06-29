@@ -234,7 +234,7 @@ class OpsPanel(object):
             "PaymentModes": [
                 {
                     "Mode": 20,  # 19->COD, 20 -> Prepaid
-                    "Status": "0" if payment_data.get('status') == "success" else "21",
+                    "Status": "21",
                     "PGReferenceID": payment_data.get('pgTxnId', "000") ,
                     "Amount": payment_data.get('txnAmount', 0.0)
                 }
