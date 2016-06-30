@@ -31,13 +31,17 @@ def validate_delivery_slot(delivery_slot, type):
 			delivery_slot_json = delivery_slot
 		start_time = delivery_slot_json.get('start_datetime')
 		end_time = delivery_slot_json.get('end_datetime')
-		now = datetime.datetime.now(tzlocal())
-		t_start_time = time.strptime(start_time, '%Y-%m-%dT%H:%M:%S+00:00')
-		t_end_time = time.strptime(end_time, '%Y-%m-%dT%H:%M:%S+00:00')
-		if now.day > t_start_time.tm_mday:
+		#now = datetime.datetime.now(tzlocal())
+
+		now = datetime.datetime.now()
+		t_start_time = datetime.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%S+00:00')
+		t_end_time = datetime.datetime.strptime(end_time, '%Y-%m-%dT%H:%M:%S+00:00')
+		if now > t_start_time or now > t_end_time:
 			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
-		elif now.day > t_end_time.tm_mday:
-			raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+		#if now.day > t_start_time.tm_mday:
+			#raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
+		#elif now.day > t_end_time.tm_mday:
+			#raise OlderDeliverySlotException(ERROR.OLDER_DELIVERY_SLOT_ERROR)
 		return delivery_slot
 
 def create_shipment_id():
