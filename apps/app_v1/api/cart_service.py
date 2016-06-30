@@ -245,9 +245,9 @@ def check_prices_of_item(request_items, data):
 	for response in response_data[0].get('items')[0].get('items'):
 		order_item_price_dict[response.get('id')] = response
 	for each_item in request_items:
-		check_if_calculate_price_api_response_is_correct_or_quantity_is_available(
-			each_item, order_item_price_dict[
-				int(each_item['item_uuid'])])
+		if int(each_item['item_uuid']) not in order_item_price_dict:
+			raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
+		check_if_calculate_price_api_response_is_correct_or_quantity_is_available(each_item, order_item_price_dict[int(each_item['item_uuid'])])
 
 	return order_item_price_dict
 
