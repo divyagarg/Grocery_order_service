@@ -177,15 +177,15 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 						FUNCTIONS: [{String: {}}]
 					},
 					"city": {
-						REQUIRED: False,
+
 						FUNCTIONS: [{String: {}}]
 					},
 					"pincode": {
-						REQUIRED: False,
+
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
-						REQUIRED: False,
+
 						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
@@ -309,22 +309,22 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 				],
 				SCHEMA: {
 					"name": {
-						FUNCTIONS: [{String: {}}]
+						FUNCTIONS: [{String: {"min_length": 1}}]
 					},
 					"address": {
-						FUNCTIONS: [{String: {}}]
+						FUNCTIONS: [{String: {"min_length": 1}}]
 					},
 					"city": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
+
+						FUNCTIONS: [{String: {"min_length": 1}}]
 					},
 					"pincode": {
-						REQUIRED: False,
+
 						FUNCTIONS: [{Pincode: {}}]
 					},
 					"state": {
-						REQUIRED: False,
-						FUNCTIONS: [{String: {}}]
+
+						FUNCTIONS: [{String: {"min_length": 1}}]
 					},
 					"mobile": {
 						FUNCTIONS: [{MobileNumber: {}}]
@@ -340,12 +340,12 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 				}
 			},
 			"order_source_reference": {
-				FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
+					FUNCTIONS: [{Contained: {"contained_in": [o.value for o in ORDER_SOURCE_REFERENCE]}}]
 			},
 			"delivery_slots": {
 				REQUIRED: False,
 				FUNCTIONS: [
-					{List: {}}
+							{List: {}}
 				],
 				SCHEMA: {
 					"shipment_id": {
