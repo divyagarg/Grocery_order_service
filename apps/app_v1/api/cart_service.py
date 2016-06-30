@@ -916,12 +916,12 @@ class CartService(object):
 							int(data_item['item_uuid'])] = new_cart_item
 
 			elif operation == 2:
-				if no_of_left_items_in_cart == 1 and cart.promo_codes is not None and cart.promo_codes != []:
-					raise RemoveCouponBeforeDeletingLastItem(ERROR.REMOVE_COUPON_BEFORE_DELETING_LAST_ITEM)
 				for data_item in data['orderitems']:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					if existing_cart_item is None:
 						raise IncorrectDataException(ERROR.NOT_EXISTING_ITEM_CAN_NOT_BE_DELETED)
+					if no_of_left_items_in_cart ==1 and existing_cart_item.quantity == 1 and cart.promo_codes is not None and cart.promo_codes != []:
+						raise RemoveCouponBeforeDeletingLastItem(ERROR.REMOVE_COUPON_BEFORE_DELETING_LAST_ITEM)
 					if data_item['quantity'] >= existing_cart_item.quantity:
 						existing_cart_item.quantity = 0
 					else:
