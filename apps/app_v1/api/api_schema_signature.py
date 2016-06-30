@@ -56,7 +56,7 @@ CREATE_CART_SCHEMA = {
 			},
 			"state": {
 
-				FUNCTIONS: [{String: {"min_length": 1}}]
+				FUNCTIONS: [{String: {}}]
 			},
 			"mobile": {
 				FUNCTIONS: [{MobileNumber: {}}]
@@ -324,7 +324,7 @@ CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
 					},
 					"state": {
 
-						FUNCTIONS: [{String: {"min_length": 1}}]
+						FUNCTIONS: [{String: {}}]
 					},
 					"mobile": {
 						FUNCTIONS: [{MobileNumber: {}}]
