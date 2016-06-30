@@ -36,7 +36,7 @@ class Address(db.Model, JsonUtility):
 	mobile = db.Column(db.String(32), nullable=False)
 	address = db.Column(db.String(512), nullable=False)
 	city = db.Column(db.String(128), nullable=False)
-	pincode = db.Column(db.String(32))
+	pincode = db.Column(db.String(32), nullable=False)
 	state = db.Column(db.String(32), nullable=False)
 	email = db.Column(db.String(128))
 	landmark = db.Column(db.String(512))

@@ -41,22 +41,22 @@ CREATE_CART_SCHEMA = {
 		],
 		SCHEMA: {
 			"name": {
-				FUNCTIONS: [{String: {}}]
+				FUNCTIONS: [{String: {"min_length": 1}}]
 			},
 			"address": {
-				FUNCTIONS: [{String: {}}]
+				FUNCTIONS: [{String: {"min_length": 1}}]
 			},
 			"city": {
-				REQUIRED: False,
-				FUNCTIONS: [{String: {}}]
+
+				FUNCTIONS: [{String: {"min_length": 1}}]
 			},
 			"pincode": {
-				REQUIRED: False,
+
 				FUNCTIONS: [{Pincode: {}}]
 			},
 			"state": {
-				REQUIRED: False,
-				FUNCTIONS: [{String: {}}]
+
+				FUNCTIONS: [{String: {"min_length": 1}}]
 			},
 			"mobile": {
 				FUNCTIONS: [{MobileNumber: {}}]
