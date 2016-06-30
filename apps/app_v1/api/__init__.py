@@ -50,7 +50,7 @@ class ERROR(object):
 	COUPON_APPLY_FAILED = ERROR_DETAIL(code=2005, message="Coupon can not applied")
 	FREEBIE_NOT_APPLICABLE = ERROR_DETAIL(code=2006, message="Freebie is not applicable on the current cart items")
 	COUPON_SERVICE_RETURNING_FAILURE_STATUS = ERROR_DETAIL(code=2007, message="Coupon service returning failure status")
-
+	REMOVE_COUPON_BEFORE_DELETING_LAST_ITEM = ERROR_DETAIL(code= 2008, message="Please remove coupon first")
 	# Product specific Error
 	PRODUCT_OFFER_PRICE_CHANGED = ERROR_DETAIL(code=3001, message="Product price changed")
 	PRODUCT_DISPLAY_PRICE_CHANGED = ERROR_DETAIL(code=3002, message="Product display price changed")
@@ -117,6 +117,14 @@ class CouponInvalidException(Exception):
 	def __init__(self, error_detail):
 		self.code = error_detail.code
 		super(CouponInvalidException, self).__init__(error_detail.message)
+
+
+class RemoveCouponBeforeDeletingLastItem(Exception):
+	code = None
+
+	def __init__(self, error_detail):
+		self.code = error_detail.code
+		super(RemoveCouponBeforeDeletingLastItem, self).__init__(error_detail.message)
 
 
 class SubscriptionNotFoundException(Exception):

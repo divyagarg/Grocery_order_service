@@ -12,7 +12,7 @@ from apps.app_v1.api import parse_request_data, RequiredFieldMissing,\
 	EmptyCartException, IncorrectDataException,	CouponInvalidException,\
 	SubscriptionNotFoundException, QuantityNotAvailableException,\
 	 get_shipping_charges, ServiceUnAvailableException, \
-	FreebieNotApplicableException
+	FreebieNotApplicableException, RemoveCouponBeforeDeletingLastItem
 from apps.app_v1.api.api_schema_signature import CREATE_CART_SCHEMA
 from apps.app_v1.models import order_types, payment_modes_dict
 from apps.app_v1.models.models import Cart, CartItem, Address, OrderShipmentDetail
@@ -326,6 +326,10 @@ class CartService(object):
 			try:
 				self.update_cart_items(data, cart, operation)
 
+			except RemoveCouponBeforeDeletingLastItem as rc:
+				Logger.error("[%s] Remove coupon before deleting last item from the cart [%s]", g.UUID, str(rc.message))
+				err = ERROR.REMOVE_COUPON_BEFORE_DELETING_LAST_ITEM
+				break
 			except IncorrectDataException:
 				Logger.error("[%s] Non existing item can not be deleted",\
 							 g.UUID)
@@ -912,6 +916,8 @@ class CartService(object):
 							int(data_item['item_uuid'])] = new_cart_item
 
 			elif operation == 2:
+				if no_of_left_items_in_cart == 1 and cart.promo_codes is not None and cart.promo_codes != []:
+					raise RemoveCouponBeforeDeletingLastItem(ERROR.REMOVE_COUPON_BEFORE_DELETING_LAST_ITEM)
 				for data_item in data['orderitems']:
 					existing_cart_item = self.item_id_to_existing_item_dict.get(data_item['item_uuid'])
 					if existing_cart_item is None:
@@ -1356,10 +1362,11 @@ class CartService(object):
 			else:
 				Logger.error("[%s] Cart does not exist for geo_id: [%s] and user_id: [%s]", g.UUID, request_data['geo_id'], request_data['user_id'])
 				return create_error_response(ERROR.NO_SUCH_CART_EXIST)
-
+		except RemoveCouponBeforeDeletingLastItem as rc:
+			Logger.error("[%s] Remove coupon before deleting last item from the cart [%s]", g.UUID, str(rc.message))
+			return create_error_response(rc)
 		except IncorrectDataException as ide:
-			Logger.error("[%s] Validation Error [%s]",
-						 g.UUID, str(ide.message))
+			Logger.error("[%s] Validation Error [%s]", g.UUID, str(ide.message))
 			return create_error_response(ide)
 		except Exception as exception:
 			Logger.error('[%s] Exception occured while creating/updating\
