@@ -7,6 +7,8 @@ from requests.exceptions import ConnectTimeout
 from flask import g, current_app
 import requests
 from apps.app_v1.api.ops_panel_service import OpsPanel
+from apps.app_v1.api.status_service import StatusService
+from apps.app_v1.models import ORDER_STATUS
 from utils.jsonutils.json_utility import json_serial
 
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
@@ -205,6 +207,10 @@ def update_payment_details(request):
 
         # update payment_status in order table
         order_data.payment_status = pure_json['status']
+        if order_data.payment_status == "success":
+            order_data.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value)
+            for sub_order in order_data.sub_orders:
+                sub_order.status_id = order_data.status_id
 
         if "childTxns" in pure_json:
             for child in pure_json["childTxns"]:
