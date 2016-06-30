@@ -101,10 +101,10 @@ class OpsPanel(object):
                     "CouponMax": order_data.promo_max_discount if order_data.promo_max_discount is not None else order_data.total_discount
             }]
 
-        if order_data.payment_mode == "COD": # 0 -> COD, 1->Prepaid
-           data["OrderStatus"] =  "0" # 0 -> Confirmed, 1->Pending
+        if order_data.payment_mode == "Prepaid": # 0 -> COD, 1->Prepaid
+           data["OrderStatus"] =  "1" # 0 -> Confirmed, 1->Pending
         else:
-           data["OrderStatus"] =  "1"
+           data["OrderStatus"] =  "0"
 
         data["SubOrders"]= list()
         for order in order_data.order_list:
@@ -143,11 +143,21 @@ class OpsPanel(object):
 
             data["SubOrders"].append(sub_order)
 
+        status = 1 # 1->Confirmed, 0->prepaid pending
+        mode = 19 # 19->COD, 20 -> Prepaid, 47 -> coupon
+        if order_data.payment_mode == "Prepaid":
+            mode = 20
+            status = 0
+        elif order_data.payment_mode == "COD":
+            mode = 19
+        else:
+            mode = 47
+
         data["PaymentDetails"] = {
-            "Status" :  1 if order_data.payment_mode == 0 else 0,  # 1->Confirmed, 0->prepaid pending
+            "Status" :  status,
             "PaymentModes": [
                 {
-                    "Mode": 19 if order_data.payment_mode == 0 else 20,  # 19->COD, 20 -> Prepaid
+                    "Mode": mode,
                     "Status": "21",
                     "PGReferenceID": "000",
                     "Amount": order_data.total_payble_amount
