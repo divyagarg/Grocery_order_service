@@ -428,7 +428,7 @@ class OrderService(object):
 
 			# 10 Save in old system
 			try:
-				if self.payment_mode == "COD":
+				if self.payment_mode != "Prepaid":
 				   ops_data = OpsPanel.create_order_request(self)
 				   OpsPanel.send_order(ops_data)
 				   self.master_order.ops_panel_status = 1
