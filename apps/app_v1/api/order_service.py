@@ -312,6 +312,10 @@ class OrderService(object):
 				Logger.error("[%s] Cart does not Exist [%s]", g.UUID, ncee.message)
 				err = ncee
 				break
+			except PaymentCanNotBeNullException as pe:
+				Logger.error("[%s] Please select payment mode before creating Order [%s]", g.UUID, str(pe))
+				err = ERROR.PAYMENT_CAN_NOT_NULL
+				break
 			except Exception as exception:
 				Logger.error("[%s] Exception occurred in initializing order [%s]", g.UUID, str(exception), exc_info=True)
 				ERROR.INTERNAL_ERROR.message = str(exception)
@@ -497,6 +501,8 @@ class OrderService(object):
 			raise NoShippingAddressFoundException(ERROR.NO_SHIPPING_ADDRESS_FOUND)
 		self.shipping_address = cart.shipping_address_ref
 		self.payment_mode = cart.payment_mode
+		if self.payment_mode is None:
+			raise PaymentCanNotBeNullException(ERROR.PAYMENT_CAN_NOT_NULL)
 		if cart.cartItem is None:
 			raise RequiredFieldMissing(ERROR.CART_EMPTY)
 		self.order_items = cart.cartItem
