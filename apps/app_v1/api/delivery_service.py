@@ -54,6 +54,7 @@ def create_shipment_id():
 def update_delivery_slot(request_data):
 	delivery_slots_list = request_data.get('delivery_slots')
 	for each_slot in delivery_slots_list:
+		validate_delivery_slot(each_slot, 'dict')
 		shipment_id = each_slot.get('shipment_id')
 		timerange = {"start_datetime": each_slot.get('start_datetime'),
 					 "end_datetime": each_slot.get('end_datetime')}
