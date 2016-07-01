@@ -89,7 +89,7 @@ class OpsPanel(object):
                "Name": shipping_address.name,
                "Mobile": shipping_address.mobile,
                "Address": shipping_address.address,
-               "Landmark": shipping_address.landmark
+               "Landmark": " " if shipping_address.landmark == None else shipping_address.landmark
              }
 
         #print(type(order_data.promo_codes))
@@ -189,7 +189,7 @@ class OpsPanel(object):
                "Name": shipping_address.name,
                "Mobile": shipping_address.mobile,
                "Address": shipping_address.address,
-               "Landmark": shipping_address.landmark
+               "Landmark": " " if shipping_address.landmark == None else shipping_address.landmark
              }
 
 
