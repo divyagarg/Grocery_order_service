@@ -127,8 +127,8 @@ class ProductionConfig(Config):
 	SHIPMENT_PREVIEW_URL = "http://api-internal.askme.com/fulfilments/v1/order/getShipmentOptions"
 	PAYMENT_SERVICE_URL = "https://api.askme.com/payment_service/api/paas/v1/paymentstatus"
 	PAYMENT_AUTH_KEY = "553dd18b3199a533a9000001616c2be33cd24735432775949282dc3a"
-	X_API_USER = "askmegrocery"
-	X_API_TOKEN = "ZDA2OWE2OGEwODcwMTFlNjhiMjcyNGEwNzRmMTUwZjI"
+	X_API_USER = "newaskmegrocery"
+	X_API_TOKEN = "ceeb2741064966a6cfe0bb3a722eab772d908b90967eb7585ecf0852960ac279"
 
 	KAFKA_HOSTS= ['kafka01.production.askmebazaar.com:9092', 'kafka02.production.askmebazaar.com:9092','kafka03.production.askmebazaar.com:9092']
 	KAFKA_TOPIC = 'grocery_orderservice_prod'
