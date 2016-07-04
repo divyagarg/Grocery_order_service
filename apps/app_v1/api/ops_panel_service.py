@@ -150,6 +150,8 @@ class OpsPanel(object):
             status = 0
         elif order_data.payment_mode == "COD":
             mode = 19
+        elif order_data.payment_mode == "Sodexo":
+            mode = 50
         else:
             mode = 47
 
@@ -160,7 +162,7 @@ class OpsPanel(object):
                     "Mode": mode,
                     "Status": "21",
                     "PGReferenceID": "000",
-                    "Amount": order_data.total_payble_amount
+                    "Amount": order_data.master_order.total_payble_amount
                 }
             ]
         }
