@@ -770,9 +770,10 @@ class OrderService(object):
 		order.promo_max_discount = self.promo_max_discount
 		order.payment_mode = self.payment_mode
 		order.payment_status = "pending"
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value) if self.payment_mode == \
-																							 payment_modes_dict[0] \
-			else StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		if self.payment_mode == "Prepaid":
+			order.status_id = StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		else:
+			order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value)
 
 		if self.cart_reference_given:
 			order.shipping_address_ref = self.shipping_address
@@ -886,10 +887,10 @@ class OrderService(object):
 		order.promo_codes = json.dumps(self.promo_codes)
 		order.promo_types = self.promo_type
 		order.delivery_slot = order.delivery_slot
-		order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value) if self.payment_mode == \
-																							 payment_modes_dict[
-																								 0] else StatusService.get_status_id(
-			ORDER_STATUS.PENDING_STATUS.value)
+		if self.payment_mode == "Prepaid":
+			order.status_id = StatusService.get_status_id(ORDER_STATUS.PENDING_STATUS.value)
+		else:
+			order.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value)
 		order.total_discount = 0.0
 		order.total_offer_price = 0.0
 		order.total_display_price = 0.0
