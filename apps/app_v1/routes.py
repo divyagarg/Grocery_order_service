@@ -239,6 +239,6 @@ def get_order_count():
 	if request.args.__len__() == 0:
 		response = create_error_response(ERROR.VALIDATION_ERROR)
 	else:
-		response = get_order_count_for_today(request.args['status'])
+		response = get_order_count_for_today(request.args)
 	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)

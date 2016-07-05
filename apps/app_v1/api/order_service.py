@@ -6,7 +6,6 @@ import datetime
 
 from flask import g, current_app
 import requests
-from sqlalchemy import func, distinct
 from requests.exceptions import ConnectTimeout
 from apps.app_v1.api.cart_service import remove_cart
 from apps.app_v1.api.coupon_service import CouponService
@@ -20,13 +19,13 @@ from apps.app_v1.models import ORDER_STATUS, DELIVERY_TYPE, order_types, payment
 from apps.app_v1.models.models import Order, db, Cart, Address, OrderItem, Status, OrderShipmentDetail, \
 	MasterOrder, CartItem
 from config import APP_NAME
+from sqlalchemy import and_
 from utils.jsonutils.json_utility import json_serial
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException, SubscriptionNotFoundException, \
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
 	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, \
-	get_address, \
-	get_payment, PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
+	PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
 	ServiceUnAvailableException
 from utils.jsonutils.json_schema_validator import validate
 
@@ -63,20 +62,32 @@ def get_count_of_orders_of_user(user_id):
 	return create_data_response({"count": count})
 
 
-def get_order_count_for_today(status_code):
+def get_order_count_for_today(args):
 	try:
+		status_code = args.get('status')
+		if status_code is None:
+			return create_error_response(ERROR.INVALID_STATUS)
 		status = Status.query.filter_by(status_code = status_code).first()
 		if status is None:
 			Logger.error('[%s] Status given is invalid [%s]', g.UUID, status_code)
 			return create_error_response(ERROR.INVALID_STATUS)
-		current_date = datetime.datetime.now().strftime('%Y-%m-%d')
-		count = MasterOrder.query.filter(MasterOrder.status_id == status.id).filter(MasterOrder.created_on.like(current_date+'%')).count()
+		filters = []
+		filters.append(MasterOrder.status_id == status.id)
+		from_date = args.get('from_date')
+		if from_date is not None:
+			filters.append(MasterOrder.created_on >= from_date)
+		to_date = args.get('to_date')
+		if to_date is not None:
+			filters.append(MasterOrder.created_on <= to_date)
+		final_filter = and_(*filters)
+		count = MasterOrder.query.filter(final_filter).count()
 	except Exception as exception:
 		Logger.error('[%s] Exception occured while getting order count [%s]',g.UUID, str(exception), exc_info=True)
 		ERROR.INTERNAL_ERROR.message = str(exception)
 		return create_error_response(ERROR.INTERNAL_ERROR)
 
 	return create_data_response({"count": count})
+
 
 def convert_order_to_cod(body):
 	try:
