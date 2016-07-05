@@ -54,9 +54,7 @@ def get_count_of_orders_of_user(user_id):
 	try:
 		if user_id is None or not isinstance(user_id, (unicode, str)):
 			return create_error_response(ERROR.VALIDATION_ERROR)
-		count = db.session.query(func.count(distinct(Order.parent_order_id))).filter(
-			Order.user_id == user_id).filter(Order.status_id == Status.id).filter(
-			Status.status_code != ORDER_STATUS.CANCELLED.value).group_by(Order.parent_order_id).count()
+		count = MasterOrder.query.filter(MasterOrder.user_id == user_id).filter(MasterOrder.status_id == Status.id).filter(Status.status_code != ORDER_STATUS.CANCELLED.value).count()
 	except Exception as exception:
 		Logger.error('[%s] Exception occured while fetching data from db [%s]',g.UUID, str(exception), exc_info=True)
 		ERROR.INTERNAL_ERROR.message = str(exception)
