@@ -65,6 +65,21 @@ def get_count_of_orders_of_user(user_id):
 	return create_data_response({"count": count})
 
 
+def get_order_count_for_today(status_code):
+	try:
+		status = Status.query.filter_by(status_code = status_code).first()
+		if status is None:
+			Logger.error('[%s] Status given is invalid [%s]', g.UUID, status_code)
+			return create_error_response(ERROR.INVALID_STATUS)
+		current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+		count = MasterOrder.query.filter(MasterOrder.status_id == status.id).filter(MasterOrder.created_on.like(current_date+'%')).count()
+	except Exception as exception:
+		Logger.error('[%s] Exception occured while getting order count [%s]',g.UUID, str(exception), exc_info=True)
+		ERROR.INTERNAL_ERROR.message = str(exception)
+		return create_error_response(ERROR.INTERNAL_ERROR)
+
+	return create_data_response({"count": count})
+
 def convert_order_to_cod(body):
 	try:
 		request_data = parse_request_data(body)
@@ -1113,3 +1128,6 @@ class OrderService(object):
 		message["data"] = data
 
 		Publisher.publish_message(self.parent_reference_id, json.dumps(message, default=json_serial))
+
+
+

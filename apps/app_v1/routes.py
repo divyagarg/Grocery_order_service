@@ -12,7 +12,7 @@ from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService, update_slot
 from apps.app_v1.api.order_service import OrderService, \
 	get_count_of_orders_of_user, check_if_cod_possible_for_order, \
-	convert_order_to_cod
+	convert_order_to_cod, get_order_count_for_today
 from . import app_v1
 from apps.app_v1.api import ERROR
 from lib.decorators import jsonify, logrequest
@@ -229,5 +229,16 @@ def remove_from_cart():
 	g.UUID = uuid.uuid4()
 	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]' , g.UUID, str(request.url), json.dumps(request.data))
 	response = CartService().remove_from_cart(request.data)
+	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	return flask.jsonify(response)
+
+@app_v1.route('/order_count', methods=['GET'])
+def get_order_count():
+	g.UUID = uuid.uuid4()
+	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
+	if request.args.__len__() == 0:
+		response = create_error_response(ERROR.VALIDATION_ERROR)
+	else:
+		response = get_order_count_for_today(request.args['status'])
 	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
