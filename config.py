@@ -121,6 +121,7 @@ class ProductionConfig(Config):
 	SQLALCHEMY_TRACK_MODIFICATIONS = False
 	SQLALCHEMY_POOL_SIZE = 100
 	SQLALCHEMY_POOL_TIMEOUT = 20
+	SQLALCHEMY_POOL_RECYCLE = 1750
 	PRODUCT_CATALOGUE_URL = "http://api-internal.askme.com/unified/v1/search"
 	COUPON_CHECK_URL = "http://api-internal.askme.com/coupon/vouchers/grocery/v1/check"
 	COUPOUN_APPLY_URL = "http://api-internal.askme.com/coupon/vouchers/grocery/v1/apply"
