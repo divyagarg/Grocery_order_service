@@ -1,7 +1,8 @@
 import json
 import logging
 import datetime
-from apps.app_v1.api.cart_service import CartService, remove_cart
+from apps.app_v1.api.cart_service import CartService, remove_cart, \
+    get_cart_for_geo_user_id
 import os
 
 from requests.exceptions import ConnectTimeout
@@ -214,7 +215,7 @@ def update_payment_details(request):
                 sub_order.status_id = order_data.status_id
 
             #TODO For Time being fix
-            cart = CartService.get_cart_for_geo_user_id(order_data.geo_id, order_data.user_id)
+            cart = get_cart_for_geo_user_id(order_data.geo_id, order_data.user_id)
             if cart is not None:
                 remove_cart(cart.cart_reference_id)
 
