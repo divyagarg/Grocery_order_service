@@ -435,7 +435,9 @@ class OrderService(object):
 			# 7 Delete cart of reference id is given
 			try:
 				if self.cart_reference_given:
-					remove_cart(self.cart_reference_id)
+					#TODO For Time being not removing cart for payment mode Prepaid
+					if self.payment_mode == 'COD':
+						remove_cart(self.cart_reference_id)
 			except Exception as exception:
 				traceback.format_exc()
 				Logger.error("[%s] Exception occurred in saving order [%s]", g.UUID, str(exception), exc_info=True)
