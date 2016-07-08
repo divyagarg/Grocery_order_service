@@ -260,7 +260,7 @@ class OrderService(object):
 		self.order_source_reference = None
 		self.promo_codes = None
 		self.promo_type = None
-		self.promo_max_discount = None
+		self.promo_max_discount = 0.0
 		self.shipping_address = None
 		self.billing_address = None
 		self.delivery_type = DELIVERY_TYPE.NORMAL.value
@@ -685,9 +685,9 @@ class OrderService(object):
 					if each_benefit["couponCode"] == self.promo_codes[0]:
 						self.promo_type = each_benefit.get("benefit_type", 0)
 						if self.promo_type == 0:
-						  self.promo_max_discount = each_benefit.get("amount")
+						  self.promo_max_discount = each_benefit.get("amount", 0.0)
 						else:
-						  self.promo_max_discount = each_benefit.get("max_cap")
+						  self.promo_max_discount = each_benefit.get("max_cap", 0.0)
 						break;
 
 

@@ -8,6 +8,7 @@ from apps.app_v1.api import ERROR, ServiceUnAvailableException
 from config import APP_NAME
 from flask import current_app, g
 import datetime
+from dateutil import tz
 
 
 from apps.app_v1.models.models import Address
@@ -26,7 +27,16 @@ def format_delivery_slot(delivery_slot):
         start = datetime.datetime.strptime(delivery_slot["start_datetime"], "%Y-%m-%dT%H:%M:%S+00:00")
         end = datetime.datetime.strptime(delivery_slot["end_datetime"], "%Y-%m-%dT%H:%M:%S+00:00")
 
-        slot = datetime.datetime.strftime(start, "%Y%m%d%H")[2:10] + datetime.datetime.strftime(end, ":%H")
+        from_zone = tz.gettz('UTC')
+        to_zone = tz.gettz('Asia/Kolkata')
+
+        start = start.replace(tzinfo=from_zone)
+        start = start.astimezone(to_zone)
+
+        end = end.replace(tzinfo=from_zone)
+        end = end.astimezone(to_zone)
+
+        slot = start.strftime("%Y%m%d%H")[2:10] + end.strftime(":%H")
         return slot
     except Exception as e:
         Logger.error("[%s] Exception occurred in delivery_slot_format : %s", g.UUID, str(e))
@@ -74,7 +84,16 @@ class OpsPanel(object):
         data["MasterOrderId"] = order_data.parent_reference_id
         data["OrderSource"] =  order_data.order_source_reference
         data["UserID"] = order_data.user_id
-        data["CreatedAt"] = str(order_data.master_order.created_on)
+        #data["CreatedAt"] = str(order_data.master_order.created_on)
+
+        from_zone = tz.gettz('UTC')
+        to_zone = tz.gettz('Asia/Kolkata')
+        created_on = order_data.master_order.created_on.replace(tzinfo=from_zone)
+        created_on = created_on.astimezone(to_zone)
+        created_on = created_on.strftime("%Y-%m-%d %H:%M:%S")  #2016-06-13 12:25:54.680
+        data["CreatedAt"] = str(created_on)
+
+
         data["GeoId"] =  order_data.geo_id
 
         data["IBLUID"] =  "0"
@@ -176,8 +195,15 @@ class OpsPanel(object):
         data["MasterOrderId"] = order_data.order_id
         data["OrderSource"] =  order_data.order_source
         data["UserID"] = order_data.user_id
-        data["CreatedAt"] = str(order_data.created_on)
+        #data["CreatedAt"] = str(order_data.created_on)
         data["GeoId"] =  order_data.geo_id
+
+        from_zone = tz.gettz('UTC')
+        to_zone = tz.gettz('Asia/Kolkata')
+        created_on = order_data.created_on.replace(tzinfo=from_zone)
+        created_on = created_on.astimezone(to_zone)
+        created_on = created_on.strftime("%Y-%m-%d %H:%M:%S")  #2016-06-13 12:25:54.680
+        data["CreatedAt"] = str(created_on)
 
         data["IBLUID"] =  "0"
         data["IsContracted"] = 0
