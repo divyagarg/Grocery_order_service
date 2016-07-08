@@ -1,8 +1,9 @@
-import logging
+
 import os
 
 from flask import Flask
 import lib.log as log
+import logging
 from apps.app_v1.models import initialize_db
 from config import config, APP_NAME
 from utils.kafka_utils.kafka_publisher import Publisher

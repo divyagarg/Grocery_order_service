@@ -218,7 +218,7 @@ def update_payment_details(request):
             cart = get_cart_for_geo_user_id(order_data.geo_id, order_data.user_id)
             if cart is not None:
                 Logger.info('[%s] Removing cart as payment is successful for cart [%s]', g.UUID, cart.cart_reference_uuid)
-                remove_cart(cart.cart_reference_id)
+                remove_cart(cart.cart_reference_uuid)
 
         if "childTxns" in pure_json:
             for child in pure_json["childTxns"]:

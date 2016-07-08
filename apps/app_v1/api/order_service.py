@@ -1130,8 +1130,11 @@ class OrderService(object):
 				item['quantity'] = order_item.quantity
 				item['product_name'] = order_item.title
 				item['image_url'] = order_item.image_url
-				item['final_item_price'] = (order_item.offer_price * order_item.quantity)\
-									  + order_item.shipping_charge - order_item.item_discount
+				item['final_item_price'] = (order_item.offer_price * order_item.quantity)
+				if order_item.shipping_charge is not None:
+					item['final_item_price'] = item['final_item_price']  + order_item.shipping_charge
+				if order_item.item_discount is not None:
+					item['final_item_price'] = item['final_item_price'] - order_item.item_discount
 				sub_order['item_list'].append(item)
 
 			data["sub_orders"].append(sub_order)
