@@ -34,11 +34,11 @@ def test():
 @logrequest
 def createOrUpdateCart():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] %s :, arguments = <%s>', g.UUID, '/cart', json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	try:
 		cartservice = CartService()
 		response = cartservice.create_or_update_cart(request.data)
-		logger.info("[%s] END OF CALL [%s]", g.UUID, json.dumps(response))
+		logger.info("[%s] END_OF_CALL [%s]", g.UUID, json.dumps(response))
 		return response
 	except Exception as exception:
 		logger.error("[%s] Exception occured in cart service [%s]", g.UUID, str(exception), exc_info=True)
@@ -51,13 +51,11 @@ def createOrUpdateCart():
 @logrequest
 def add_item_to_cart_and_get_count_of_items():
 	g.UUID = uuid.uuid4()
-	logger.info(
-		'START CALL [%s] %s : Requested url = <%s> , arguments = <%s>',
-			g.UUID, '/cart', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	try:
 		cartservice = CartService()
 		response = cartservice.add_item_to_cart(request.data)
-		logger.info("[%s] END OF CALL", g.UUID)
+		logger.info("[%s] END_OF_CALL", g.UUID)
 		return response
 	except Exception as exception:
 		logger.error("[%s] Exception occured in getting count of cart items [%s]", g.UUID, str(exception), exc_info=True)
@@ -70,14 +68,13 @@ def add_item_to_cart_and_get_count_of_items():
 @logrequest
 def get_count_of_orders_of_a_user():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s]  [%s] : Requested url = <%s> , arguments = <%s>',
-		g.UUID, '/user', str(request.url), json.dumps(request.args))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
 	try:
 		if request.args.__len__() == 0 :
 			response = create_error_response(ERROR.VALIDATION_ERROR)
 		else:
 			response = get_count_of_orders_of_user(request.args['user_id'])
-		logger.info("[%s] END OF CALL [%s]", g.UUID, json.dumps(response))
+		logger.info("[%s] END_OF_CALL [%s]", g.UUID, json.dumps(response))
 		return response
 	except Exception as exception:
 		logger.error("[%s] Exception occured in getting count of orders of a user [%s]", g.UUID, str(exception),
@@ -91,14 +88,12 @@ def get_count_of_orders_of_a_user():
 @logrequest
 def order():
 	g.UUID = uuid.uuid4()
-	logger.info(
-		'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>',
-			g.UUID, '/order', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 
 	try:
 		order_service = OrderService()
 		response = order_service.createorder(request.data)
-		logger.info("[%s] END OF CALL [%s]", g.UUID, json.dumps(response))
+		logger.info("[%s] END_OF_CALL [%s]", g.UUID, json.dumps(response))
 		return response
 	except Exception as exception:
 		logger.error("[%s] Exception occured in order service [%s]", g.UUID, str(exception), exc_info=True)
@@ -111,14 +106,12 @@ def order():
 @logrequest
 def delivery_info():
 	g.UUID = uuid.uuid4()
-	logger.info(
-		'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>',
-			g.UUID, '/delivery', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 
 	try:
 		delivery_service = DeliveryService()
 		response = delivery_service.get_delivery_info(request.data)
-		logger.info("[%s] END OF CALL [%s]", g.UUID, json.dumps(response))
+		logger.info("[%s] END_OF_CALL [%s]", g.UUID, json.dumps(response))
 		return response
 	except Exception as exception:
 		logger.error("[%s] Exception occured in delivery service [%s]", g.UUID, str(exception), exc_info=True)
@@ -131,12 +124,10 @@ def delivery_info():
 @logrequest
 def slot():
 	g.UUID = uuid.uuid4()
-	logger.info(
-		'START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>',
-			g.UUID, '/slot', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	try:
 		response = update_slot(request.data)
-		logger.info("[%s] END OF CALL [%s]", g.UUID, json.dumps(response))
+		logger.info("[%s] END_OF_CALL [%s]", g.UUID, json.dumps(response))
 		return response
 	except Exception as exception:
 		logger.error("[%s] Exception occured in delivery service [%s]", g.UUID, str(exception), exc_info=True)
@@ -147,98 +138,94 @@ def slot():
 @app_v1.route('/get_order_prices', methods=['POST'])
 def get_order_prices_api():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>',
-		g.UUID, '/get_order_price', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	response = get_order_prices(request)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/update_payment_details', methods=['POST'])
 def update_payment_details_api():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>',
-		g.UUID, '/update_payment_details', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	response = update_payment_details(request)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/get_payment_details', methods=['POST'])
 def get_payment_details_api():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>',
-		g.UUID, '/get_payment_details', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	response = get_payment_details(request)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/change_user', methods=['POST'])
 def change_user():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] [%s] : Requested url = <%s> , arguments = <%s>',
-		g.UUID, '/change_user', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	cart_service = CartService()
 	response = cart_service.change_user(request.data)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/check_coupon', methods=['POST'])
 def check_coupon():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] [%s]: Request url = [%s], arguments = [%s]', g.UUID, '/check_coupon', str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	response = CouponService.check_coupon_api(request.data)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/check_cod', methods = ['GET'])
 def check_cod():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
 	if request.args.__len__() == 0:
 		response = create_error_response(ERROR.VALIDATION_ERROR)
 	else:
 		response = check_if_cod_possible_for_order(request.args['order_id'])
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/convert_cod', methods = ['POST'])
 def convert_cod():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] Request url = [%s], arguments = [%s], order_id = [%s]', g.UUID, str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	response = convert_order_to_cod(request.data)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/add_item_to_cart', methods = ['POST'])
 def add_to_cart():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]' , g.UUID, str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	response = CartService().add_to_cart(request.data)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 
 @app_v1.route('/remove_from_cart', methods = ['POST'])
 def remove_from_cart():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]' , g.UUID, str(request.url), json.dumps(request.data))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.data))
 	response = CartService().remove_from_cart(request.data)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
 @app_v1.route('/order_count', methods=['GET'])
 def get_order_count():
 	g.UUID = uuid.uuid4()
-	logger.info('START CALL [%s] Request url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
+	logger.info('START_CALL [%s] Request_url = [%s], arguments = [%s]', g.UUID, str(request.url), json.dumps(request.args))
 	if request.args.__len__() == 0:
 		response = create_error_response(ERROR.VALIDATION_ERROR)
 	else:
 		response = get_order_count_for_today(request.args)
-	logger.info('[%s] END OF CALL [%s]', g.UUID, json.dumps(response))
+	logger.info('[%s] END_OF_CALL [%s]', g.UUID, json.dumps(response))
 	return flask.jsonify(response)
