@@ -18,7 +18,7 @@ def setup_logging(config):
     logger = logging.getLogger(APP_NAME)
     logger.setLevel(logging.INFO)
 
-    handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, LOG_FILE), 'midnight', backupCount=1)
+    handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, LOG_FILE), when='m', interval=15, backupCount=1)
     handler.setLevel(logging.INFO)
     handler.setFormatter(formatter)
 
