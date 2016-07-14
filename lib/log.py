@@ -13,7 +13,7 @@ def setup_logging(config):
         os.makedirs(log_dir)
 
     formatter = logging.Formatter(
-        "[ %(asctime)s - %(levelname)s - %(pathname)s - %(module)s - %(funcName)s - %(lineno)d ] - %(message)s")
+        "[ %(asctime)s %(levelname)s %(pathname)s %(module)s %(funcName)s %(lineno)d ] %(message)s")
 
     logger = logging.getLogger(APP_NAME)
     logger.setLevel(logging.INFO)
