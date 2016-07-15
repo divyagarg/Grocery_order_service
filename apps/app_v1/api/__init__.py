@@ -7,6 +7,7 @@ from apps.app_v1.models.models import Address, Payment, Order
 from config import APP_NAME
 import config
 from flask import g
+import requests
 
 __author__ = 'divyagarg'
 
@@ -257,3 +258,9 @@ def get_payment(order_id):
 def get_order(order_id):
 	order = Order.query.filter_by(order_reference_id = order_id).first()
 	return order
+
+def send_sms(phoneno, sms_body):
+	sms_url = config['SMS_SERVICE_URL']
+	full_sms_url = sms_url + '&phoneNo='+phoneno+'&smsBody='+sms_body
+	response = requests.get(url= full_sms_url)
+	return response

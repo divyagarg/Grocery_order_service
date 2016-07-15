@@ -16,7 +16,8 @@ from utils.jsonutils.json_utility import json_serial
 from utils.jsonutils.output_formatter import create_error_response, create_data_response
 from apps.app_v1.models.models import MasterOrder, Address, Payment, db
 from config import APP_NAME
-from apps.app_v1.api import ERROR, ServiceUnAvailableException
+from apps.app_v1.api import ERROR, ServiceUnAvailableException, send_sms, \
+    get_address
 from utils.kafka_utils.kafka_publisher import Publisher
 
 __author__ = 'amit.bansal'
@@ -246,6 +247,18 @@ def update_payment_details(request):
             Logger.error("[%s] Exception occured in sending [%s]" %(g.UUID, str(e)))
 
         db.session.add(order_data)
+        #11 Send sms
+        try:
+            if order_data.ops_panel_status == 1:
+                address = get_address(order_data.shipping_address_ref)
+                sms_body = "Your Order "+order_data.order_id+" has been successfully Placed"
+                response = send_sms(address.mobile, sms_body)
+                if response.status_code != 200:
+                    Logger.error('[%s] Sms could not be sent to user [%s]', g.UUID, response.text)
+                else:
+                    Logger.info('[%s] SMS successfully sent to [%s]', g.UUID, address.mobile)
+        except Exception:
+            Logger.error('[%s] Exception occurred in sending sms', g.UUID, exc_info= True)
 
         # create response data here
         db.session.commit()

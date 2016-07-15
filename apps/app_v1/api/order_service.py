@@ -26,7 +26,7 @@ from apps.app_v1.api import ERROR, parse_request_data, NoSuchCartExistException,
 	PriceChangedException, RequiredFieldMissing, CouponInvalidException, DiscountHasChangedException, \
 	FreebieNotApplicableException, NoShippingAddressFoundException, get_shipping_charges, generate_reference_order_id, \
 	PaymentCanNotBeNullException, NoDeliverySlotException, OlderDeliverySlotException, \
-	ServiceUnAvailableException
+	ServiceUnAvailableException, get_address, send_sms
 from utils.jsonutils.json_schema_validator import validate
 
 from utils.kafka_utils.kafka_publisher import Publisher
@@ -466,6 +466,16 @@ class OrderService(object):
 				self.master_order.ops_panel_status = 2
 				Logger.error("[%s] Exception occured in pusing order to OPS Panel [%s]", g.UUID, str(e), exc_info=True)
 
+			try:
+				if self.master_order.ops_panel_status == 1:
+					address = get_address(self.master_order.shipping_address_ref)
+					sms_body = "Your Order "+self.master_order.order_id+" has been successfully Placed"
+					response = send_sms(address.mobile, sms_body)
+					if response.status_code != 200:
+						Logger.error('[%s] Sms could not be sent to user [%s]', g.UUID, response.text)
+
+			except Exception:
+				Logger.error('[%s] Exception occurred in sending sms', g.UUID, exc_info= True)
 
 			error = False
 			break

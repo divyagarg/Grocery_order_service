@@ -54,6 +54,7 @@ class DevelopmentConfig(Config):
 	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
 	KAFKA_TOPIC = 'grocery_orderservice_staging'
 	KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
+	SMS_SERVICE_URL = "http://notificationservicerest.getit.in/NotificationServiceRest.svc/sendsms?UserId=best_user@&Password=best_user@pwd&Token=987654321&ApplicationId=73&vendorid=groceryapp"
 
 
 
