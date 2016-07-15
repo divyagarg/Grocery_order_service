@@ -18,11 +18,11 @@ def setup_logging(config):
     logger = logging.getLogger(APP_NAME)
     logger.setLevel(logging.INFO)
 
-    handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, LOG_FILE), 'midnight', backupCount=30)
+    handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, LOG_FILE))
     handler.setLevel(logging.INFO)
     handler.setFormatter(formatter)
 
-    errorhandler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, ERROR_LOG_FILE), 'midnight', backupCount=30)
+    errorhandler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, ERROR_LOG_FILE))
     errorhandler.setLevel(logging.ERROR)
     errorhandler.setFormatter(formatter)
 
@@ -32,7 +32,7 @@ def setup_logging(config):
     orm_logger = logging.getLogger('sqlalchemy.engine')
     orm_logger.setLevel(logging.INFO)
 
-    orm_handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, DB_FILE), 'midnight', backupCount=30)
+    orm_handler = logging.handlers.TimedRotatingFileHandler(os.path.join(log_dir, DB_FILE))
     orm_handler.setLevel(logging.INFO)
     orm_handler.setFormatter(formatter)
 
