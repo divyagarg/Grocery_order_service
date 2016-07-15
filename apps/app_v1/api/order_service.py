@@ -436,7 +436,7 @@ class OrderService(object):
 			try:
 				if self.cart_reference_given:
 					#TODO For Time being not removing cart for payment mode Prepaid
-					if self.payment_mode == 'COD':
+					if self.payment_mode != 'Prepaid':
 						remove_cart(self.cart_reference_id)
 			except Exception as exception:
 				traceback.format_exc()
