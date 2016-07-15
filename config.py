@@ -108,6 +108,7 @@ class StagingConfig(Config):
 
 	PAYMENT_SERVICE_URL = "http://pyservice01.staging.askme.com:13000/payment_service/api/paas/v1/paymentstatus"
 	OPS_PANEL_CREATE_ORDER_URL = "http://uat.api.askmegrocery.com/api/generateorder"
+	SMS_SERVICE_URL = "http://notificationservicerest.getit.in/NotificationServiceRest.svc/sendsms?UserId=best_user@&Password=best_user@pwd&Token=987654321&ApplicationId=73&vendorid=groceryapp"
 
 
 class ProductionConfig(Config):
@@ -136,6 +137,7 @@ class ProductionConfig(Config):
 	KAFKA_TOPIC = 'grocery_orderservice_prod'
 
 	OPS_PANEL_CREATE_ORDER_URL = "http://api.askmegrocery.com/api/GenerateOrder"
+	SMS_SERVICE_URL = "http://notificationservicerest.getit.in/NotificationServiceRest.svc/sendsms?UserId=best_user@&Password=best_user@pwd&Token=987654321&ApplicationId=73&vendorid=groceryapp"
 
 
 config = {
