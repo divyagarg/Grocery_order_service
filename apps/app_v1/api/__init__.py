@@ -6,7 +6,7 @@ import time
 from apps.app_v1.models.models import Address, Payment, Order
 from config import APP_NAME
 import config
-from flask import g
+from flask import g, current_app
 import requests
 
 __author__ = 'divyagarg'
@@ -260,7 +260,7 @@ def get_order(order_id):
 	return order
 
 def send_sms(phoneno, sms_body):
-	sms_url = config['SMS_SERVICE_URL']
+	sms_url = current_app.config['SMS_SERVICE_URL']
 	full_sms_url = sms_url + '&phoneNo='+phoneno+'&smsBody='+sms_body
 	response = requests.get(url= full_sms_url)
 	return response
