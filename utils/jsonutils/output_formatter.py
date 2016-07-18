@@ -18,9 +18,11 @@ def create_error_response(ERROR_DETAIL):
     return response_json
 
 
-def create_data_response(data):
+def create_data_response(data, warnings= None):
     settings = RESPONSE_JSON
     response_json = settings['RESPONSE_JSON'].copy()
     response_json['status'] = True
     response_json['data'] = data
+    if warnings is not None:
+        response_json['warnings'] = warnings
     return response_json

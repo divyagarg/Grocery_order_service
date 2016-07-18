@@ -244,10 +244,16 @@ def check_prices_of_item(request_items, data):
 
 	for response in response_data[0].get('items')[0].get('items'):
 		order_item_price_dict[response.get('id')] = response
+	list_of_item_in_data = list()
+	if 'orderitems' in data:
+		for each_requested_order_item in data['orderitems']:
+			list_of_item_in_data.append(each_requested_order_item['item_uuid'])
+
 	for each_item in request_items:
-		if int(each_item['item_uuid']) not in order_item_price_dict:
+		if 'orderitems' in data and each_item['item_uuid'] in list_of_item_in_data and int(each_item['item_uuid']) not in order_item_price_dict:
 			raise SubscriptionNotFoundException(ERROR.SUBSCRIPTION_NOT_FOUND)
-		check_if_calculate_price_api_response_is_correct_or_quantity_is_available(each_item, order_item_price_dict[int(each_item['item_uuid'])])
+		if int(each_item['item_uuid']) in order_item_price_dict:
+			check_if_calculate_price_api_response_is_correct_or_quantity_is_available(each_item, order_item_price_dict[int(each_item['item_uuid'])])
 
 	return order_item_price_dict
 
@@ -291,6 +297,8 @@ class CartService(object):
 		self.shipping_address = None
 		self.total_cashback = 0.0
 		self.payment_mode_allowed = None
+		self.invalid_items = list()
+		self.warnings =None
 
 	def create_or_update_cart(self, body):
 		try:
@@ -474,7 +482,7 @@ class CartService(object):
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			return create_data_response(data=response_data)
+			return create_data_response(data=response_data, warnings= self.warnings)
 
 	def create_cart(self, data):
 		error = True
@@ -638,7 +646,7 @@ class CartService(object):
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			return create_data_response(data=response_data)
+			return create_data_response(data=response_data, warnings=self.warnings)
 
 	def save_cart(self, data, cart):
 		cart.total_offer_price = self.total_price
@@ -766,6 +774,22 @@ class CartService(object):
 				order_item_dict["seller_id"] = item.seller_id
 				items.append(order_item_dict)
 			response_json["orderitems"] = items
+
+		if self.invalid_items.__len__() > 0:
+			invalid_item_dict_list = list()
+			for item in self.invalid_items:
+				invalid_item_dict = {}
+				invalid_item_dict["item_uuid"] = item.cart_item_id
+				if item.title is not None:
+					invalid_item_dict["title"] = item.title
+				if item.image_url is not None:
+					invalid_item_dict["image_url"] = item.image_url
+
+				invalid_item_dict_list.append(invalid_item_dict)
+			warnings = {}
+			warnings['invalid_items'] = invalid_item_dict_list
+			self.warnings = warnings
+
 		Logger.info("[%s] Response for create/update cart is: [%s]",
 					g.UUID, json.dumps(response_json))
 		return response_json
@@ -947,19 +971,25 @@ class CartService(object):
 			for key in self.item_id_to_existing_item_dict:
 				existing_cart_item = self.item_id_to_existing_item_dict[key]
 				key = int(key)
-				cart_item = order_item_price_dict.get(key)
-				if cart_item is not None:
-					existing_cart_item.same_day_delivery = 'SDD' if cart_item.get(
-						'deliveryDays') == 0 else 'NDD'
-					existing_cart_item.display_price = cart_item.get(
-						'basePrice')
-					existing_cart_item.offer_price = cart_item.get(
-						'offerPrice')
-					existing_cart_item.transfer_price = cart_item.get(
-						'transferPrice')
-					existing_cart_item.title = cart_item.get('title')
-					existing_cart_item.image_url = cart_item.get('imageURL')
-					existing_cart_item.seller_id = cart_item.get('sellerId')
+				"""
+				if requested item is not in response
+				"""
+				if key not in order_item_price_dict:
+					self.invalid_items.append(existing_cart_item)
+				else:
+					cart_item = order_item_price_dict.get(key)
+					if cart_item is not None:
+						existing_cart_item.same_day_delivery = 'SDD' if cart_item.get(
+							'deliveryDays') == 0 else 'NDD'
+						existing_cart_item.display_price = cart_item.get(
+							'basePrice')
+						existing_cart_item.offer_price = cart_item.get(
+							'offerPrice')
+						existing_cart_item.transfer_price = cart_item.get(
+							'transferPrice')
+						existing_cart_item.title = cart_item.get('title')
+						existing_cart_item.image_url = cart_item.get('imageURL')
+						existing_cart_item.seller_id = cart_item.get('sellerId')
 
 	def check_for_coupons_applicable(self, data, cart):
 		if self.item_id_to_existing_item_dict.values() is not None and self.item_id_to_existing_item_dict.values().__len__()>0:
@@ -1100,7 +1130,7 @@ class CartService(object):
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			return create_data_response(data=response_data)
+			return create_data_response(data=response_data, warnings=self.warnings)
 
 	def prepare_cart_object(self, data, cart):
 
@@ -1195,7 +1225,7 @@ class CartService(object):
 			return create_error_response(err)
 		else:
 			db.session.commit()
-			return create_data_response(data=response_data)
+			return create_data_response(data=response_data, warnings=self.warnings)
 
 	def update_cart_items_no_price_cal(self, cart, data):
 		self.item_id_to_existing_item_dict = {}
