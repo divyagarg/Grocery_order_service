@@ -7,7 +7,7 @@ import datetime
 from flask import g, current_app
 import requests
 from requests.exceptions import ConnectTimeout
-from apps.app_v1.api.cart_service import remove_cart
+from apps.app_v1.api.cart_service import remove_cart, get_cart_for_geo_user_id
 from apps.app_v1.api.coupon_service import CouponService
 from apps.app_v1.api.delivery_service import DeliveryService, validate_delivery_slot
 from apps.app_v1.api.ops_panel_service import OpsPanel
@@ -303,7 +303,8 @@ class OrderService(object):
 
 			# 1 Parse request
 			request_data = parse_request_data(body)
-			self.cart_reference_given = bool("cart_reference_uuid" in request_data)
+
+			self.cart_reference_given = bool("cart_reference_uuid" in request_data) or bool("geo_id" in request_data and "user_id" in request_data)
 
 			# 2. validate request data fields
 			try:
@@ -517,8 +518,12 @@ class OrderService(object):
 				return create_error_response(ERROR.INTERNAL_ERROR)
 
 	def initialize_order_from_cart_db_data(self, data):
-		self.cart_reference_id = data['cart_reference_uuid']
-		cart = get_cart(self.cart_reference_id)
+		if 'cart_reference_uuid' in data:
+			self.cart_reference_id = data['cart_reference_uuid']
+			cart = get_cart(self.cart_reference_id)
+		elif 'user_id' in data and 'geo_id' in data:
+			cart = get_cart_for_geo_user_id(data.get('geo_id'), data.get('user_id'))
+			self.cart_reference_id = cart.cart_reference_uuid
 		if cart is None:
 			raise NoSuchCartExistException(ERROR.NO_SUCH_CART_EXIST)
 		self.cart = cart

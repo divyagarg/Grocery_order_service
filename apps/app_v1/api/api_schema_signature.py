@@ -295,8 +295,20 @@ CREATE_ORDER_SCHEMA_WITHOUT_CART_REFERENCE = {
 }
 
 CREATE_ORDER_SCHEMA_WITH_CART_REFERENCE = {
-
+			"geo_id": {
+				REQUIRED: False,
+				FUNCTIONS: [
+					{Integer: {}}
+				]
+			},
+			"user_id": {
+				REQUIRED: False,
+				FUNCTIONS: [
+					{String: {}}
+				]
+			},
 			"cart_reference_uuid": {
+				REQUIRED: False,
 				FUNCTIONS: [
 					{String: {}}
 				]
