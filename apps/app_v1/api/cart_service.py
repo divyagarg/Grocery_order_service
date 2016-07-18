@@ -657,15 +657,28 @@ class CartService(object):
 
 		self.shipping_address = data.get('shipping_address')
 		if self.shipping_address is not None:
-			address = Address.get_address(self.shipping_address['name'],
+			address = Address.get_existing_address(self.shipping_address['name'],
 										  self.shipping_address['mobile'],
 										  self.shipping_address['address'],
 										  self.shipping_address.get('city'),
 										  self.shipping_address.get('pincode'),
 										  self.shipping_address.get('state'),
 										  self.shipping_address.get('email'),
-										  self.shipping_address.get(
-											  'landmark'))
+										  self.shipping_address.get('landmark'))
+			if address is not None:
+				if self.shipping_address.get('email') is not None or self.shipping_address.get('landmark') is not None:
+					address.email =  self.shipping_address.get('email')
+					address.landmark = self.shipping_address.get('landmark')
+					db.session.add(address)
+			if address is None:
+				address = Address.create_new_address(self.shipping_address['name'],
+										  self.shipping_address['mobile'],
+										  self.shipping_address['address'],
+										  self.shipping_address.get('city'),
+										  self.shipping_address.get('pincode'),
+										  self.shipping_address.get('state'),
+										  self.shipping_address.get('email'),
+										  self.shipping_address.get('landmark'))
 			cart.shipping_address_ref = address.address_hash
 
 		db.session.add(cart)
@@ -868,17 +881,33 @@ class CartService(object):
 		self.cart_items = cart_item_list
 
 	def save_address_and_get_hash(self, data):
-		addr1 = data.get('shipping_address')
 		self.shipping_address = data.get('shipping_address')
-		address = Address.get_address(name=addr1["name"],
-									  mobile=addr1["mobile"],
-									  address=addr1["address"],
-									  city=addr1.get("city"),
-									  pincode=addr1.get("pincode"),
-									  state=addr1.get("state"),
-									  email=addr1.get('email'),
-									  landmark=addr1.get('landmark'))
+		if self.shipping_address is not None:
+			address = Address.get_existing_address(self.shipping_address['name'],
+										  self.shipping_address['mobile'],
+										  self.shipping_address['address'],
+										  self.shipping_address.get('city'),
+										  self.shipping_address.get('pincode'),
+										  self.shipping_address.get('state')
+										  )
+			if address is not None:
+				if self.shipping_address.get('email') is not None or self.shipping_address.get('landmark') is not None:
+					address.email =  self.shipping_address.get('email')
+					address.landmark = self.shipping_address.get('landmark')
+				elif (self.shipping_address.get('email') is None and address.email is not None) or (self.shipping_address.get('landmark') is None and address.landmark is not None) :
+					address.email = None
+					address.landmark = None
 
+				db.session.add(address)
+			if address is None:
+				address = Address.create_new_address(self.shipping_address['name'],
+										  self.shipping_address['mobile'],
+										  self.shipping_address['address'],
+										  self.shipping_address.get('city'),
+										  self.shipping_address.get('pincode'),
+										  self.shipping_address.get('state'),
+										  self.shipping_address.get('email'),
+										  self.shipping_address.get('landmark'))
 		return address
 
 	def update_cart_items(self, data, cart, operation):

@@ -45,7 +45,7 @@ class Address(db.Model, JsonUtility):
 	address_hash = db.Column(db.String(128), nullable=False, unique=True)
 
 	def __hash__(self):
-		raw_string = self.name + self.mobile + self.address
+		raw_string = self.name + self.mobile + self.address + self.city+ self.pincode + self.state
 		return hashlib.sha1(raw_string.encode('ascii','ignore')).hexdigest()
 
 	@staticmethod
@@ -55,6 +55,24 @@ class Address(db.Model, JsonUtility):
 			return existing_address
 		else:
 			return None
+
+	@classmethod
+	def get_existing_address(cls, name, mobile, address, city, pincode, state):
+
+		address = Address(name=name, mobile=mobile, address=address, city=city,
+						  pincode=pincode, state=state)
+
+		existing_address = Address().query.filter_by(address_hash=address.__hash__()).first()
+		return existing_address
+
+	@classmethod
+	def create_new_address(cls, name, mobile, address, city, pincode, state, email, landmark):
+		address = Address(name=name, mobile=mobile, address=address, city=city,
+						  pincode=pincode, state=state, email=email, landmark=landmark)
+		address.address_hash = address.__hash__()
+		db.session.add(address)
+		return address
+
 
 	@classmethod
 	def get_address(cls, name, mobile, address, city, pincode, state, email, landmark):
