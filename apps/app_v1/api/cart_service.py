@@ -748,6 +748,7 @@ class CartService(object):
 				order_item_dict["item_discount"] = item.item_discount
 				order_item_dict["title"] = item.title
 				order_item_dict["image_url"] = item.image_url
+				order_item_dict["seller_id"] = item.seller_id
 				items.append(order_item_dict)
 			response_json["orderitems"] = items
 
@@ -762,6 +763,7 @@ class CartService(object):
 				order_item_dict["item_discount"] = str(item.item_discount)
 				order_item_dict["title"] = item.title
 				order_item_dict["image_url"] = item.image_url
+				order_item_dict["seller_id"] = item.seller_id
 				items.append(order_item_dict)
 			response_json["orderitems"] = items
 		Logger.info("[%s] Response for create/update cart is: [%s]",
@@ -831,6 +833,7 @@ class CartService(object):
 			cart_item.transfer_price = float(json_order_item['offerPrice'])
 			cart_item.title = json_order_item['title']
 			cart_item.image_url = json_order_item['imageURL']
+			cart_item.seller_id = json_order_item['sellerId']
 			cart_item_list.append(cart_item)
 
 			self.total_price += float(json_order_item['offerPrice']) * int(
@@ -956,6 +959,7 @@ class CartService(object):
 						'transferPrice')
 					existing_cart_item.title = cart_item.get('title')
 					existing_cart_item.image_url = cart_item.get('imageURL')
+					existing_cart_item.seller_id = cart_item.get('sellerId')
 
 	def check_for_coupons_applicable(self, data, cart):
 		if self.item_id_to_existing_item_dict.values() is not None and self.item_id_to_existing_item_dict.values().__len__()>0:

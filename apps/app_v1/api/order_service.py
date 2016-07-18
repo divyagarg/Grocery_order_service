@@ -209,7 +209,7 @@ def create_order_item_obj(order_id, src_list, list_of_items):
 		order_item.transfer_price = src_item.transfer_price
 		order_item.title = src_item.title
 		order_item.image_url = src_item.image_url
-		# order_item.image_url = src_item.image_url
+		order_item.seller_id = src_item.seller_id
 
 		order_item.order_id = order_id
 		list_of_items.append(order_item)
@@ -1145,6 +1145,7 @@ class OrderService(object):
 				item['quantity'] = order_item.quantity
 				item['product_name'] = order_item.title
 				item['image_url'] = order_item.image_url
+				item['seller_id'] = order_item.seller_id
 				item['final_item_price'] = (order_item.offer_price * order_item.quantity)
 				if order_item.shipping_charge is not None:
 					item['final_item_price'] = item['final_item_price']  + order_item.shipping_charge
