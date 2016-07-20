@@ -662,9 +662,8 @@ class CartService(object):
 										  self.shipping_address['address'],
 										  self.shipping_address.get('city'),
 										  self.shipping_address.get('pincode'),
-										  self.shipping_address.get('state'),
-										  self.shipping_address.get('email'),
-										  self.shipping_address.get('landmark'))
+										  self.shipping_address.get('state')
+										 )
 			if address is not None:
 				if self.shipping_address.get('email') is not None or self.shipping_address.get('landmark') is not None:
 					address.email =  self.shipping_address.get('email')
