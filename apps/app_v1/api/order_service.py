@@ -1128,7 +1128,8 @@ class OrderService(object):
 			sub_order["total_shipping_amount"] = order.total_shipping
 			sub_order["total_discount"] = order.total_discount
 			sub_order["status"] = order.status_id
-			sub_order["delivery_slot"] = json.loads(order.delivery_slot)
+			if order.delivery_slot is not None:
+				sub_order["delivery_slot"] = json.loads(order.delivery_slot)
 			address = get_address(order.shipping_address_ref)
 			sub_order["shipping_address"] = {
 				"name":address.name,
