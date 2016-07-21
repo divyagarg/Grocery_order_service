@@ -468,7 +468,8 @@ class OrderService(object):
 				Logger.error("[%s] Exception occured in pusing order to OPS Panel [%s]", g.UUID, str(e), exc_info=True)
 
 			try:
-				if os.environ.get('HOSTENV') == "production":
+
+				# if os.environ.get('HOSTENV') == "production":
 					address = get_address(self.master_order.shipping_address_ref)
 					if self.split_order is False:
 						sms_body = current_app.config['COD_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT']%self.master_order.order_id
