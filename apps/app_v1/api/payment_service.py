@@ -251,17 +251,17 @@ def update_payment_details(request):
         db.session.add(order_data)
         #11 Send sms
         try:
-
-            address = get_address(order_data.shipping_address_ref)
-            if shipmentIds.__len__() == 1:
-                sms_body = current_app.config['PREPAID_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT']%order_data.order_id
-            elif shipmentIds.__len__() == 2:
-                sms_body = current_app.config['PREPAID_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS']%(shipmentIds[0],shipmentIds[1])
-            response = send_sms(address.mobile, sms_body)
-            if response.status_code != 200:
-                Logger.error('[%s] Sms could not be sent to user [%s]', g.UUID, response.text)
-            else:
-                Logger.info('[%s] SMS successfully sent to [%s]', g.UUID, address.mobile)
+            if os.environ.get('HOSTENV') == "production":
+                address = get_address(order_data.shipping_address_ref)
+                if shipmentIds.__len__() == 1:
+                    sms_body = current_app.config['PREPAID_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT']%order_data.order_id
+                elif shipmentIds.__len__() > 1:
+                    sms_body = current_app.config['PREPAID_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS']%(shipmentIds[0],shipmentIds[1])
+                response = send_sms(address.mobile, sms_body)
+                if response.status_code != 200:
+                    Logger.error('[%s] Sms could not be sent to user [%s]', g.UUID, response.text)
+                else:
+                    Logger.info('[%s] SMS successfully sent to [%s]', g.UUID, address.mobile)
         except Exception:
             Logger.error('[%s] Exception occurred in sending sms', g.UUID, exc_info= True)
 
