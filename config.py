@@ -109,8 +109,11 @@ class StagingConfig(Config):
 
 	PAYMENT_SERVICE_URL = "http://pyservice01.staging.askme.com:13000/payment_service/api/paas/v1/paymentstatus"
 	OPS_PANEL_CREATE_ORDER_URL = "http://uat.api.askmegrocery.com/api/generateorder"
-	#SMS_SERVICE_URL = "http://notificationservicerest.getit.in/NotificationServiceRest.svc/sendsms?UserId=best_user@&Password=best_user@pwd&Token=987654321&ApplicationId=73&vendorid=groceryapp"
-	#CONFIRMATION_SMS_TEXT = "Your Order %s has been placed Successfully"
+	SMS_SERVICE_URL = "http://notificationservicerest.getit.in/NotificationServiceRest.svc/sendsms?UserId=best_user@&Password=best_user@pwd&Token=987654321&ApplicationId=73&vendorid=groceryapp"
+	COD_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS = "Your order has been placed and will be delivered in 2 shipments, Shipment ID 1: %s and Shipment ID 2: %s. Thanks for choosing askmegrocery.com."
+	COD_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT = "Your order has been placed and the Shipment ID is %s. Thanks for choosing askmegrocery.com."
+	PREPAID_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT = "Payment successful! Your order number has been confirmed and will be delivered in 2 shipments, Shipment ID 1: %s and Shipment ID 2: %s. Thanks for choosing askmegrocery.com as your shopping destination for grocery."
+	PREPAID_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS = "Payment successful! Your order number has been confirmed and will be delivered in 2 shipments, Shipment ID 1: %s and Shipment ID 2: %s. Thanks for choosing askmegrocery.com as your shopping destination for grocery."
 
 
 class ProductionConfig(Config):
@@ -140,7 +143,11 @@ class ProductionConfig(Config):
 
 	OPS_PANEL_CREATE_ORDER_URL = "http://api.askmegrocery.com/api/GenerateOrder"
 	SMS_SERVICE_URL = "http://notificationservicerest.getit.in/NotificationServiceRest.svc/sendsms?UserId=best_user@&Password=best_user@pwd&Token=987654321&ApplicationId=73&vendorid=groceryapp"
-	CONFIRMATION_SMS_TEXT = "Your Order %s has been placed Successfully"
+	COD_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS = "Your order has been placed and will be delivered in 2 shipments, Shipment ID 1: %s and Shipment ID 2: %s. Thanks for choosing askmegrocery.com."
+	COD_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT = "Your order has been placed and the Shipment ID is %s. Thanks for choosing askmegrocery.com."
+	PREPAID_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT = "Payment successful! Your order number has been confirmed and will be delivered in 2 shipments, Shipment ID 1: %s and Shipment ID 2: %s. Thanks for choosing askmegrocery.com as your shopping destination for grocery."
+	PREPAID_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS = "Payment successful! Your order number has been confirmed and will be delivered in 2 shipments, Shipment ID 1: %s and Shipment ID 2: %s. Thanks for choosing askmegrocery.com as your shopping destination for grocery."
+
 
 
 config = {

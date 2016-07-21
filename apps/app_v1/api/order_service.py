@@ -469,7 +469,13 @@ class OrderService(object):
 
 			try:
 				address = get_address(self.master_order.shipping_address_ref)
-				sms_body = current_app.config['CONFIRMATION_SMS_TEXT']%self.master_order.order_id
+				if self.split_order is False:
+					sms_body = current_app.config['COD_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT']%self.master_order.order_id
+				else:
+					shipmentIds = []
+					for each_order in self.order_list:
+						shipmentIds.append(each_order.order_reference_id)
+					sms_body = current_app.config['COD_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS']%(shipmentIds[0],shipmentIds[1])
 				response = send_sms(address.mobile, sms_body)
 				if response.status_code != 200:
 					Logger.error('[%s] Sms could not be sent to user [%s]', g.UUID, response.text)
@@ -1112,7 +1118,7 @@ class OrderService(object):
 				coupon = { "code" : promo_code, "coupon_type": "Flat"}
 				coupons.append(coupon)
 		data["coupon_used"] = coupons
-		data["status"] = 1
+		data["status"] = StatusService.get_status_code(self.master_order.status_id)
 		data["payment_mode"] = self.payment_mode
 
 		data["total_mrp"] = 0

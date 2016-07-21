@@ -210,10 +210,12 @@ def update_payment_details(request):
 
         # update payment_status in order table
         order_data.payment_status = pure_json['status']
+        shipmentIds = []
         if order_data.payment_status == "success":
             order_data.status_id = StatusService.get_status_id(ORDER_STATUS.CONFIRMED_STATUS.value)
             for sub_order in order_data.sub_orders:
                 sub_order.status_id = order_data.status_id
+                shipmentIds.append(sub_order.order_reference_id)
 
             #TODO For Time being fix
             cart = get_cart_for_geo_user_id(order_data.geo_id, order_data.user_id)
@@ -251,7 +253,10 @@ def update_payment_details(request):
         try:
 
             address = get_address(order_data.shipping_address_ref)
-            sms_body = current_app.config['CONFIRMATION_SMS_TEXT']%self.master_order.order_id
+            if shipmentIds.__len__() == 1:
+                sms_body = current_app.config['PREPAID_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT']%order_data.order_id
+            elif shipmentIds.__len__() == 2:
+                sms_body = current_app.config['PREPAID_ORDER_CONFIRMATION_SMS_TEXT_TWO_SHIPMENTS']%(shipmentIds[0],shipmentIds[1])
             response = send_sms(address.mobile, sms_body)
             if response.status_code != 200:
                 Logger.error('[%s] Sms could not be sent to user [%s]', g.UUID, response.text)
