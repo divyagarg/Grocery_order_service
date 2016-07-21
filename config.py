@@ -96,6 +96,7 @@ class StagingConfig(Config):
 	SQLALCHEMY_POOL_SIZE = 100
 	SQLALCHEMY_POOL_TIMEOUT = 5
 	SQLALCHEMY_POOL_RECYCLE = 1750
+	SQLALCHEMY_ECHO = True
 	PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
 	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
 	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/apply"
