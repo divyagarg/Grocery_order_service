@@ -251,7 +251,7 @@ def update_payment_details(request):
         db.session.add(order_data)
         #11 Send sms
         try:
-            # if os.environ.get('HOSTENV') == "production":
+            if os.environ.get('HOSTENV') == "production":
                 address = get_address(order_data.shipping_address_ref)
                 if shipmentIds.__len__() == 1:
                     sms_body = current_app.config['PREPAID_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT']%order_data.order_id

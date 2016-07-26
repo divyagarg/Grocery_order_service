@@ -469,7 +469,7 @@ class OrderService(object):
 
 			try:
 
-				# if os.environ.get('HOSTENV') == "production":
+				if os.environ.get('HOSTENV') == "production" and self.payment_mode != "Prepaid":
 					address = get_address(self.master_order.shipping_address_ref)
 					if self.split_order is False:
 						sms_body = current_app.config['COD_ORDER_CONFIRMATION_SMS_TEXT_ONE_SHIPMENT']%self.master_order.order_id
