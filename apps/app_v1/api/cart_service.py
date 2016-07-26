@@ -332,6 +332,9 @@ class CartService(object):
 		while True:
 			# 1 Item update(Added, removed, update)
 			try:
+				#check there is no cart item then no updation is allowed
+				if operation == 0 and cart.cartItem.__len__() == 0:
+					raise EmptyCartException(ERROR.CART_EMPTY)
 				self.update_cart_items(data, cart, operation)
 
 			except RemoveCouponBeforeDeletingLastItem as rc:
