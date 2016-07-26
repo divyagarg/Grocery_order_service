@@ -799,6 +799,8 @@ class CartService(object):
 					invalid_item_dict["title"] = item.title
 				if item.image_url is not None:
 					invalid_item_dict["image_url"] = item.image_url
+				if item.quantity is not None:
+					invalid_item_dict["quantity"] = item.quantity
 
 				invalid_item_dict_list.append(invalid_item_dict)
 			warnings = {}
