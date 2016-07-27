@@ -89,11 +89,12 @@ def get_order_count_for_today(args):
 	return create_data_response({"count": count})
 
 
-def convert_order_to_cod(body):
+def convert_order_to_cod(request):
 	try:
+		body = request.data
 		request_data = parse_request_data(body)
 		order_id = request_data.get('order_id')
-		response = check_if_cod_possible_for_order(order_id= order_id)
+		response = check_if_cod_possible_for_order(order_id= order_id, headers=request.headers)
 		if response.get('status'):
 			master_order = MasterOrder.query.filter_by(order_id = order_id).first()
 			master_order.payment_mode = payment_modes_dict[0]
@@ -109,7 +110,7 @@ def convert_order_to_cod(body):
 
 
 
-def check_if_cod_possible_for_order(order_id):
+def check_if_cod_possible_for_order(order_id, headers):
 	try:
 		if order_id is None:
 			Logger.error("[%s] Order id can not be null", g.UUID)
@@ -150,7 +151,7 @@ def check_if_cod_possible_for_order(order_id):
 				req_data["products"] = product_list
 
 
-			response = CouponService.call_check_coupon_api(req_data)
+			response = CouponService.call_check_coupon_api(req_data, headers)
 			if response.status_code == 200:
 				return create_data_response({"message": "COD is allowed"})
 			elif response.status_code == 400:
@@ -681,7 +682,7 @@ class OrderService(object):
 					coupon_codes = map(str, self.promo_codes)
 					req_data["coupon_codes"] = coupon_codes
 
-			response = CouponService.call_check_coupon_api(req_data)
+			response = CouponService.call_check_coupon_api(req_data, headers)
 			if response.status_code != 200:
 					if response.status_code == 404:
 						Logger.error("[%s] Coupon service is temporarily unavailable", g.UUID)

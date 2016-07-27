@@ -119,7 +119,7 @@ def create_address_json(shipping_address):
 	return shipping_add
 
 
-def get_response_from_check_coupons_api(cart_items, data, cart):
+def get_response_from_check_coupons_api(cart_items, data, cart, headers):
 	url = current_app.config['COUPON_CHECK_URL']
 	req_data = {
 		"geo_id": str(data['geo_id']),
@@ -144,7 +144,7 @@ def get_response_from_check_coupons_api(cart_items, data, cart):
 			req_data["coupon_codes"] = map(str, data.get('promo_codes'))
 	elif cart is not None and cart.promo_codes is not None:
 		req_data["coupon_codes"] = json.loads(cart.promo_codes)
-	response = CouponService.call_check_coupon_api(req_data)
+	response = CouponService.call_check_coupon_api(req_data, headers)
 	if response.status_code != 200:
 		if response.status_code == 404:
 			Logger.error("[%s] Coupon service is temporarily unavailable",
@@ -300,7 +300,8 @@ class CartService(object):
 		self.invalid_items = list()
 		self.warnings =None
 
-	def create_or_update_cart(self, body):
+	def create_or_update_cart(self, request):
+		body = request.data
 		try:
 			Logger.info("[%s] Create/update cart request body [%s]",\
 									 g.UUID, body)
@@ -309,9 +310,9 @@ class CartService(object):
 			cart = get_cart_for_geo_user_id(request_data['geo_id'], \
 											request_data['user_id'])
 			if cart is not None:
-				return self.update_cart(cart, request_data, 0)
+				return self.update_cart(cart, request_data, 0, request.headers)
 			else:
-				return self.create_cart(request_data)
+				return self.create_cart(request_data, request.headers)
 
 		except IncorrectDataException as ide:
 			Logger.error("[%s] Validation Error [%s]",
@@ -323,7 +324,7 @@ class CartService(object):
 			ERROR.INTERNAL_ERROR.message = str(exception)
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
-	def update_cart(self, cart, data, operation):
+	def update_cart(self, cart, data, operation, headers):
 		Logger.info(
 			"[%s]***********************Update Cart Started********************",
 			g.UUID)
@@ -406,7 +407,7 @@ class CartService(object):
 			# 3 Check coupons (Cart Level or Item level)
 			if not self.is_cart_empty:
 				try:
-					self.check_for_coupons_applicable(data, cart)
+					self.check_for_coupons_applicable(data, cart, headers)
 
 				except ServiceUnAvailableException as se:
 					Logger.error("[%s] Coupon service is unavailable", g.UUID)
@@ -487,7 +488,7 @@ class CartService(object):
 			db.session.commit()
 			return create_data_response(data=response_data, warnings= self.warnings)
 
-	def create_cart(self, data):
+	def create_cart(self, data, headers):
 		error = True
 		err = None
 		while True:
@@ -565,7 +566,7 @@ class CartService(object):
 			try:
 				if self.cart_items is not None and self.cart_items.__len__()>0:
 					response_data = get_response_from_check_coupons_api(
-						self.cart_items, data, cart)
+						self.cart_items, data, cart, headers)
 					self.update_discounts_item_level(response_data,
 													 self.cart_items)
 					self.fetch_freebie_details_and_update(
@@ -1024,11 +1025,11 @@ class CartService(object):
 						existing_cart_item.image_url = cart_item.get('imageURL')
 						existing_cart_item.seller_id = cart_item.get('sellerId')
 
-	def check_for_coupons_applicable(self, data, cart):
+	def check_for_coupons_applicable(self, data, cart, headers):
 		if self.item_id_to_existing_item_dict.values() is not None and self.item_id_to_existing_item_dict.values().__len__()>0:
 			response_data = get_response_from_check_coupons_api(
 				self.item_id_to_existing_item_dict.values(), data,
-				cart)
+				cart, headers=headers)
 			if "error" in response_data:
 				if 'promo_codes' in data and hasattr(data.get('promo_codes'),
 													 '__iter__') and data.get(

@@ -37,7 +37,7 @@ def createOrUpdateCart():
 	logger.info('START_CALL= %s Request_url = %s, arguments = %s', g.UUID, str(request.url), json.dumps(request.data))
 	try:
 		cartservice = CartService()
-		response = cartservice.create_or_update_cart(request.data)
+		response = cartservice.create_or_update_cart(request)
 		logger.info("END_OF_CALL= %s response = %s", g.UUID, json.dumps(response))
 		return response
 	except Exception as exception:
@@ -176,7 +176,7 @@ def change_user():
 def check_coupon():
 	g.UUID = uuid.uuid4()
 	logger.info('START_CALL= %s Request_url = %s, arguments = %s', g.UUID, str(request.url), json.dumps(request.data))
-	response = CouponService.check_coupon_api(request.data)
+	response = CouponService.check_coupon_api(request.data, request.headers)
 	logger.info("END_OF_CALL= %s response = %s", g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
@@ -188,7 +188,7 @@ def check_cod():
 	if request.args.__len__() == 0:
 		response = create_error_response(ERROR.VALIDATION_ERROR)
 	else:
-		response = check_if_cod_possible_for_order(request.args['order_id'])
+		response = check_if_cod_possible_for_order(request.args['order_id'], request.headers)
 	logger.info("END_OF_CALL= %s response = %s", g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
@@ -197,7 +197,7 @@ def check_cod():
 def convert_cod():
 	g.UUID = uuid.uuid4()
 	logger.info('START_CALL= %s Request_url = %s, arguments = %s', g.UUID, str(request.url), json.dumps(request.data))
-	response = convert_order_to_cod(request.data)
+	response = convert_order_to_cod(request)
 	logger.info("END_OF_CALL= %s response = %s", g.UUID, json.dumps(response))
 	return flask.jsonify(response)
 
