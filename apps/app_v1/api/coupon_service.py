@@ -22,11 +22,11 @@ class CouponService(object):
 		pass
 
 	@staticmethod
-	def check_coupon_api(body):
+	def check_coupon_api(body, headers):
 		try:
 			request_data = parse_request_data(body)
 			validate(request_data, CHECK_COUPON_SCHEMA)
-			response = CouponService.call_check_coupon_api(request_data)
+			response = CouponService.call_check_coupon_api(request_data, headers)
 			return json.loads(response.text)
 		except Exception as e:
 			Logger.error('[%s] Exception occured while checking coupon [%s]' , g.UUID, str(e), exc_info=True)
@@ -34,11 +34,13 @@ class CouponService(object):
 			return create_error_response(ERROR.INTERNAL_ERROR)
 
 	@staticmethod
-	def call_check_coupon_api(request_data):
+	def call_check_coupon_api(request_data, headers):
 		url = current_app.config['COUPON_CHECK_URL']
 		header = {
 			'X-API-USER': current_app.config['X_API_USER'],
 			'X-API-TOKEN': current_app.config['X_API_TOKEN'],
+			'X-ASKME-USERID': headers.get('X-ASKME-USERID'),
+			'X-ASKME-SESSIONID': headers.get('X-ASKME-SESSIONID'),
 			'content-type': 'application/json'
 		}
 		if 'payment_mode' in request_data:

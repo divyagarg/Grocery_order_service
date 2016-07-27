@@ -467,7 +467,7 @@ UPDATE_DELIVERY_SLOT = {
 }
 
 CHECK_COUPON_SCHEMA = {
-	"area_id": {
+	"geo_id": {
 		FUNCTIONS: [{String: {}}]
 	},
 	"customer_id": {
