@@ -57,7 +57,30 @@ class DevelopmentConfig(Config):
 	#OPS_PANEL_CREATE_ORDER_URL = "http://uat.api.askmegrocery.com/api/generateorder"
 	#SMS_SERVICE_URL = "http://notificationservicerest.getit.in/NotificationServiceRest.svc/sendsms?UserId=best_user@&Password=best_user@pwd&Token=987654321&ApplicationId=73&vendorid=groceryapp"
 
-
+class DevelopmentConfig1(Config):
+	HOME = '/tmp'
+	ENV = 'development'
+	DEBUG = True
+	DATABASE_NAME = 'grocery_order_service_v1'
+	DATABASE_URI = 'mysql+pymysql://root@localhost:3306/'
+	SECRET_KEY = 'hard to guess string'
+	# KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
+	# KAFKA_TOPIC = 'fulfillment_staging'
+	# KAKFA_GROUP = 'fulfillmentservice_group'
+	SQLALCHEMY_DATABASE_URI = DATABASE_URI + DATABASE_NAME
+	SQLALCHEMY_TRACK_MODIFICATIONS = False
+	SQLALCHEMY_POOL_SIZE = 100
+	SQLALCHEMY_POOL_TIMEOUT = 20
+	SQLALCHEMY_POOL_RECYCLE = 1750
+	PRODUCT_CATALOGUE_URL = "http://pyservice01.staging.askme.com:9070/v1/search"
+	COUPON_CHECK_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/check"
+	COUPOUN_APPLY_URL = "http://pyservice01.staging.askme.com:8823/vouchers/grocery/v1/apply"
+	SHIPMENT_PREVIEW_URL = "http://pyservice01.staging.askme.com:9981/fulfilments/v1/order/getShipmentOptions"
+	PAYMENT_SERVICE_URL = "http://pyservice01.staging.askme.com:13000/payment_service/api/paas/v1/paymentstatus"
+	X_API_USER = "askmegrocery"
+	X_API_TOKEN = "M2JmN2U5NGYtMDJlNi0xMWU2LWFkZGQtMjRhMDc0ZjE1MGYy"
+	KAFKA_TOPIC = 'grocery_orderservice_staging'
+	KAFKA_HOSTS = ['dc1.staging.askme.com:9092', 'dc2.staging.askme.com:9092']
 
 class TestingConfig(Config):
 	HOME = '/tmp'
@@ -153,6 +176,7 @@ class ProductionConfig(Config):
 
 config = {
 	'development': DevelopmentConfig,
+	'development1': DevelopmentConfig1,
 	'testing': TestingConfig,
 	'staging': StagingConfig,
 	'production': ProductionConfig,

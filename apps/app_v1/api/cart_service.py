@@ -122,7 +122,7 @@ def create_address_json(shipping_address):
 def get_response_from_check_coupons_api(cart_items, data, cart):
 	url = current_app.config['COUPON_CHECK_URL']
 	req_data = {
-		"area_id": str(data['geo_id']),
+		"geo_id": str(data['geo_id']),
 		"customer_id": data['user_id'],
 		'channel': data['order_source_reference'],
 		"products": [

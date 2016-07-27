@@ -124,7 +124,7 @@ def check_if_cod_possible_for_order(order_id):
 		orders = Order.query.filter_by(parent_order_id=order_id).all()
 		req_data = {}
 		if orders.__len__() > 0:
-			req_data["area_id"] = str(orders[0].geo_id)
+			req_data["geo_id"] = str(orders[0].geo_id)
 			req_data["customer_id"] = orders[0].user_id
 			req_data["channel"] = orders[0].order_source_reference
 			req_data["coupon_codes"]= json.loads(orders[0].promo_codes)
@@ -668,7 +668,7 @@ class OrderService(object):
 				product_list.append(product)
 		if product_list.__len__()>0:
 			req_data = {
-				"area_id": str(self.geo_id),
+				"geo_id": str(self.geo_id),
 				"customer_id": self.user_id,
 				'channel': self.order_source_reference,
 				"products": product_list,
@@ -1062,7 +1062,7 @@ class OrderService(object):
 
 		if product_list.__len__() > 0:
 			req_data = {
-				"area_id": str(self.geo_id),
+				"geo_id": str(self.geo_id),
 				"customer_id": self.user_id,
 				'channel': self.order_source_reference,
 				"products": product_list,
